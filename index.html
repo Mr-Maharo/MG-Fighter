@@ -1,30 +1,52 @@
-
 <!DOCTYPE html>
 <html lang="mg">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MG Fighter - Battle Royale</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MG Fighter Pro - Cross Platform</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <canvas id="game"></canvas>
-    <canvas id="minimap" width="150" height="150"></canvas>
+    <canvas id="minimap" width="180" height="180"></canvas>
 
     <div id="ui">
-        <div>HP: <span id="hp">100</span></div>
-        <div>Armor: <span id="armor">0</span></div>
-        <div>Weapon: <span id="weapon">Fist</span></div>
-        <div>Ammo: <span id="ammo">0</span></div>
-        <div>Kills: <span id="kills">0</span></div>
-        <div>Alive: <span id="alive">0</span></div>
+        <div class="stat"><span>HP</span><div class="bar"><div id="hpBar"></div></div><span id="hp">100</span></div>
+        <div class="stat"><span>ARMOR</span><div class="bar"><div id="armorBar"></div></div><span id="armor">0</span></div>
+        <div class="stat">WEAPON: <span id="weapon">Fist</span></div>
+        <div class="stat">AMMO: <span id="ammo">0</span></div>
+        <div class="stat">KILLS: <span id="kills">0</span></div>
+    </div>
+
+    <div id="centerUI">
+        <div id="alive">WAITING FOR PLAYERS...</div>
+        <div id="zoneTimer"></div>
     </div>
 
     <div id="killFeed"></div>
+    <div id="damageNumbers"></div>
+    <div id="scope" class="hidden"></div>
 
-    <div id="controls">
-        WASD: Mihetsika | Mouse: Mitodika | Click: Mitifitra | E: Maka loot
+    <!-- MOBILE CONTROLS -->
+    <div id="mobileControls" class="hidden">
+        <div id="joystick">
+            <div id="joystickKnob"></div>
+        </div>
+        <div id="rightControls">
+            <button id="shootBtn">FIRE</button>
+            <button id="scopeBtn">SCOPE</button>
+            <button id="lootBtn">LOOT</button>
+            <button id="sprintBtn">RUN</button>
+        </div>
     </div>
+
+    <div id="victoryScreen" class="hidden">
+        <h1>VICTORY ROYALE</h1>
+        <p>#1 / <span id="totalPlayers"></span></p>
+        <button onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
+    <div id="controls">PC: WASD + Mouse | Mobile: Joystick + Buttons</div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="script.js"></script>
