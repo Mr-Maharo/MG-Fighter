@@ -1,1 +1,32 @@
 
+<!DOCTYPE html>
+<html lang="mg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MG Fighter - Battle Royale</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="game"></canvas>
+    <canvas id="minimap" width="150" height="150"></canvas>
+
+    <div id="ui">
+        <div>HP: <span id="hp">100</span></div>
+        <div>Armor: <span id="armor">0</span></div>
+        <div>Weapon: <span id="weapon">Fist</span></div>
+        <div>Ammo: <span id="ammo">0</span></div>
+        <div>Kills: <span id="kills">0</span></div>
+        <div>Alive: <span id="alive">0</span></div>
+    </div>
+
+    <div id="killFeed"></div>
+
+    <div id="controls">
+        WASD: Mihetsika | Mouse: Mitodika | Click: Mitifitra | E: Maka loot
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
