@@ -1306,6 +1306,174 @@ function distance(x1, y1, x2, y2) {
     return Math.hypot(x2 - x1, y2 - y1);
 }
 
+
+// ==================== MG FIGHTER SPRITE SYSTEM ====================
+// Apetraho @ farany @ script.js anao ity
+
+// 1. SPRITE DATA
+const SPRITE_DATA = {
+  "frameSize": 32,
+  "characters": {
+    "boy": {
+      "offsetX": 0,
+      "animations": {
+        "down": [ { "x": 0, "y": 0 }, { "x": 32, "y": 0 }, { "x": 64, "y": 0 }, { "x": 96, "y": 0 } ],
+        "up": [ { "x": 0, "y": 32 }, { "x": 32, "y": 32 }, { "x": 64, "y": 32 }, { "x": 96, "y": 32 } ],
+        "left": [ { "x": 0, "y": 64 }, { "x": 32, "y": 64 }, { "x": 64, "y": 64 }, { "x": 96, "y": 64 } ],
+        "right": [ { "x": 0, "y": 96 }, { "x": 32, "y": 96 }, { "x": 64, "y": 96 }, { "x": 96, "y": 96 } ]
+      }
+    },
+    "girl": {
+      "offsetX": 128,
+      "animations": {
+        "down": [ { "x": 128, "y": 0 }, { "x": 160, "y": 0 }, { "x": 192, "y": 0 }, { "x": 224, "y": 0 } ],
+        "up": [ { "x": 128, "y": 32 }, { "x": 160, "y": 32 }, { "x": 192, "y": 32 }, { "x": 224, "y": 32 } ],
+        "left": [ { "x": 128, "y": 64 }, { "x": 160, "y": 64 }, { "x": 192, "y": 64 }, { "x": 224, "y": 64 } ],
+        "right": [ { "x": 128, "y": 96 }, { "x": 160, "y": 96 }, { "x": 192, "y": 96 }, { "x": 224, "y": 96 } ]
+      }
+    }
+  }
+};
+
+// 2. LOAD SPRITE IMAGE - SOLOY NY ANARANA RAHA TSY "sprites.png"
+const spriteImg = new Image();
+spriteImg.src = 'sprites.png'; // Ataovy ao @ public/ na root an'ny GitHub Pages
+let spriteLoaded = false;
+spriteImg.onload = () => {
+    spriteLoaded = true;
+    console.log('✅ Sprite loaded');
+};
+spriteImg.onerror = () => console.error('❌ Tsy hita ny sprites.png');
+
+// 3. OVERRIDE NY PLAYER OBJECT REHEFA CREATE
+const originalCreatePlayer = window.createPlayer || function(id, x, y) {
+    return { id, x, y, vx: 0, vy: 0, hp: 100 };
+};
+
+window.createPlayer = function(id, x, y, skin = 'boy') {
+    let p = originalCreatePlayer(id, x, y);
+    p.skin = skin;
+    p.direction = 'down';
+    p.animFrame = 0;
+    p.animTimer = 0;
+    p.isMoving = false;
+    p.username = id;
+    return p;
+};
+
+// Ataovy boy daholo ny player efa misy
+if (typeof player!== 'undefined') {
+    player.skin = player.skin || 'boy';
+    player.direction = player.direction || 'down';
+    player.animFrame = 0;
+    player.animTimer = 0;
+}
+
+// 4. ANIMATION UPDATE
+function updatePlayerAnimation(p, deltaTime) {
+    if (!p) return;
+
+    // Farito ny direction
+    if (Math.abs(p.vx) > 0.5 || Math.abs(p.vy) > 0.5) {
+        p.isMoving = true;
+        if (Math.abs(p.vx) > Math.abs(p.vy)) {
+            p.direction = p.vx > 0? 'right' : 'left';
+        } else {
+            p.direction = p.vy > 0? 'down' : 'up';
+        }
+    } else {
+        p.isMoving = false;
+    }
+
+    // Avance-o ny frame
+    if (p.isMoving) {
+        p.animTimer += deltaTime;
+        if (p.animTimer > 120) { // 120ms = haingana kely
+            p.animFrame = (p.animFrame + 1) % 4;
+            p.animTimer = 0;
+        }
+    } else {
+        p.animFrame = 0; // Mijoro
+    }
+}
+
+// 5. DRAW PLAYER VAOVAO - MANOLO NY TALOHA
+window.drawPlayer = function(p) {
+    if (!p ||!ctx) return;
+
+    // Raha tsy mbola load ny sprite dia efajoro mena vonjimaika
+    if (!spriteLoaded) {
+        ctx.fillStyle = p.id === player?.id? 'cyan' : 'red';
+        ctx.fillRect(p.x - 16, p.y - 16, 32, 32);
+        return;
+    }
+
+    const char = SPRITE_DATA.characters[p.skin] || SPRITE_DATA.characters['boy'];
+    const anim = char.animations[p.direction] || char.animations['down'];
+    const frame = anim[p.animFrame] || anim[0];
+    const size = SPRITE_DATA.frameSize;
+    const drawSize = size * 2; // x2 ny habe
+
+    ctx.drawImage(
+        spriteImg,
+        frame.x, frame.y, size, size,
+        p.x - drawSize/2, p.y - drawSize/2,
+        drawSize, drawSize
+    );
+
+    // HP Bar
+    if (p.hp < 100) {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(p.x - 20, p.y - drawSize/2 - 10, 40, 4);
+        ctx.fillStyle = 'lime';
+        ctx.fillRect(p.x - 20, p.y - drawSize/2 - 10, 40 * (p.hp/100), 4);
+    }
+
+    // Anarana
+    ctx.fillStyle = p.id === player?.id? '#00ff00' : 'white';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 3;
+    ctx.strokeText(p.username || p.id, p.x, p.y - drawSize/2 - 15);
+    ctx.fillText(p.username || p.id, p.x, p.y - drawSize/2 - 15);
+};
+
+// 6. HOOK @ GAME LOOP - MI-UPDATE AUTOMATIQUE
+let lastSpriteUpdate = 0;
+const originalGameLoop = window.gameLoop || window.update || window.render;
+
+function spriteGameLoopHook(timestamp) {
+    const deltaTime = timestamp - lastSpriteUpdate;
+    lastSpriteUpdate = timestamp;
+
+    // Update animation an'ny player rehetra
+    if (typeof player!== 'undefined') updatePlayerAnimation(player, deltaTime);
+    if (typeof otherPlayers!== 'undefined') {
+        for (let id in otherPlayers) {
+            updatePlayerAnimation(otherPlayers[id], deltaTime);
+        }
+    }
+
+    // Miantso ny game loop original raha misy
+    if (originalGameLoop) originalGameLoop(timestamp);
+    else requestAnimationFrame(spriteGameLoopHook);
+}
+
+// Start raha tsy misy game loop
+if (!originalGameLoop) requestAnimationFrame(spriteGameLoopHook);
+
+// 7. COMMAND HANOVANA SKIN @ CONSOLE
+window.setSkin = function(skin) {
+    if (player) {
+        player.skin = skin;
+        if (socket) socket.emit('updateSkin', { skin: skin });
+        console.log('Skin niova ho:', skin);
+    }
+};
+
+console.log('🎮 Sprite System Loaded! Mampiasà setSkin("boy") na setSkin("girl") @ console');
+// ==================== TAPITRA ====================
 // ============================================
 // 23. INITIALIZATION
 // ============================================
