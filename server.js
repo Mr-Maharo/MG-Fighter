@@ -3,55 +3,31 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
+// ============================================
+// 1. FIREBASE SETUP
+// ============================================
+const { initializeApp } = require('firebase/app');
+const { getDatabase, ref, set, get, update } = require('firebase/database');
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
+  authDomain: "mgfigther-b3760.firebaseapp.com",
+  databaseURL: "https://mgfigther-b3760-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "mgfigther-b3760",
+  storageBucket: "mgfigther-b3760.firebasestorage.app",
+  messagingSenderId: "829325634031",
+  appId: "1:829325634031:web:b9c13b78ffec75a372ee1a"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getDatabase(firebaseApp);
+let useDB = true;
+
 const app = express();
 const server = http.createServer(app);
-
-// ============================================
-// 1. DATABASE SETUP
-// ============================================
-const MONGODB_URI = process.env.MONGODB_URI || '';
-let useDB = false;
-
-const userSchema = new mongoose.Schema({
-    username: { type: String, unique: true, required: true },
-    password: { type: String, required: true },
-    level: { type: Number, default: 1 },
-    xp: { type: Number, default: 0 },
-    coins: { type: Number, default: 100 },
-    wins: { type: Number, default: 0 },
-    kills: { type: Number, default: 0 },
-    skin: {
-        color: { type: String, default: '#00ff00' },
-        hat: { type: String, default: 'none' },
-        gun: { type: String, default: 'default' }
-    },
-    friends: [String],
-    battlePass: {
-        level: { type: Number, default: 1 },
-        xp: { type: Number, default: 0 },
-        claimed: [Number]
-    },
-    createdAt: { type: Date, default: Date.now }
-});
-
-let User;
-if (MONGODB_URI) {
-    mongoose.connect(MONGODB_URI).then(() => {
-        console.log('✅ MongoDB connected');
-        useDB = true;
-        User = mongoose.model('User', userSchema);
-    }).catch(err => {
-        console.log('❌ MongoDB failed, using memory:', err.message);
-        useDB = false;
-    });
-}
-
-// Memory fallback
-const memoryUsers = new Map();
 
 // ============================================
 // 2. GAME CONSTANTS
@@ -209,32 +185,53 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================
-// 5. AUTH ROUTES
+// 5. AUTH ROUTES FIREBASE
 // ============================================
+async function getUser(username) {
+    const snapshot = await get(ref(db, 'users/' + username));
+    return snapshot.exists()? snapshot.val() : null;
+}
+
+async function saveUser(username, data) {
+    await set(ref(db, 'users/' + username), data);
+}
+
+async function updateUser(username, data) {
+    await update(ref(db, 'users/' + username), data);
+}
+
+function sanitizeUser(user) {
+    const u = {...user};
+    delete u.password;
+    return u;
+}
+
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
         if (!username ||!password) return res.json({ error: 'Fenoy daholo' });
         if (username.length < 3) return res.json({ error: 'Username 3 lettres minimum' });
 
-        if (useDB) {
-            const exists = await User.findOne({ username });
-            if (exists) return res.json({ error: 'Username efa misy' });
-            const hash = await bcrypt.hash(password, 10);
-            const user = new User({ username, password: hash });
-            await user.save();
-            res.json({ success: true, user: sanitizeUser(user) });
-        } else {
-            if (memoryUsers.has(username)) return res.json({ error: 'Username efa misy' });
-            const hash = await bcrypt.hash(password, 10);
-            const user = {
-                username, password: hash, level: 1, xp: 0, coins: 100,
-                wins: 0, kills: 0, skin: { color: '#00ff00', hat: 'none', gun: 'default' },
-                friends: [], battlePass: { level: 1, xp: 0, claimed: [] }
-            };
-            memoryUsers.set(username, user);
-            res.json({ success: true, user: sanitizeUser(user) });
-        }
+        const exists = await getUser(username);
+        if (exists) return res.json({ error: 'Username efa misy' });
+
+        const hash = await bcrypt.hash(password, 10);
+        const user = {
+            username,
+            password: hash,
+            level: 1,
+            xp: 0,
+            coins: 100,
+            wins: 0,
+            kills: 0,
+            skin: { color: '#00ff00', hat: 'none', gun: 'default' },
+            friends: [],
+            battlePass: { level: 1, xp: 0, claimed: [] },
+            createdAt: Date.now()
+        };
+        await saveUser(username, user);
+        console.log('✅ User voasoratra:', username);
+        res.json({ success: true, user: sanitizeUser(user) });
     } catch (err) {
         console.error('Register error:', err);
         res.json({ error: 'Erreur serveur' });
@@ -244,30 +241,19 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        let user;
-
-        if (useDB) {
-            user = await User.findOne({ username });
-        } else {
-            user = memoryUsers.get(username);
-        }
+        const user = await getUser(username);
 
         if (!user) return res.json({ error: 'User tsy hita' });
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return res.json({ error: 'Password diso' });
 
+        console.log('✅ Login:', username);
         res.json({ success: true, user: sanitizeUser(user) });
     } catch (err) {
         console.error('Login error:', err);
         res.json({ error: 'Erreur serveur' });
     }
 });
-
-function sanitizeUser(user) {
-    const u = user.toObject? user.toObject() : user;
-    delete u.password;
-    return u;
-}
 
 // ============================================
 // 6. SOCKET HANDLERS
@@ -276,12 +262,7 @@ io.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
 
     socket.on('auth', async (username) => {
-        let user;
-        if (useDB) {
-            user = await User.findOne({ username });
-        } else {
-            user = memoryUsers.get(username);
-        }
+        const user = await getUser(username);
         if (user) {
             socket.username = username;
             lobbyPlayers.set(socket.id, { username, socket,...sanitizeUser(user) });
@@ -302,9 +283,10 @@ io.on('connection', (socket) => {
     socket.on('addFriend', async (friendName) => {
         if (!socket.username || friendName === socket.username) return;
         const player = lobbyPlayers.get(socket.id);
+        if (!player.friends) player.friends = [];
         if (!player.friends.includes(friendName)) {
             player.friends.push(friendName);
-            if (useDB) await User.updateOne({ username: socket.username }, { $push: { friends: friendName } });
+            await updateUser(socket.username, { friends: player.friends });
             socket.emit('friendAdded', friendName);
         }
     });
@@ -312,15 +294,16 @@ io.on('connection', (socket) => {
     socket.on('getFriends', () => {
         const player = lobbyPlayers.get(socket.id);
         if (!player) return;
-        const online = player.friends.filter(f => Array.from(lobbyPlayers.values()).some(p => p.username === f));
-        socket.emit('friendsList', { all: player.friends, online });
+        const friends = player.friends || [];
+        const online = friends.filter(f => Array.from(lobbyPlayers.values()).some(p => p.username === f));
+        socket.emit('friendsList', { all: friends, online });
     });
 
     socket.on('setSkin', async (skin) => {
         const player = lobbyPlayers.get(socket.id);
         if (!player) return;
         player.skin = skin;
-        if (useDB) await User.updateOne({ username: socket.username }, { skin });
+        await updateUser(socket.username, { skin });
     });
 
     socket.on('findMatch', (mode) => {
@@ -582,7 +565,7 @@ function gameLoop() {
                 if (pid === b.owner ||!game.players[pid].alive) continue;
                 const p = game.players[pid];
                 if (game.players[b.owner]?.team && p.team === game.players[b.owner].team) continue;
-                if (Math.hypot(b.x - p.x, b.y - p.y) < 20) {
+                if (Math.hypot(b.x - p.x, p.y - p.y) < 20) {
                     let dmg = b.damage;
                     if (p.armor > 0) {
                         const absorbed = Math.min(p.armor, dmg * 0.7);
@@ -731,12 +714,13 @@ async function updatePlayerStats(socketId, type) {
         player.xp -= 100;
         player.coins += 50;
     }
-    if (useDB) {
-        await User.updateOne({ username: player.username }, {
-            $inc: { kills: type === 'kill'? 1 : 0, wins: type === 'win'? 1 : 0 },
-            $set: { level: player.level, xp: player.xp, coins: player.coins }
-        });
-    }
+    await updateUser(player.username, {
+        kills: player.kills,
+        wins: player.wins,
+        level: player.level,
+        xp: player.xp,
+        coins: player.coins
+    });
     io.emit('leaderboardUpdate', getLeaderboard());
 }
 
@@ -753,7 +737,6 @@ function getLeaderboard() {
 // ============================================
 // 8. START SERVER
 // ============================================
-// Serve static files + SPA fallback
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -762,7 +745,7 @@ setInterval(gameLoop, 1000 / TICK_RATE);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🎮 MG Fighter Server v4.0 running on port ${PORT}`);
+    console.log(`🎮 MG Fighter Server v4.0 Firebase running on port ${PORT}`);
     console.log(`⚡ Tick rate: ${TICK_RATE}Hz`);
     console.log(`🌐 CORS enabled for: ${allowedOrigins.join(', ')}`);
 });
