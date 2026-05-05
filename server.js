@@ -1,4 +1,3 @@
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -6,28 +5,11 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
-
-
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
-});
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static('public'));
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-setInterval(gameLoop, 1000 / TICK_RATE);
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`MG Fighter Server v4.0 running on port ${PORT}`);
-});
 // ============================================
 // 1. DATABASE SETUP
 // ============================================
@@ -59,11 +41,11 @@ const userSchema = new mongoose.Schema({
 let User;
 if (MONGODB_URI) {
     mongoose.connect(MONGODB_URI).then(() => {
-        console.log('MongoDB connected');
+        console.log('✅ MongoDB connected');
         useDB = true;
         User = mongoose.model('User', userSchema);
     }).catch(err => {
-        console.log('MongoDB failed, using memory:', err.message);
+        console.log('❌ MongoDB failed, using memory:', err.message);
         useDB = false;
     });
 }
@@ -89,14 +71,10 @@ const WEAPONS = {
 // ============================================
 // 3. GAME STATE
 // ============================================
-let lobbyPlayers = new Map(); // socketId -> {username, socket}
-let rooms = new Map(); // roomId -> Room
-let games = new Map(); // roomId -> Game
-let matchmaking = {
-    solo: [],
-    duo: [],
-    squad: []
-};
+let lobbyPlayers = new Map();
+let rooms = new Map();
+let games = new Map();
+let matchmaking = { solo: [], duo: [], squad: [] };
 
 class Room {
     constructor(id, host, mode = 'custom') {
@@ -128,7 +106,6 @@ class Game {
     }
 
     init(players) {
-        // Spawn buildings
         for (let i = 0; i < 20; i++) {
             this.buildings.push({
                 x: Math.random() * (MAP_SIZE - 200),
@@ -138,7 +115,6 @@ class Game {
             });
         }
 
-        // Spawn bushes
         for (let i = 0; i < 30; i++) {
             this.bushes.push({
                 x: Math.random() * MAP_SIZE,
@@ -147,7 +123,6 @@ class Game {
             });
         }
 
-        // Spawn vehicles
         for (let i = 0; i < 5; i++) {
             this.vehicles.push({
                 id: uuidv4(),
@@ -160,10 +135,8 @@ class Game {
             });
         }
 
-        // Spawn loot
         this.spawnLoot();
 
-        // Init players
         players.forEach((p, idx) => {
             const team = this.getTeam(idx, players.length);
             this.players[p.socketId] = {
@@ -212,7 +185,31 @@ class Game {
 }
 
 // ============================================
-// 4. AUTH ROUTES
+// 4. EXPRESS + SOCKET.IO SETUP - CORS FIX
+// ============================================
+const allowedOrigins = [
+    "https://mr-maharo.github.io",
+    "http://localhost:3000",
+    "http://localhost:5500"
+];
+
+const io = new Server(server, {
+    cors: {
+        origin: allowedOrigins,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
+
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ============================================
+// 5. AUTH ROUTES
 // ============================================
 app.post('/register', async (req, res) => {
     try {
@@ -239,6 +236,7 @@ app.post('/register', async (req, res) => {
             res.json({ success: true, user: sanitizeUser(user) });
         }
     } catch (err) {
+        console.error('Register error:', err);
         res.json({ error: 'Erreur serveur' });
     }
 });
@@ -260,6 +258,7 @@ app.post('/login', async (req, res) => {
 
         res.json({ success: true, user: sanitizeUser(user) });
     } catch (err) {
+        console.error('Login error:', err);
         res.json({ error: 'Erreur serveur' });
     }
 });
@@ -271,12 +270,11 @@ function sanitizeUser(user) {
 }
 
 // ============================================
-// 5. SOCKET HANDLERS
+// 6. SOCKET HANDLERS
 // ============================================
 io.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
 
-    // AUTH
     socket.on('auth', async (username) => {
         let user;
         if (useDB) {
@@ -292,7 +290,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // LOBBY CHAT
     socket.on('lobbyChat', (msg) => {
         if (!socket.username || msg.length > 200) return;
         io.emit('lobbyChat', {
@@ -302,7 +299,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    // FRIENDS
     socket.on('addFriend', async (friendName) => {
         if (!socket.username || friendName === socket.username) return;
         const player = lobbyPlayers.get(socket.id);
@@ -320,7 +316,6 @@ io.on('connection', (socket) => {
         socket.emit('friendsList', { all: player.friends, online });
     });
 
-    // SKIN
     socket.on('setSkin', async (skin) => {
         const player = lobbyPlayers.get(socket.id);
         if (!player) return;
@@ -328,7 +323,6 @@ io.on('connection', (socket) => {
         if (useDB) await User.updateOne({ username: socket.username }, { skin });
     });
 
-    // MATCHMAKING
     socket.on('findMatch', (mode) => {
         if (!socket.username) return;
         matchmaking[mode].push({ socketId: socket.id, username: socket.username });
@@ -396,7 +390,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // GAME
     socket.on('joinGame', (roomId) => {
         const game = games.get(roomId);
         if (!game) return;
@@ -515,18 +508,15 @@ io.on('connection', (socket) => {
         p.inVehicle = null;
     });
 
-    // DISCONNECT
     socket.on('disconnect', () => {
         console.log('Player disconnected:', socket.id);
         lobbyPlayers.delete(socket.id);
         io.emit('lobbyUpdate', lobbyPlayers.size);
 
-        // Remove from matchmaking
         for (let mode in matchmaking) {
             matchmaking[mode] = matchmaking[mode].filter(p => p.socketId!== socket.id);
         }
 
-        // Remove from room
         for (let [roomId, room] of rooms) {
             const idx = room.players.findIndex(p => p.id === socket.id);
             if (idx!== -1) {
@@ -537,7 +527,6 @@ io.on('connection', (socket) => {
             }
         }
 
-        // Remove from game
         if (socket.gameId) {
             const game = games.get(socket.gameId);
             if (game && game.players[socket.id]) {
@@ -549,7 +538,7 @@ io.on('connection', (socket) => {
 });
 
 // ============================================
-// 6. GAME LOGIC
+// 7. GAME LOGIC
 // ============================================
 function checkMatchmaking(mode) {
     const queue = matchmaking[mode];
@@ -585,12 +574,10 @@ function gameLoop() {
     for (let [roomId, game] of games) {
         if (game.status!== 'playing') continue;
 
-        // Update bullets
         game.bullets = game.bullets.filter(b => {
             b.x += b.speedX;
             b.y += b.speedY;
 
-            // Check collision with players
             for (let pid in game.players) {
                 if (pid === b.owner ||!game.players[pid].alive) continue;
                 const p = game.players[pid];
@@ -622,12 +609,9 @@ function gameLoop() {
                     return false;
                 }
             }
-
-            // Check bounds
             return b.x > 0 && b.x < MAP_SIZE && b.y > 0 && b.y < MAP_SIZE;
         });
 
-        // Update grenades
         game.grenades = game.grenades.filter(g => {
             g.x += g.vx;
             g.y += g.vy;
@@ -636,7 +620,6 @@ function gameLoop() {
             g.timer--;
 
             if (g.timer <= 0) {
-                // Explosion
                 io.to(roomId).emit('explosion', { x: g.x, y: g.y });
                 for (let pid in game.players) {
                     const p = game.players[pid];
@@ -674,7 +657,6 @@ function gameLoop() {
             return true;
         });
 
-        // Update vehicles
         game.vehicles.forEach(v => {
             if (v.driver && game.players[v.driver]?.alive) {
                 const p = game.players[v.driver];
@@ -684,7 +666,6 @@ function gameLoop() {
             }
         });
 
-        // Zone shrink
         game.zoneTimer--;
         if (game.zoneTimer <= 0) {
             game.zone.radius = Math.max(100, game.zone.radius - 100);
@@ -692,7 +673,6 @@ function gameLoop() {
             io.to(roomId).emit('zoneUpdate', { zone: game.zone, timer: game.zoneTimer / TICK_RATE });
         }
 
-        // Zone damage
         for (let pid in game.players) {
             const p = game.players[pid];
             if (!p.alive) continue;
@@ -712,7 +692,6 @@ function gameLoop() {
             }
         }
 
-        // Broadcast game state
         io.to(roomId).emit('gameState', {
             players: game.players,
             bullets: game.bullets,
@@ -772,16 +751,18 @@ function getLeaderboard() {
 }
 
 // ============================================
-// 7. START SERVER
+// 8. START SERVER
 // ============================================
+// Serve static files + SPA fallback
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 setInterval(gameLoop, 1000 / TICK_RATE);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`MG Fighter Server v4.0 running on port ${PORT}`);
-    console.log(`Tick rate: ${TICK_RATE}Hz`);
+    console.log(`🎮 MG Fighter Server v4.0 running on port ${PORT}`);
+    console.log(`⚡ Tick rate: ${TICK_RATE}Hz`);
+    console.log(`🌐 CORS enabled for: ${allowedOrigins.join(', ')}`);
 });
-// Serve static files
-const path = require('path');
-app.use(express.static(path.join(__dirname, 'public')));
-
