@@ -133,7 +133,30 @@ async function login() {
         showAuthError('Tsy afaka niditra. Jereo ny password');
     }
 }
+async function register() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
 
+    try {
+        const res = await fetch(`${API_URL}/register`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+            showAuthError(data.error);
+        } else {
+            showAuthError('Compte créé ✅');
+        }
+
+    } catch (err) {
+        console.error(err);
+        showAuthError('Erreur serveur');
+    }
+}
 
 function showAuthError(msg) {
     document.getElementById('authError').textContent = msg;
