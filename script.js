@@ -102,39 +102,65 @@ async function register() {
     if(!username ||!password) return showAuthError('Fenoy daholo');
     if(username.length < 3) return showAuthError('Username 3 lettres minimum');
 
-   const res = await fetch(`${API_URL}/register`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({username, password})
-    });
-    const data = await res.json();
-    if(data.error) showAuthError(data.error);
-    else {
-        playerData.username = username;
-        playerData.password = password;
-        savePlayerData();
-        login();
+    try {
+        console.log('Mandefa request @:', `${API_URL}/register`);
+        
+        const res = await fetch(`${API_URL}/register`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password})
+        });
+        
+        console.log('Status:', res.status);
+        
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+        
+        const data = await res.json();
+        console.log('Valiny:', data);
+        
+        if(data.error) showAuthError(data.error);
+        else {
+            playerData.username = username;
+            playerData.password = password;
+            savePlayerData();
+            login();
+        }
+    } catch (error) {
+        console.error('Erreur register:', error);
+        showAuthError('Tsy afaka mifandray @ serveur. Andramo afaka 30s');
     }
 }
 
 async function login() {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
-   const res = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({username, password})
-    });
-    const data = await res.json();
-    if(data.error) showAuthError(data.error);
-    else {
-        currentUser = username;
-        playerData = {...playerData,...data.user};
-        savePlayerData();
-        socket.emit('auth', username);
+    
+    try {
+        const res = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password})
+        });
+        
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+        
+        const data = await res.json();
+        if(data.error) showAuthError(data.error);
+        else {
+            currentUser = username;
+            playerData = {...playerData,...data.user};
+            savePlayerData();
+            socket.emit('auth', username);
+        }
+    } catch (error) {
+        console.error('Erreur login:', error);
+        showAuthError('Tsy afaka mifandray @ serveur');
     }
 }
-
 function showAuthError(msg) {
     document.getElementById('authError').textContent = msg;
     setTimeout(() => document.getElementById('authError').textContent = '', 3000);
