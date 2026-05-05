@@ -12,7 +12,7 @@
 // ============================================
 // 1. CONFIG & GLOBAL VARIABLES
 // ============================================
-const socket = io('https://mg-fighter.onrender.com/'); // OVAY ITO
+const socket = io('https://mg-fighter-1.onrender.com'); // OVAY ITO
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
