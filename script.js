@@ -13,6 +13,7 @@
 // 1. CONFIG & GLOBAL VARIABLES
 // ============================================
 const socket = io('https://mg-fighter-1.onrender.com'); // OVAY ITO
+const API_URL = 'https://mg-fighter-1.onrender.com';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -101,7 +102,7 @@ async function register() {
     if(!username ||!password) return showAuthError('Fenoy daholo');
     if(username.length < 3) return showAuthError('Username 3 lettres minimum');
 
-    const res = await fetch('/register', {
+   const res = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({username, password})
@@ -119,7 +120,7 @@ async function register() {
 async function login() {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
-    const res = await fetch('/login', {
+   const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({username, password})
