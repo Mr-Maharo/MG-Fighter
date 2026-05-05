@@ -7,7 +7,7 @@ const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
-const socket = io('https://mg-fighter-1.onrender.com');
+
 
 const app = express();
 const server = http.createServer(app);
@@ -771,4 +771,12 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`MG Fighter Server v4.0 running on port ${PORT}`);
     console.log(`Tick rate: ${TICK_RATE}Hz`);
+});
+// Serve static files
+const path = require('path');
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Fallback ho an'ny SPA
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
