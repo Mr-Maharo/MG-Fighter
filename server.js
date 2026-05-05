@@ -5,7 +5,11 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const cors = require("cors");
 
+app.use(cors({
+  origin: "https://mr-maharo.github.io"
+}));
 // ============================================
 // 1. FIREBASE SETUP
 // ============================================
