@@ -18,7 +18,16 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
+setInterval(gameLoop, 1000 / TICK_RATE);
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`MG Fighter Server v4.0 running on port ${PORT}`);
+});
 // ============================================
 // 1. DATABASE SETUP
 // ============================================
@@ -776,7 +785,3 @@ server.listen(PORT, () => {
 const path = require('path');
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Fallback ho an'ny SPA
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
