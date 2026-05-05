@@ -96,71 +96,45 @@ function showScreen(screenId) {
     document.getElementById(screenId)?.classList.remove('hidden');
 }
 
-async function register() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    if(!username ||!password) return showAuthError('Fenoy daholo');
-    if(username.length < 3) return showAuthError('Username 3 lettres minimum');
-
-    try {
-        console.log('Mandefa request @:', `${API_URL}/register`);
-        
-        const res = await fetch(`${API_URL}/register`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username, password})
-        });
-        
-        console.log('Status:', res.status);
-        
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-        }
-        
-        const data = await res.json();
-        console.log('Valiny:', data);
-        
-        if(data.error) showAuthError(data.error);
-        else {
-            playerData.username = username;
-            playerData.password = password;
-            savePlayerData();
-            login();
-        }
-    } catch (error) {
-        console.error('Erreur register:', error);
-        showAuthError('Tsy afaka mifandray @ serveur. Andramo afaka 30s');
-    }
-}
-
 async function login() {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     
     try {
+        console.log('Login @:', `${API_URL}/login`);
+        
         const res = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({username, password})
         });
         
+        console.log('Login Status:', res.status);
+        
         if (!res.ok) {
+            const text = await res.text();
+            console.log('Login Error Body:', text);
             throw new Error(`HTTP ${res.status}`);
         }
         
         const data = await res.json();
+        console.log('Login Valiny:', data);
+        
         if(data.error) showAuthError(data.error);
         else {
             currentUser = username;
             playerData = {...playerData,...data.user};
             savePlayerData();
             socket.emit('auth', username);
+            showGameScreen(); // Ampio ity raha tsy mandeha automatique
         }
     } catch (error) {
         console.error('Erreur login:', error);
-        showAuthError('Tsy afaka mifandray @ serveur');
+        showAuthError('Tsy afaka niditra. Jereo ny password');
     }
 }
+
+
 function showAuthError(msg) {
     document.getElementById('authError').textContent = msg;
     setTimeout(() => document.getElementById('authError').textContent = '', 3000);
