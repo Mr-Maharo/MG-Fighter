@@ -1,5 +1,5 @@
 // OVAY ITY AMIN'NY LINK RENDER-NAO
-const socket = io('https://mg-fighter-xxx.onrender.com');
+const socket = io('https://mg-fighter.onrender.com/');
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
