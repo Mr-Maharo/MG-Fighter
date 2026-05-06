@@ -174,16 +174,32 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==================== AUTH ====================
-async function getUser(username) {
-  const snapshot = await get(ref(db, 'users/' + username));
-  return snapshot.exists()? snapshot.val() : null;
-}
-async function saveUser(username, data) {
-  await set(ref(db, 'users/' + username), data);
-}
-async function updateUser(username, data) {
-  await update(ref(db, 'users/' + username), data);
-}
+socket.on('auth', async (data) => {
+    // data = {uid, username, photo} avy amin'ny client Google
+    const profile = typeof data === 'string'? { uid: data, username: data } : data;
+    const { uid, username, photo } = profile;
+
+    let user = await getUser(uid);
+    if (!user) {
+      // joueur vaovao Google
+      user = {
+        uid, username, photo: photo || '',
+        level: 1, xp: 0, coins: 100, wins: 0, kills: 0,
+        skin: { color: '#00ff00', hat: 'none', gun: 'default' },
+        friends: [], battlePass: { level: 1, xp: 0, claimed: [] },
+        createdAt: Date.now()
+      };
+      await saveUser(uid, user);
+      console.log('✅ Google user créé:', username);
+    }
+
+    socket.uid = uid;
+    socket.username = username;
+    lobbyPlayers.set(socket.id, { uid, username, socket,...sanitizeUser(user) });
+    socket.emit('authSuccess', sanitizeUser(user));
+    io.emit('lobbyUpdate', lobbyPlayers.size);
+  });
+
 function sanitizeUser(user) {
   const u = {...user };
   delete u.password;
@@ -246,13 +262,13 @@ io.on('connection', (socket) => {
     io.emit('lobbyChat', { username: socket.username, msg: msg.substring(0, 200), time: Date.now() });
   });
 
-  socket.on('addFriend', async (friendName) => {
-    if (!socket.username || friendName === socket.username) return;
+socket.on('addFriend', async (friendName) => {
+    if (!socket.uid || friendName === socket.username) return;
     const player = lobbyPlayers.get(socket.id);
     if (!player.friends) player.friends = [];
     if (!player.friends.includes(friendName)) {
       player.friends.push(friendName);
-      await updateUser(socket.username, { friends: player.friends });
+      await updateUser(socket.uid, { friends: player.friends });
       socket.emit('friendAdded', friendName);
     }
   });
@@ -265,13 +281,13 @@ io.on('connection', (socket) => {
     socket.emit('friendsList', { all: friends, online });
   });
 
-  socket.on('setSkin', async (skin) => {
+socket.on('setSkin', async (skin) => {
     const player = lobbyPlayers.get(socket.id);
     if (!player) return;
     player.skin = skin;
-    await updateUser(socket.username, { skin });
+    await updateUser(socket.uid, { skin });
   });
-
+  
   socket.on('findMatch', (mode) => {
     if (!socket.username) return;
     matchmaking[mode].push({ socketId: socket.id, username: socket.username });
@@ -632,7 +648,7 @@ async function updatePlayerStats(socketId, type) {
   if (type === 'kill') player.kills++;
   if (type === 'win') { player.wins++; player.coins += 100; player.xp += 200; }
   if (player.xp >= 100) { player.level++; player.xp -= 100; player.coins += 50; }
-  await updateUser(player.username, { kills: player.kills, wins: player.wins, level: player.level, xp: player.xp, coins: player.coins });
+  await updateUser(player.uid, { kills: player.kills, wins: player.wins, level: player.level, xp: player.xp, coins: player.coins });
   io.emit('leaderboardUpdate', getLeaderboard());
 }
 
