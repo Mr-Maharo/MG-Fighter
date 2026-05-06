@@ -112,14 +112,7 @@ firebase.auth().onAuthStateChanged(user => {
   if (user && !currentUser) { // 🔥 important
     currentUser = user.displayName || user.email.split('@')[0];
 
-    socket.emit('joinGame', {
-      name: currentUser,
-      uid: user.uid,
-      skin: playerData.skin || 'boy'
-    });
-  }
-});
-
+  
 
 // Maka ny valiny rehefa miverina avy amin'ny Google
 
@@ -639,10 +632,12 @@ function update() {
     }
 
     // Clamp position
+    const MAP_SIZE = 3000;
+    
     me.x = Math.max(15, Math.min(MAP_SIZE - 15, me.x));
     me.y = Math.max(15, Math.min(MAP_SIZE - 15, me.y));
 
-    const MAP_SIZE = 3000;
+   
 
     // Check bush
     me.inBush = bushes.some(b => Math.hypot(me.x - b.x, me.y - b.y) < b.radius);
@@ -1421,7 +1416,7 @@ window.drawPlayer = function(p) {
 
     // Raha tsy mbola load ny sprite dia efajoro mena vonjimaika
     if (!spriteLoaded) {
-        ctx.fillStyle = p.id === player?.id? 'cyan' : 'red';
+        ctx.fillStyle = p.id === myId ? 'cyan' : 'red';
         ctx.fillRect(p.x - 16, p.y - 16, 32, 32);
         return;
     }
