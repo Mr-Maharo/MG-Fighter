@@ -1043,19 +1043,25 @@
     </style>
 </head>
 <body>
-    <!-- AUTH SCREEN -->
-    <div id="authScreen" class="screen">
-        <div class="auth-box">
-            <h1>MG FIGHTER</h1>
-            <p class="subtitle">BATTLE ROYALE V4.0</p>
-            <input id="username" type="text" placeholder="Username" maxlength="12" autocomplete="off">
-            <input id="password" type="password" placeholder="Password" autocomplete="off">
-            <button onclick="login()">LOGIN</button>
-            <button onclick="register()">REGISTER</button>
-            <p id="authError"></p>
-        </div>
-    </div>
+ 
+<div id="authScreen" class="screen">
+    <div class="auth-box">
+        <h1>MG FIGHTER</h1>
+        <p class="subtitle">BATTLE ROYALE </p>
 
+        <button onclick="loginWithGoogle()" style="width:300px;height:45px;background:white;color:#444;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:20px;">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="height:20px;vertical-align:middle;margin-right:10px;">
+            Continuer avec Google
+        </button>
+
+        <p id="authError" style="margin-top:15px;height:20px;"></p>
+    </div>
+</div>
+
+<!-- Firebase SDK - apetraho eo ambonin'ny script.js -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <!-- LOBBY SCREEN -->
     <div id="lobbyScreen" class="screen hidden">
         <div class="lobby-header">
