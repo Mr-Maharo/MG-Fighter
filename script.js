@@ -8,6 +8,18 @@
  * Author: Mr Maharo
  * ============================================================================
  */
+const firebaseConfig = {
+  apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
+  authDomain: "mgfigther-b3760.firebaseapp.com",
+  databaseURL: "https://mgfigther-b3760-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "mgfigther-b3760",
+  storageBucket: "mgfigther-b3760.firebasestorage.app",
+  messagingSenderId: "829325634031",
+  appId: "1:829325634031:web:b9c13b78ffec75a372ee1a"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 // ============================================
 // 1. CONFIG & GLOBAL VARIABLES
@@ -97,91 +109,62 @@ function showScreen(screenId) {
 
 function showAuthError(msg) {
     const el = document.getElementById('authError');
+    if (el) { el.textContent = msg; setTimeout(()=>el.textContent='',4000); }
+}
+
+async function loginWithGoogle() {
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await auth.signInWithPopup(provider);
+        const user = result.user;
+
+        currentUser = user.displayName || user.email.split('@')[0];
+
+        // Tahiry joueur ao Firestore
+        const playerRef = db.collection('players').doc(user.uid);
+        const doc = await playerRef.get();
+
+        if (!doc.exists) {
+            playerData = {
+                username: currentUser,
+                uid: user.uid,
+                photo: user.photoURL,
+                level: 1, xp: 0, coins: 100, wins: 0, kills: 0,
+                skin: { color: '#00ff00', hat: 'none', gun: 'default' },
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            await playerRef.set(playerData);
+        } else {
+            playerData = doc.data();
+        }
+
+        savePlayerData();
+        socket.emit('auth', user.uid); // alefa amin'ny serveur jeu
+        showScreen('lobbyScreen');
+        updateLobbyUI();
+
+    } catch(e) {
+        console.error(e);
+        showAuthError('Erreur Google');
+    }
+}
+
+// Auto-login raha efa niditra
+auth.onAuthStateChanged(user => {
+    if (user && GAME_STATE === 'LOBBY') loginWithGoogle();
+});
+
+// Fafao ny login sy register taloha raha tsy ilaina intsony
+async function login(){ loginWithGoogle(); }
+async function register(){ loginWithGoogle(); }
+
+
+function showAuthError(msg) {
+    const el = document.getElementById('authError');
     if (el) {
         el.textContent = msg;
         setTimeout(() => el.textContent = '', 3000);
     }
-}
-
-async function login() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-
-    if (!username) return showAuthError('Ampidiro anarana');
-    if (!password) return showAuthError('Ampidiro mot de passe');
-
-    // Tehirizo local mba auto-fill manaraka
-    playerData.username = username;
-    playerData.password = password;
-    savePlayerData();
-
-    try {
-        const res = await fetch(`${API_URL}/login`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username, password })
-        });
-
-        if (!res.ok) throw new Error('Server error');
-
-        const data = await res.json();
-        if (data.error) return showAuthError(data.error);
-
-        // SUCCESS ONLINE
-        currentUser = username;
-        playerData = { ...playerData, ...data.user };
-        savePlayerData();
-        socket.emit('auth', username);
-        
-        showScreen('lobbyScreen');
-        updateLobbyUI();
-        showAuthError('Tafiditra ✅');
-
-    } catch (err) {
-        console.warn('Render matory, miditra offline:', err.message);
-        
-        // FALLBACK OFFLINE - mandeha foana
-        currentUser = username;
-        showScreen('lobbyScreen');
-        updateLobbyUI();
-        showAuthError('Mode offline - tsy mila serveur');
-    }
-}
-
-async function register() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-
-    if (!username || password.length < 3) 
-        return showAuthError('Anarana + mdp 3 lettres min');
-
-    try {
-        const res = await fetch(`${API_URL}/register`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-        
-        if (data.error) showAuthError(data.error);
-        else {
-            showAuthError('Compte créé ✅ - midira');
-            // auto-login
-            setTimeout(login, 800);
-        }
-    } catch {
-        // raha maty ny serveur, dia mamorona local fotsiny
-        playerData.username = username;
-        playerData.password = password;
-        savePlayerData();
-        showAuthError('Compte local créé ✅');
-        setTimeout(login, 800);
-    }
-}
-
-function showAuthError(msg) {
-    document.getElementById('authError').textContent = msg;
-    setTimeout(() => document.getElementById('authError').textContent = '', 3000);
 }
 
 function savePlayerData() {
