@@ -108,23 +108,20 @@ function savePlayerData() {
     localStorage.setItem('mgPlayerData', JSON.stringify(playerData));
 }
 
-getRedirectResult(auth).then((result) => {
-  if (result && result.user) {
-    console.log("✅ Logged in via redirect");
+firebase.auth().onAuthStateChanged(user => {
+  if (user && !currentUser) { // 🔥 important
+    currentUser = user.displayName || user.email.split('@')[0];
 
-    if (typeof onUserLogin === 'function') onUserLogin(result.user);
+    socket.emit('joinGame', {
+      name: currentUser,
+      uid: user.uid,
+      skin: playerData.skin || 'boy'
+    });
   }
-}).catch(console.error);
-
+});
 
 
 // Maka ny valiny rehefa miverina avy amin'ny Google
-firebase.auth().getRedirectResult().then((result) => {
-  if (result && result.user) {
-    const user = result.user;
-    currentUser = user.displayName || user.email.split('@')[0];
-    playerData.username = currentUser;
-    playerData.photo = user.photoURL;
 
     // Alefa amin'ny SERVEUR RENDER (mitovy amin'ny server.js vaovao)
     socket.emit('joinGame', {
@@ -136,20 +133,6 @@ firebase.auth().getRedirectResult().then((result) => {
   }
 }).catch(console.error);
 
-// Auto-login raha efa connecté taloha
-firebase.auth().onAuthStateChanged(user => {
-  if (user && GAME_STATE === 'LOBBY') {
-    currentUser = user.displayName || user.email.split('@')[0];
-    playerData.username = currentUser;
-    playerData.photo = user.photoURL;
-
-    socket.emit('joinGame', {
-      name: currentUser,
-      uid: user.uid,
-      skin: playerData.skin || 'boy'
-    });
-  }
-});
 
 
 socket.on('authSuccess', (user) => {
@@ -354,6 +337,9 @@ function changeSkinHat(hat) {
 socket.on('gameInit', (data) => {
     myId = data.id;
     players = data.players;
+
+    initPlayerSprites(); // ✅ ETO no apetraka
+
     loot = data.loot;
     buildings = data.buildings;
     bushes = data.bushes;
@@ -623,9 +609,6 @@ function toggleScope(state) {
     document.getElementById('scope')?.classList.toggle('hidden',!state);
 }
 
-function toggleScoreboard(show) {
-    document.getElementById('scoreboard')?.classList.toggle('hidden',!show);
-}
 
 // ============================================
 // 12. GAME UPDATE LOOP
@@ -658,6 +641,8 @@ function update() {
     // Clamp position
     me.x = Math.max(15, Math.min(MAP_SIZE - 15, me.x));
     me.y = Math.max(15, Math.min(MAP_SIZE - 15, me.y));
+
+    const MAP_SIZE = 3000;
 
     // Check bush
     me.inBush = bushes.some(b => Math.hypot(me.x - b.x, me.y - b.y) < b.radius);
@@ -696,6 +681,16 @@ function autoAim() {
 // ============================================
 // 13. RENDERING
 // ============================================
+
+const mapImg = new Image();
+mapImg.src = 'map.png'; // ataovy ao amin'ny project-nao
+
+let mapLoaded = false;
+
+mapImg.onload = () => {
+    mapLoaded = true;
+    console.log('✅ Map loaded');
+};
 
 function draw() {
     if(GAME_STATE!== 'GAME') return;
@@ -1379,11 +1374,17 @@ window.createPlayer = function(id, x, y, skin = 'boy') {
 };
 
 // Ataovy boy daholo ny player efa misy
-if (typeof player!== 'undefined') {
-    player.skin = player.skin || 'boy';
-    player.direction = player.direction || 'down';
-    player.animFrame = 0;
-    player.animTimer = 0;
+function initPlayerSprites() {
+    for (let id in players) {
+        const p = players[id];
+        if (!p) continue;
+
+        p.skin = p.skin || 'boy';
+        p.direction = p.direction || 'down';
+        p.animFrame = p.animFrame || 0;
+        p.animTimer = p.animTimer || 0;
+        p.isMoving = false;
+    }
 }
 
 // 4. ANIMATION UPDATE
@@ -1466,11 +1467,9 @@ function spriteGameLoopHook(timestamp) {
 
     // Update animation an'ny player rehetra
     if (typeof player!== 'undefined') updatePlayerAnimation(player, deltaTime);
-    if (typeof otherPlayers!== 'undefined') {
-        for (let id in otherPlayers) {
-            updatePlayerAnimation(otherPlayers[id], deltaTime);
-        }
-    }
+    for (let id in players) {
+    updatePlayerAnimation(players[id], deltaTime);
+}
 
     // Miantso ny game loop original raha misy
     if (originalGameLoop) originalGameLoop(timestamp);
