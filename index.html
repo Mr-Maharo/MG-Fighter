@@ -1040,8 +1040,12 @@
             }
         }
     </style>
-        <script>
-    const firebaseConfig = {
+    <!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+  // COPIER-COLLER NY CONFIG AVY AMIN'NY FIREBASE CONSOLE
+   const firebaseConfig = {
   apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
   authDomain: "mgfigther-b3760.firebaseapp.com",
   databaseURL: "https://mgfigther-b3760-default-rtdb.europe-west1.firebasedatabase.app",
@@ -1050,7 +1054,15 @@
   messagingSenderId: "829325634031",
   appId: "1:829325634031:web:b9c13b78ffec75a372ee1a"
 };
-        </script>
+  
+  firebase.initializeApp(firebaseConfig);
+
+  function loginWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithRedirect(provider);
+  }
+</script>
+       
 </head>
 <body>
  
