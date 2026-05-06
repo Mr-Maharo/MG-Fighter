@@ -116,6 +116,16 @@ function savePlayerData() {
     localStorage.setItem('mgPlayerData', JSON.stringify(playerData));
 }
 
+import { getRedirectResult } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+getRedirectResult(auth).then((result) => {
+  if (result && result.user) {
+    console.log("✅ Logged in via redirect");
+
+    if (typeof onUserLogin === 'function') onUserLogin(result.user);
+  }
+}).catch(console.error);
+
 async function loginWithGoogle() {
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
