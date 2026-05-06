@@ -126,17 +126,7 @@ getRedirectResult(auth).then((result) => {
   }
 }).catch(console.error);
 
-// ----- LOGIN GOOGLE VERSION FINAL -----
-window.loginWithGoogle = async function() {
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    // SOLOY POPUP → REDIRECT
-    await firebase.auth().signInWithRedirect(provider);
-  } catch(e) {
-    console.error(e);
-    showAuthError('Erreur Google');
-  }
-};
+
 
 // Maka ny valiny rehefa miverina avy amin'ny Google
 firebase.auth().getRedirectResult().then((result) => {
