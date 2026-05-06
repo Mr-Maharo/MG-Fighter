@@ -88,54 +88,72 @@ let particles = [];
 let screenShake = 0;
 
 // ============================================
-// 2. AUTHENTICATION & LOBBY
+// AUTH - VERSION FINALE (online + offline)
 // ============================================
-
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     document.getElementById(screenId)?.classList.remove('hidden');
 }
 
+function showAuthError(msg) {
+    const el = document.getElementById('authError');
+    if (el) {
+        el.textContent = msg;
+        setTimeout(() => el.textContent = '', 3000);
+    }
+}
+
 async function login() {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
-    
+
+    if (!username) return showAuthError('Ampidiro anarana');
+    if (!password) return showAuthError('Ampidiro mot de passe');
+
+    // Tehirizo local mba auto-fill manaraka
+    playerData.username = username;
+    playerData.password = password;
+    savePlayerData();
+
     try {
-        console.log('Login @:', `${API_URL}/login`);
-        
         const res = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username, password})
+            body: JSON.stringify({ username, password })
         });
-        
-        console.log('Login Status:', res.status);
-        
-        if (!res.ok) {
-            const text = await res.text();
-            console.log('Login Error Body:', text);
-            throw new Error(`HTTP ${res.status}`);
-        }
-        
+
+        if (!res.ok) throw new Error('Server error');
+
         const data = await res.json();
-        console.log('Login Valiny:', data);
+        if (data.error) return showAuthError(data.error);
+
+        // SUCCESS ONLINE
+        currentUser = username;
+        playerData = { ...playerData, ...data.user };
+        savePlayerData();
+        socket.emit('auth', username);
         
-        if(data.error) showAuthError(data.error);
-        else {
-            currentUser = username;
-            playerData = {...playerData,...data.user};
-            savePlayerData();
-            socket.emit('auth', username);
-            showGameScreen(); // Ampio ity raha tsy mandeha automatique
-        }
-    } catch (error) {
-        console.error('Erreur login:', error);
-        showAuthError('Tsy afaka niditra. Jereo ny password');
+        showScreen('lobbyScreen');
+        updateLobbyUI();
+        showAuthError('Tafiditra ✅');
+
+    } catch (err) {
+        console.warn('Render matory, miditra offline:', err.message);
+        
+        // FALLBACK OFFLINE - mandeha foana
+        currentUser = username;
+        showScreen('lobbyScreen');
+        updateLobbyUI();
+        showAuthError('Mode offline - tsy mila serveur');
     }
 }
+
 async function register() {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
+
+    if (!username || password.length < 3) 
+        return showAuthError('Anarana + mdp 3 lettres min');
 
     try {
         const res = await fetch(`${API_URL}/register`, {
@@ -143,18 +161,21 @@ async function register() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ username, password })
         });
-
         const data = await res.json();
-
-        if (data.error) {
-            showAuthError(data.error);
-        } else {
-            showAuthError('Compte créé ✅');
+        
+        if (data.error) showAuthError(data.error);
+        else {
+            showAuthError('Compte créé ✅ - midira');
+            // auto-login
+            setTimeout(login, 800);
         }
-
-    } catch (err) {
-        console.error(err);
-        showAuthError('Erreur serveur');
+    } catch {
+        // raha maty ny serveur, dia mamorona local fotsiny
+        playerData.username = username;
+        playerData.password = password;
+        savePlayerData();
+        showAuthError('Compte local créé ✅');
+        setTimeout(login, 800);
     }
 }
 
@@ -719,10 +740,17 @@ function draw() {
         ctx.translate((Math.random()-0.5)*screenShake, (Math.random()-0.5)*screenShake);
     }
 
-    // Background
+ // Background MAP.PNG
+if (mapLoaded) {
+    ctx.drawImage(
+        mapImg,
+        camera.x, camera.y, canvas.width, canvas.height, // source crop
+        0, 0, canvas.width, canvas.height                 // dest
+    );
+} else {
     ctx.fillStyle = '#1a3a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+}
     // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
