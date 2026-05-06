@@ -1507,8 +1507,3 @@ updateBattlePassUI();
 console.log('%c🎮 MG FIGHTER v4.0 LOADED', 'color:#00ff88;font-size:20px;font-weight:bold;');
 console.log('%cFeatures: Lobby, Skins, Grenades, Vehicles, Teams', 'color:#00aaff;font-size:14px;');
 
-// Auto-login if saved
-if(playerData.username && playerData.password) {
-    document.getElementById('username').value = playerData.username;
-    document.getElementById('password').value = playerData.password;
-}
