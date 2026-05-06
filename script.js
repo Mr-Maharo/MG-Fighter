@@ -8,16 +8,7 @@
  * Author: Mr Maharo
  * ============================================================================
  */
-const firebaseConfig = {
-  apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
-  authDomain: "mgfigther-b3760.firebaseapp.com",
-  databaseURL: "https://mgfigther-b3760-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "mgfigther-b3760",
-  storageBucket: "mgfigther-b3760.firebasestorage.app",
-  messagingSenderId: "829325634031",
-  appId: "1:829325634031:web:b9c13b78ffec75a372ee1a"
-};
-firebase.initializeApp(firebaseConfig);
+// Firebase already initialized in index.html
 const auth = firebase.auth();
 const db = firebase.firestore();
 
@@ -25,6 +16,7 @@ const db = firebase.firestore();
 // 1. CONFIG & GLOBAL VARIABLES
 // ============================================
 const socket = io('https://mg-fighter-1.onrender.com'); // OVAY ITO
+window.socket = socket;
 const API_URL = 'https://mg-fighter-1.onrender.com';
 
 const canvas = document.getElementById('game');
@@ -116,8 +108,6 @@ function savePlayerData() {
     localStorage.setItem('mgPlayerData', JSON.stringify(playerData));
 }
 
-import { getRedirectResult } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
 getRedirectResult(auth).then((result) => {
   if (result && result.user) {
     console.log("✅ Logged in via redirect");
@@ -130,7 +120,7 @@ getRedirectResult(auth).then((result) => {
 
 // Maka ny valiny rehefa miverina avy amin'ny Google
 firebase.auth().getRedirectResult().then((result) => {
-  if (result.user) {
+  if (result && result.user) {
     const user = result.user;
     currentUser = user.displayName || user.email.split('@')[0];
     playerData.username = currentUser;
@@ -161,9 +151,7 @@ firebase.auth().onAuthStateChanged(user => {
   }
 });
 
-// Compatibility boutons
-window.login = loginWithGoogle;
-window.register = loginWithGoogle;
+
 socket.on('authSuccess', (user) => {
     playerData = {...playerData,...user};
     savePlayerData();
@@ -1513,4 +1501,3 @@ updateBattlePassUI();
 
 console.log('%c🎮 MG FIGHTER v4.0 LOADED', 'color:#00ff88;font-size:20px;font-weight:bold;');
 console.log('%cFeatures: Lobby, Skins, Grenades, Vehicles, Teams', 'color:#00aaff;font-size:14px;');
-
