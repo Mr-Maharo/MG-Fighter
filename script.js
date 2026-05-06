@@ -126,47 +126,54 @@ getRedirectResult(auth).then((result) => {
   }
 }).catch(console.error);
 
-async function loginWithGoogle() {
-    try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        const result = await auth.signInWithPopup(provider);
-        const user = result.user;
+// ----- LOGIN GOOGLE VERSION FINAL -----
+window.loginWithGoogle = async function() {
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    // SOLOY POPUP → REDIRECT
+    await firebase.auth().signInWithRedirect(provider);
+  } catch(e) {
+    console.error(e);
+    showAuthError('Erreur Google');
+  }
+};
 
-        currentUser = user.displayName || user.email.split('@')[0];
-        playerData.username = currentUser;
-        playerData.photo = user.photoURL;
+// Maka ny valiny rehefa miverina avy amin'ny Google
+firebase.auth().getRedirectResult().then((result) => {
+  if (result.user) {
+    const user = result.user;
+    currentUser = user.displayName || user.email.split('@')[0];
+    playerData.username = currentUser;
+    playerData.photo = user.photoURL;
 
-        // Alefa any amin'ny serveur Render ny UID Google
-        socket.emit('auth', {
-          uid: user.uid,
-          username: currentUser,
-          photo: user.photoURL
-        });
+    // Alefa amin'ny SERVEUR RENDER (mitovy amin'ny server.js vaovao)
+    socket.emit('joinGame', {
+      name: currentUser,
+      uid: user.uid,
+      skin: playerData.skin || 'boy'
+    });
+    console.log("✅ Tafiditra:", currentUser);
+  }
+}).catch(console.error);
 
-    } catch(e) {
-        console.error(e);
-        showAuthError('Erreur Google');
-    }
-}
+// Auto-login raha efa connecté taloha
+firebase.auth().onAuthStateChanged(user => {
+  if (user && GAME_STATE === 'LOBBY') {
+    currentUser = user.displayName || user.email.split('@')[0];
+    playerData.username = currentUser;
+    playerData.photo = user.photoURL;
 
-// Auto-login raha efa connecté
-auth.onAuthStateChanged(user => {
-    if (user && GAME_STATE === 'LOBBY') {
-        // Aza miantso loginWithGoogle indray (miteraka loop)
-        // Alefa mivantana
-        currentUser = user.displayName || user.email.split('@')[0];
-        socket.emit('auth', {
-          uid: user.uid,
-          username: currentUser,
-          photo: user.photoURL
-        });
-    }
+    socket.emit('joinGame', {
+      name: currentUser,
+      uid: user.uid,
+      skin: playerData.skin || 'boy'
+    });
+  }
 });
 
-// Compatibility amin'ny bouton taloha
-async function login(){ loginWithGoogle(); }
-async function register(){ loginWithGoogle(); }
-
+// Compatibility boutons
+window.login = loginWithGoogle;
+window.register = loginWithGoogle;
 socket.on('authSuccess', (user) => {
     playerData = {...playerData,...user};
     savePlayerData();
