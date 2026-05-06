@@ -1087,21 +1087,11 @@
     Continuer avec Google
 </button>
 
-<script>
-function loginWithGoogle() {
-  // mampiasa Firebase efa nisy tao amin'ny pejy-nao
-  const provider = new firebase.auth.GoogleAuthProvider();
-  firebase.auth().signInWithRedirect(provider);
-}
-</script>
         <p id="authError" style="margin-top:15px;height:20px;"></p>
     </div>
 </div>
 
-<!-- Firebase SDK - apetraho eo ambonin'ny script.js -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
     <!-- LOBBY SCREEN -->
     <div id="lobbyScreen" class="screen hidden">
         <div class="lobby-header">
