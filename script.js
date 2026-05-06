@@ -100,7 +100,7 @@ let particles = [];
 let screenShake = 0;
 
 // ============================================
-// AUTH - VERSION FINALE (online + offline)
+// 2. AUTH - FIREBASE GOOGLE (VERSION PROPRE)
 // ============================================
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
@@ -112,14 +112,21 @@ function showAuthError(msg) {
     if (el) { el.textContent = msg; setTimeout(()=>el.textContent='',4000); }
 }
 
+function savePlayerData() {
+    localStorage.setItem('mgPlayerData', JSON.stringify(playerData));
+}
+
 async function loginWithGoogle() {
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
         const result = await auth.signInWithPopup(provider);
         const user = result.user;
-        currentUser = user.displayName || user.email.split('@')[0];
 
-        // Alefa UID Google any amin'ny serveur
+        currentUser = user.displayName || user.email.split('@')[0];
+        playerData.username = currentUser;
+        playerData.photo = user.photoURL;
+
+        // Alefa any amin'ny serveur Render ny UID Google
         socket.emit('auth', {
           uid: user.uid,
           username: currentUser,
@@ -127,60 +134,28 @@ async function loginWithGoogle() {
         });
 
     } catch(e) {
-        showAuthError('Erreur Google');
-        console.error(e);
-    }
-}
-        // Tahiry joueur ao Firestore
-        const playerRef = db.collection('players').doc(user.uid);
-        const doc = await playerRef.get();
-
-        if (!doc.exists) {
-            playerData = {
-                username: currentUser,
-                uid: user.uid,
-                photo: user.photoURL,
-                level: 1, xp: 0, coins: 100, wins: 0, kills: 0,
-                skin: { color: '#00ff00', hat: 'none', gun: 'default' },
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            await playerRef.set(playerData);
-        } else {
-            playerData = doc.data();
-        }
-
-        savePlayerData();
-        socket.emit('auth', user.uid); // alefa amin'ny serveur jeu
-        showScreen('lobbyScreen');
-        updateLobbyUI();
-
-    } catch(e) {
         console.error(e);
         showAuthError('Erreur Google');
     }
 }
 
-// Auto-login raha efa niditra
+// Auto-login raha efa connecté
 auth.onAuthStateChanged(user => {
-    if (user && GAME_STATE === 'LOBBY') loginWithGoogle();
+    if (user && GAME_STATE === 'LOBBY') {
+        // Aza miantso loginWithGoogle indray (miteraka loop)
+        // Alefa mivantana
+        currentUser = user.displayName || user.email.split('@')[0];
+        socket.emit('auth', {
+          uid: user.uid,
+          username: currentUser,
+          photo: user.photoURL
+        });
+    }
 });
 
-// Fafao ny login sy register taloha raha tsy ilaina intsony
+// Compatibility amin'ny bouton taloha
 async function login(){ loginWithGoogle(); }
 async function register(){ loginWithGoogle(); }
-
-
-function showAuthError(msg) {
-    const el = document.getElementById('authError');
-    if (el) {
-        el.textContent = msg;
-        setTimeout(() => el.textContent = '', 3000);
-    }
-}
-
-function savePlayerData() {
-    localStorage.setItem('mgPlayerData', JSON.stringify(playerData));
-}
 
 socket.on('authSuccess', (user) => {
     playerData = {...playerData,...user};
@@ -188,12 +163,14 @@ socket.on('authSuccess', (user) => {
     showScreen('lobbyScreen');
     updateLobbyUI();
     loadFriends();
-    if(isMobile) document.getElementById('mobileControls').classList.remove('hidden');
+    if(isMobile) document.getElementById('mobileControls')?.classList.remove('hidden');
 });
 
 socket.on('lobbyUpdate', (count) => {
-    document.getElementById('onlineCount').textContent = count;
+    const el = document.getElementById('onlineCount');
+    if(el) el.textContent = count;
 });
+
 
 // ============================================
 // 3. LOBBY UI UPDATE
