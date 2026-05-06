@@ -117,9 +117,20 @@ async function loginWithGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
         const result = await auth.signInWithPopup(provider);
         const user = result.user;
-
         currentUser = user.displayName || user.email.split('@')[0];
 
+        // Alefa UID Google any amin'ny serveur
+        socket.emit('auth', {
+          uid: user.uid,
+          username: currentUser,
+          photo: user.photoURL
+        });
+
+    } catch(e) {
+        showAuthError('Erreur Google');
+        console.error(e);
+    }
+}
         // Tahiry joueur ao Firestore
         const playerRef = db.collection('players').doc(user.uid);
         const doc = await playerRef.get();
