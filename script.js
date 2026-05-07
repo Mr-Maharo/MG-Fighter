@@ -1061,8 +1061,8 @@ function createMuzzleFlash() {
         particles.push({
             x: me.x + Math.cos(me.angle)*30,
             y: me.y + Math.sin(me.angle)*30,
-            vx: Math.cos(me.angle + (Math.random()-0.5)*8,
-            vy: Math.sin(me.angle + (Math.random()-0.5)*0.5)*8,
+           vx: Math.cos(me.angle + (Math.random()-0.5)*0.2) * 8,
+           vy: Math.sin(me.angle + (Math.random()-0.5)*0.2) * 8,
             life: 10,
             size: Math.random()*4+2,
             color: '255,255,0'
