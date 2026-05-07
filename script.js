@@ -108,23 +108,36 @@ function savePlayerData() {
     localStorage.setItem('mgPlayerData', JSON.stringify(playerData));
 }
 
-firebase.auth().onAuthStateChanged(user => {
-  if (user && !currentUser) { // 🔥 important
-    currentUser = user.displayName || user.email.split('@')[0];
+firebase.auth().onAuthStateChanged((user) => {
+    if (user && !currentUser) {
 
+        currentUser = user.displayName || user.email.split('@')[0];
+
+        console.log("✅ Tafiditra:", currentUser);
+
+        socket.emit('joinGame', {
+            name: currentUser,
+            uid: user.uid,
+            skin: playerData.skin || 'boy'
+        });
+
+        // SAVE FIREBASE USER
+        db.collection("users").doc(user.uid).set({
+            uid: user.uid,
+            name: currentUser,
+            email: user.email,
+            photo: user.photoURL || "",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        showScreen('lobbyScreen');
+    }
+});
   
 
 // Maka ny valiny rehefa miverina avy amin'ny Google
 
     // Alefa amin'ny SERVEUR RENDER (mitovy amin'ny server.js vaovao)
-    socket.emit('joinGame', {
-      name: currentUser,
-      uid: user.uid,
-      skin: playerData.skin || 'boy'
-    });
-    console.log("✅ Tafiditra:", currentUser);
-  }
-}).catch(console.error);
 
 
 
@@ -842,15 +855,22 @@ if (mapLoaded) {
     ctx.shadowBlur = 0;
 
     // Players
-    for(let id in players) {
-        const p = players[id];
-        if(!p.alive) continue;
-        if(p.inBush && id!== myId && (!myTeam || p.team!== myTeam)) continue;
+    // Players
+for (let id in players) {
+    const p = players[id];
 
-        ctx.save();
-        ctx.translate(p.x - camera.x, p.y - camera.y);
-        ctx.rotate(p.angle);
+    if (!p.alive) continue;
+    if (p.inBush && id !== myId && (!myTeam || p.team !== myTeam)) continue;
 
+    updatePlayerAnimation(p, 16); // optional raha tsy ao update loop
+
+    drawPlayer({
+        ...p,
+        x: p.x - camera.x,
+        y: p.y - camera.y,
+        id
+    });
+}
         // Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.fillRect(-15, -15, 30, 30);
@@ -1280,7 +1300,7 @@ function gameLoop() {
 }
 
 // Start game loop
-gameLoop();
+requestAnimationFrame(spriteGameLoopHook);
 
 // ============================================
 // 21. WINDOW EVENTS
@@ -1472,12 +1492,12 @@ function spriteGameLoopHook(timestamp) {
 }
 
 // Start raha tsy misy game loop
-if (!originalGameLoop) requestAnimationFrame(spriteGameLoopHook);
+
 
 // 7. COMMAND HANOVANA SKIN @ CONSOLE
 window.setSkin = function(skin) {
-    if (player) {
-        player.skin = skin;
+    if (players[myId]) {
+        players[myId].skin = skin;
         if (socket) socket.emit('updateSkin', { skin: skin });
         console.log('Skin niova ho:', skin);
     }
