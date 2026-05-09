@@ -66,6 +66,10 @@ Map + Sprite Loading + Tile Rendering
     let mapLoaded = false;
     const TILE_SIZE = 50;
 
+    let spriteData = {};
+    let spriteImage = null;
+    let spritesLoaded = false;
+
     // =====================================
     // 2. DOM ELEMENTS CACHE
     // =====================================
@@ -144,28 +148,36 @@ Map + Sprite Loading + Tile Rendering
     // 3. ASSET LOADING
     // =====================================
     async function loadAssets() {
-        try {
-            // Load map.json
-            const mapResponse = await fetch('/map.json');
-            if (mapResponse.ok) {
-                mapTiles = await mapResponse.json();
-                console.log('✅ Map loaded:', mapTiles.length, 'tiles');
-            }
-
-            // Load sprites.png
-            spriteImage = new Image();
-            spriteImage.src = '/sprites.png';
-            await new Promise((resolve, reject) => {
-                spriteImage.onload = resolve;
-                spriteImage.onerror = reject;
-            });
-            console.log('✅ Sprites loaded');
-
-            mapLoaded = true;
-        } catch (err) {
-            console.error('❌ Asset loading error:', err);
+    try {
+        // Load map.json
+        const mapResponse = await fetch('/map.json');
+        if (mapResponse.ok) {
+            mapTiles = await mapResponse.json();
+            console.log('✅ Map loaded:', mapTiles.length, 'tiles');
         }
+
+        // Load sprite.json
+        const spriteResponse = await fetch('/sprite.json');
+        if (spriteResponse.ok) {
+            spriteData = await spriteResponse.json();
+            console.log('✅ Sprite data loaded');
+        }
+
+        // Load sprites.png
+        spriteImage = new Image();
+        spriteImage.src = '/sprites.png';
+        await new Promise((resolve, reject) => {
+            spriteImage.onload = resolve;
+            spriteImage.onerror = reject;
+        });
+        console.log('✅ Sprites image loaded');
+
+        mapLoaded = true;
+        spritesLoaded = true;
+    } catch (err) {
+        console.error('❌ Asset loading error:', err);
     }
+}
 
     // =====================================
     // 4. UTILITY FUNCTIONS
@@ -319,11 +331,17 @@ Map + Sprite Loading + Tile Rendering
         if (data.mapData) {
             gameState.mapData = data.mapData;
         }
+        if (data.spriteData) {
+        spriteData = data.spriteData;
+        }
+            
         showScreen('gameScreen');
         initGame();
         isGameRunning = true;
         if (isMobile) DOM.mobileControls.classList.remove('hidden');
     });
+
+    
 
     socket.on("gameUpdate", (data) => {
         Object.assign(gameState, data);
@@ -688,64 +706,46 @@ Map + Sprite Loading + Tile Rendering
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Draw tiles from map.json
-        if (mapLoaded && mapTiles.length > 0) {
-            const startX = Math.floor(camera.x / TILE_SIZE) - 1;
-            const startY = Math.floor(camera.y / TILE_SIZE) - 1;
-            const endX = Math.ceil((camera.x + canvas.width) / TILE_SIZE) + 1;
-            const endY = Math.ceil((camera.y + canvas.height) / TILE_SIZE) + 1;
+        // Draw tiles from map.json miaraka amin'ny sprites
+if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
+    const startX = Math.floor(camera.x / TILE_SIZE) - 1;
+    const startY = Math.floor(camera.y / TILE_SIZE) - 1;
+    const endX = Math.ceil((camera.x + canvas.width) / TILE_SIZE) + 1;
+    const endY = Math.ceil((camera.y + canvas.height) / TILE_SIZE) + 1;
 
-            for (let y = startY; y < endY; y++) {
-                for (let x = startX; x < endX; x++) {
-                    const tileIndex = y * (MAP_DATA.width / TILE_SIZE) + x;
-                    if (tileIndex >= 0 && tileIndex < mapTiles.length) {
-                        const tile = mapTiles[tileIndex];
-                        if (tile) {
-                            // Draw tile
-                            if (tile.collision) {
-                                ctx.fillStyle = '#444';
-                            } else if (tile.swimmable) {
-                                ctx.fillStyle = '#0088ff';
-                            } else {
-                                ctx.fillStyle = '#2a2a2a';
-                            }
-                            ctx.fillRect(
-                                tile.x - camera.x,
-                                tile.y - camera.y,
-                                tile.s,
-                                tile.s
-                            );
+    for (let y = startY; y < endY; y++) {
+        for (let x = startX; x < endX; x++) {
+            const tileIndex = y * (MAP_DATA.width / TILE_SIZE) + x;
+            if (tileIndex >= 0 && tileIndex < mapTiles.length) {
+                const tile = mapTiles[tileIndex];
+                if (!tile) continue;
 
-                            // Draw sprite if exists
-                            if (spriteImage && tile.spriteX!== undefined) {
-                                ctx.drawImage(
-                                    spriteImage,
-                                    tile.spriteX, tile.spriteY, tile.s, tile.s,
-                                    tile.x - camera.x, tile.y - camera.y, tile.s, tile.s
-                                );
-                            }
-                        }
+                const drawX = tile.x - camera.x;
+                const drawY = tile.y - camera.y;
+
+                // Mampiasa sprite.json raha misy
+                if (tile.spriteId && spriteData.tiles && spriteData.tiles[tile.spriteId]) {
+                    const sprite = spriteData.tiles[tile.spriteId];
+                    ctx.drawImage(
+                        spriteImage,
+                        sprite.x, sprite.y, sprite.w, sprite.h,
+                        drawX, drawY, tile.s, tile.s
+                    );
+                } else {
+                    // Fallback color
+                    if (tile.collision) {
+                        ctx.fillStyle = '#444';
+                    } else if (tile.swimmable) {
+                        ctx.fillStyle = '#0088ff';
+                    } else {
+                        ctx.fillStyle = '#2a2a2a';
                     }
+                    ctx.fillRect(drawX, drawY, tile.s, tile.s);
                 }
             }
-        } else {
-            // Fallback grid
-            ctx.strokeStyle = 'rgba(0,255,136,0.1)';
-            ctx.lineWidth = 1;
-            const gridSize = 100;
-            for (let x = -camera.x % gridSize; x < canvas.width; x += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            for (let y = -camera.y % gridSize; y < canvas.height; y += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
         }
-
+    }
+}
         // Draw zone
         if (gameState.zone) {
             ctx.strokeStyle = '#0088ff';
@@ -805,6 +805,20 @@ Map + Sprite Loading + Tile Rendering
                 ctx.fillText(hatEmoji, x - 10, y - 15);
             }
 
+            // Draw weapon miaraka amin'ny sprite
+           if (p.weapon && p.weapon!== 'fist' && spriteData.weapons && spriteData.weapons[p.weapon] && spriteImage) {
+           const weaponSprite = spriteData.weapons[p.weapon];
+           ctx.save();
+           ctx.translate(x, y);
+           ctx.rotate(p.angle);
+           ctx.drawImage(
+           spriteImage,
+           weaponSprite.x, weaponSprite.y, weaponSprite.w, weaponSprite.h,
+           12, -5, 30, 10
+           );
+           ctx.restore();
+           }
+            
             // Name & HP
             ctx.fillStyle = '#fff';
             ctx.font = '12px Arial';
