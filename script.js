@@ -1,4 +1,4 @@
-```javascript
+
 /*
 ========================================
 MG FIGHTER CLIENT vFULL FIXED
