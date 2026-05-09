@@ -12,48 +12,15 @@
         <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script>
   const firebaseConfig = {
-  apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
-  authDomain: "mgfigther-b3760.firebaseapp.com",
-  databaseURL: "https://mgfigther-b3760-default-rtdb.firebaseio.com",
-  projectId: "mgfigther-b3760",
-  storageBucket: "mgfigther-b3760.firebasestorage.app",
-  messagingSenderId: "829325634031",
-  appId: "1:829325634031:web:b9c13b78ffec75a372ee1a",
-  measurementId: "G-30QH3M5E9Z"
-};
-  
-  if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-  }
-  
-  function loginWithGoogle() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithRedirect(provider);
-  }
-  
-  // REHEFA MIVERINA AVY AMIN'NY GOOGLE
-  firebase.auth().getRedirectResult().then((result) => {
-    if (result && result.user) {
-      console.log("✅ Google OK:", result.user.displayName);
-      // FORCE MIDITRA LOBBY
-      setTimeout(() => {
-        document.getElementById('authScreen').classList.add('hidden');
-        document.getElementById('lobbyScreen').classList.remove('hidden');
-        document.getElementById('playerName').textContent = result.user.displayName;
-      }, 500);
-    }
-  }).catch(console.error);
-
-  // AUTO-LOGIN
-  firebase.auth().onAuthStateChanged(user => {
-    if (user) {
-      setTimeout(() => {
-        document.getElementById('authScreen').classList.add('hidden');
-        document.getElementById('lobbyScreen').classList.remove('hidden');
-        document.getElementById('playerName').textContent = user.displayName;
-      }, 500);
-    }
-  });
+    apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
+    authDomain: "mgfigther-b3760.firebaseapp.com",
+    projectId: "mgfigther-b3760",
+    storageBucket: "mgfigther-b3760.firebasestorage.app",
+    messagingSenderId: "829325634031",
+    appId: "1:829325634031:web:b9c13b78ffec75a372ee1a",
+    measurementId: "G-30QH3M5E9Z"
+  };
+  firebase.initializeApp(firebaseConfig);
 </script>
     <style>
         /* ============================================
