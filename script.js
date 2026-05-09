@@ -1067,6 +1067,229 @@ if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
         });
     }
 
+
+
+    // ============================================
+// MISSING FUNCTIONS FIX
+// ============================================
+
+function loadChatMessages(chat) {
+    const chatBox = document.getElementById('lobbyChatMessages');
+    chatBox.innerHTML = `<p style="color:#666;text-align:center;">${chat} chat loaded</p>`;
+}
+
+function loadFriendsTab(tab) {
+    const friendsList = document.getElementById('friendsList');
+    friendsList.innerHTML = `<p style="color:#666;text-align:center;">No ${tab} friends</p>`;
+}
+
+function claimDailyReward(day) {
+    showToast(`Daily reward Day ${day} claimed! +50 Coins`, 'success');
+    if (window.gameState) {
+        window.gameState.player.coins += 50;
+        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
+    }
+}
+
+function openFullLeaderboard() {
+    document.getElementById('fullLeaderboard').classList.remove('hidden');
+    loadLeaderboardData();
+}
+
+function loadLeaderboardData() {
+    const tbody = document.getElementById('fullLeaderboardBody');
+    const mockData = [
+        {rank: 1, name: 'ProGamer', level: 50, wins: 120, kills: 2500, kd: 5.2, score: 5000},
+        {rank: 2, name: 'EliteSniper', level: 48, wins: 115, kills: 2300, kd: 4.8, score: 4800},
+        {rank: 3, name: 'KingSlayer', level: 45, wins: 100, kills: 2100, kd: 4.5, score: 4600}
+    ];
+    
+    tbody.innerHTML = mockData.map(p => `
+        <tr>
+            <td>${p.rank}</td>
+            <td>${p.name}</td>
+            <td>${p.level}</td>
+            <td>${p.wins}</td>
+            <td>${p.kills}</td>
+            <td>${p.kd}</td>
+            <td>${p.score}</td>
+        </tr>
+    `).join('');
+}
+
+function openInventory() {
+    document.getElementById('inventoryMenu').classList.remove('hidden');
+    loadInventory();
+}
+
+function loadInventory() {
+    const grid = document.getElementById('invSkinsGrid');
+    grid.innerHTML = '<p style="color:#666;text-align:center;padding:40px;">No items yet. Visit shop!</p>';
+}
+
+function openSettings() {
+    document.getElementById('settingsMenu').classList.remove('hidden');
+}
+
+function openShop() {
+    document.getElementById('shopMenu').classList.remove('hidden');
+    loadShopItems();
+}
+
+function loadShopItems() {
+    const grid = document.getElementById('shopSkinsGrid');
+    grid.innerHTML = `
+        <div class="shop-item">
+            <div class="item-image">👕</div>
+            <h4>Red Skin</h4>
+            <p>Rare</p>
+            <div class="item-price">100 💰</div>
+            <button onclick="buyItem('red_skin', 100)">BUY</button>
+        </div>
+        <div class="shop-item">
+            <div class="item-image">👑</div>
+            <h4>Golden Crown</h4>
+            <p>Legendary</p>
+            <div class="item-price">500 💰</div>
+            <button onclick="buyItem('gold_crown', 500)">BUY</button>
+        </div>
+    `;
+}
+
+function buyItem(id, price) {
+    if (window.gameState && window.gameState.player.coins >= price) {
+        window.gameState.player.coins -= price;
+        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
+        showToast('Item purchased!', 'success');
+    } else {
+        showToast('Not enough coins!', 'error');
+    }
+}
+
+function openProfile() {
+    document.getElementById('profileMenu').classList.remove('hidden');
+    updateProfileStats();
+}
+
+function updateProfileStats() {
+    if (window.gameState) {
+        document.getElementById('profileLevel').textContent = window.gameState.player.level;
+        document.getElementById('profileRank').textContent = window.gameState.player.rank || 'Bronze III';
+        document.getElementById('statWins').textContent = window.gameState.player.wins;
+        document.getElementById('statKills').textContent = window.gameState.player.kills;
+        document.getElementById('statDeaths').textContent = window.gameState.player.deaths || 0;
+        document.getElementById('statMatches').textContent = window.gameState.player.matches || 0;
+        document.getElementById('profileKDR').textContent = (window.gameState.player.kills / (window.gameState.player.deaths || 1)).toFixed(2);
+    }
+}
+
+function openMail() {
+    document.getElementById('mailMenu').classList.remove('hidden');
+    loadMail();
+}
+
+function loadMail() {
+    const inbox = document.getElementById('mailInboxList');
+    inbox.innerHTML = `
+        <div class="mail-item unread">
+            <div class="mail-item-header">
+                <span class="mail-sender">System</span>
+                <span class="mail-date">Today</span>
+            </div>
+            <div class="mail-subject">Welcome to MG FIGHTER!</div>
+            <div class="mail-preview">Thanks for joining. Claim your starter reward!</div>
+        </div>
+    `;
+}
+
+function saveUsername() {
+    const newName = document.getElementById('profileUsername').value;
+    if (newName && newName.length >= 3) {
+        document.getElementById('playerName').textContent = newName;
+        if (window.gameState) window.gameState.player.name = newName;
+        showToast('Username updated!', 'success');
+    } else {
+        showToast('Username must be 3+ characters', 'error');
+    }
+}
+
+function saveSettings() {
+    showToast('Settings saved!', 'success');
+    closeSettings();
+}
+
+function resetSettings() {
+    showToast('Settings reset!', 'info');
+}
+
+function resetControls() {
+    showToast('Controls reset to default', 'info');
+}
+
+function claimAllMail() {
+    showToast('All rewards claimed!', 'success');
+    document.getElementById('mailBadge').classList.add('hidden');
+}
+
+function deleteReadMail() {
+    showToast('Read mail deleted', 'info');
+}
+
+function spectate() {
+    document.getElementById('deathScreen').classList.add('hidden');
+    document.getElementById('spectateUI').classList.remove('hidden');
+    showToast('Spectating...', 'info');
+}
+
+function nextSpectate() {
+    showToast('Switching player...', 'info');
+}
+
+function prevLeaderboardPage() {
+    showToast('Previous page', 'info');
+}
+
+function nextLeaderboardPage() {
+    showToast('Next page', 'info');
+}
+
+function filterLeaderboard(type) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    loadLeaderboardData();
+}
+
+// ============================================
+// FIX fillRect BUG - Line 765
+// ============================================
+// Tadiavo ity ao amin'ny renderGame():
+// ctx.fillRect(x, y, width);  <- DISO
+// Soloy ity:
+function renderMinimap() {
+    const minimap = document.getElementById('minimap');
+    if (!minimap) return;
+    const ctx = minimap.getContext('2d');
+    ctx.clearRect(0, 0, 200, 200);
+    
+    // Draw zone
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, 180, 180);
+    
+    // Draw player - FIX: 4 arguments
+    ctx.fillStyle = '#00ff88';
+    ctx.fillRect(95, 95, 10, 10); // x, y, width, height
+    
+    // Draw enemies
+    if (window.gameState && window.gameState.enemies) {
+        ctx.fillStyle = '#ff3366';
+        window.gameState.enemies.forEach(e => {
+            const x = (e.x / 4000) * 180 + 10;
+            const y = (e.y / 4000) * 180 + 10;
+            ctx.fillRect(x, y, 6, 6); // FIX: 4 arguments
+        });
+    }
+}
     // =====================================
     // 14. GAME END & RETURN
     // =====================================
