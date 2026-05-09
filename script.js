@@ -1,7 +1,9 @@
+```javascript
 /*
 ========================================
-MG FIGHTER CLIENT vFULL FIXED
-Socket.IO + Firebase Auth + BR sync
+MG FIGHTER v4 - FULL CLIENT SCRIPT
+Firebase + Socket.IO + Battle Royale
+FIXED VERSION
 ========================================
 */
 
@@ -12,49 +14,98 @@ let currentUser = null;
 let gameState = null;
 
 // =====================================
-// 1. FIREBASE AUTH (GOOGLE LOGIN)
+// FIREBASE INIT
 // =====================================
-firebase.auth().onAuthStateChanged(user => {
-    if (user) {
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-        currentUser = user.displayName || user.email.split("@")[0];
+// =====================================
+// GOOGLE LOGIN (FIXED + FIRESTORE SAVE)
+// =====================================
+function loginWithGoogle() {
 
-        console.log("✅ Login:", currentUser);
+    const provider = new firebase.auth.GoogleAuthProvider();
 
-        // IMPORTANT: match server.js => name
-        socket.emit("joinGame", {
-            username: currentUser
+    auth.signInWithRedirect(provider);
+}
+
+// after redirect
+auth.getRedirectResult()
+.then(async (result) => {
+
+    const user = result.user;
+
+    if (!user) return;
+
+    currentUser = user.displayName || user.email.split("@")[0];
+
+    console.log("✅ LOGIN:", currentUser);
+
+    const ref = db.collection("players").doc(user.uid);
+
+    const snap = await ref.get();
+
+    if (!snap.exists) {
+
+        await ref.set({
+            username: currentUser,
+            email: user.email,
+            photo: user.photoURL || "",
+
+            level: 1,
+            coins: 100,
+            wins: 0,
+            kills: 0
         });
 
-        // UI switch
-        document.getElementById("authScreen")?.classList.add("hidden");
-        document.getElementById("lobbyScreen")?.classList.remove("hidden");
-
-        const nameEl = document.getElementById("playerName");
-        if (nameEl) nameEl.textContent = currentUser;
+        console.log("🔥 Player CREATED");
     }
+
+    // UI
+    document.getElementById("authScreen")?.classList.add("hidden");
+    document.getElementById("lobbyScreen")?.classList.remove("hidden");
+
+    document.getElementById("playerName").textContent = currentUser;
+
+    socket.emit("joinGame", {
+        username: currentUser
+    });
+
+})
+.catch(err => console.error("Auth error:", err));
+
+// =====================================
+// AUTH STATE LISTENER
+// =====================================
+auth.onAuthStateChanged(user => {
+
+    if (!user) return;
+
+    currentUser = user.displayName || "Player";
+
+    document.getElementById("playerName").textContent = currentUser;
+
 });
 
 // =====================================
-// 2. SOCKET CONNECT
+// SOCKET CONNECT
 // =====================================
 socket.on("connect", () => {
     myId = socket.id;
-    console.log("✅ Connected:", myId);
+    console.log("Socket:", myId);
 });
 
-// IMPORTANT: match server.js => playersUpdate (NOT gameState)
+// =====================================
+// GAME STATE (SERVER)
+// =====================================
 socket.on("playersUpdate", (players) => {
 
     gameState = {
-        players: Object.values(players),
-        bullets: [],
-        buildings: [],
-        water: []
+        players: Object.values(players)
     };
 
-    const onlineEl = document.getElementById("onlineCount");
-    if (onlineEl) onlineEl.textContent = gameState.players.length;
+    document.getElementById("onlineCount").textContent =
+        gameState.players.length;
 
     if (!document.getElementById("gameScreen")?.classList.contains("hidden")) {
         renderGame(gameState);
@@ -62,15 +113,16 @@ socket.on("playersUpdate", (players) => {
 });
 
 // =====================================
-// 3. MOVE + SHOOT
+// MOVE + SHOOT
 // =====================================
 let keys = {};
 
 window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-// MOVE LOOP
+// movement loop
 setInterval(() => {
+
     if (!myId) return;
 
     socket.emit("move", {
@@ -82,30 +134,31 @@ setInterval(() => {
 
 }, 50);
 
-// SHOOT
-window.addEventListener("click", (e) => {
-    if (!gameState) return;
+// shoot
+window.addEventListener("click", () => {
 
     const angle = Math.random() * Math.PI * 2;
 
     socket.emit("shoot", {
-        angle: angle
+        angle
     });
+
 });
 
 // =====================================
-// 4. GAME RENDER
+// RENDER GAME
 // =====================================
 let canvas, ctx;
 
 function initGame() {
+
     canvas = document.getElementById("game");
     ctx = canvas.getContext("2d");
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    requestAnimationFrame(loop);
+    loop();
 }
 
 function loop() {
@@ -117,17 +170,18 @@ function renderGame(state) {
 
     if (!ctx) return;
 
-    ctx.fillStyle = "#0a0a0a";
+    ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const me = state.players.find(p => p.id === myId);
+
     if (!me) return;
 
     const camX = me.x - canvas.width / 2;
     const camY = me.y - canvas.height / 2;
 
-    // PLAYERS
     state.players.forEach(p => {
+
         ctx.fillStyle = p.id === myId ? "#00ff00" : "#ff4444";
 
         ctx.fillRect(
@@ -138,9 +192,8 @@ function renderGame(state) {
         );
 
         ctx.fillStyle = "#fff";
-        ctx.font = "12px Arial";
         ctx.fillText(
-            p.username || "P",
+            p.username || "Player",
             p.x - camX,
             p.y - camY - 10
         );
@@ -148,9 +201,10 @@ function renderGame(state) {
 }
 
 // =====================================
-// 5. MATCH SYSTEM
+// MATCHMAKING
 // =====================================
 function findMatch(mode) {
+
     socket.emit("findMatch", mode);
 
     document.getElementById("matchmakingScreen")?.classList.remove("hidden");
@@ -158,6 +212,7 @@ function findMatch(mode) {
 }
 
 function cancelMatchmaking() {
+
     socket.emit("cancelMatchmaking");
 
     document.getElementById("matchmakingScreen")?.classList.add("hidden");
@@ -165,7 +220,7 @@ function cancelMatchmaking() {
 }
 
 // =====================================
-// 6. ROOM SYSTEM
+// ROOM SYSTEM
 // =====================================
 function createRoom() {
     socket.emit("createRoom");
@@ -181,19 +236,27 @@ function leaveRoom() {
 }
 
 // =====================================
-// 7. CHAT
+// CHAT
 // =====================================
 function sendLobbyChat() {
+
     const input = document.getElementById("lobbyChatInput");
 
     if (input?.value) {
-        socket.emit("lobbyChat", input.value);
+
+        socket.emit("lobbyChat", {
+            username: currentUser,
+            msg: input.value
+        });
+
         input.value = "";
     }
 }
 
-socket.on("lobbyChat", (data) => {
+socket.on("lobbyChat", data => {
+
     const div = document.getElementById("lobbyChatMessages");
+
     if (!div) return;
 
     div.innerHTML += `
@@ -202,7 +265,7 @@ socket.on("lobbyChat", (data) => {
 });
 
 // =====================================
-// 8. START GAME
+// START GAME
 // =====================================
 socket.on("gameStart", () => {
 
@@ -213,17 +276,15 @@ socket.on("gameStart", () => {
 });
 
 // =====================================
-// EXPORT
+// EXPORT TO HTML
 // =====================================
+window.loginWithGoogle = loginWithGoogle;
 window.findMatch = findMatch;
 window.cancelMatchmaking = cancelMatchmaking;
 window.createRoom = createRoom;
 window.joinRoom = joinRoom;
 window.leaveRoom = leaveRoom;
 window.sendLobbyChat = sendLobbyChat;
-window.loginWithGoogle = function () {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithRedirect(provider);
-};
 
-console.log("🔥 MG FIGHTER CLIENT READY");
+console.log("🔥 MG FIGHTER CLIENT LOADED");
+```
