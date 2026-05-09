@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="description" content="MG FIGHTER v4.0 - Battle Royale Game">
-    <meta name="theme-color" content="#00ffff">
+    <meta name="theme-color" content="#00d4ff">
     <title>MG FIGHTER v4.0 - Battle Royale AURA</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
     
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -29,21 +28,16 @@
 </head>
 <body>
 
-<!-- ============================================
-     LOADING SCREEN
-     ============================================ -->
+<!-- LOADING SCREEN -->
 <div id="loadingScreen" class="screen">
-    <div class="auth-box">
+    <div class="loading-box">
         <h1>MG FIGHTER</h1>
-        <p class="subtitle">LOADING...</p>
-        <div class="spinner"></div>
+        <div class="loading-spinner"></div>
         <p id="loadingText">Initializing game assets...</p>
     </div>
 </div>
 
-<!-- ============================================
-     AUTH SCREEN
-     ============================================ -->
+<!-- AUTH SCREEN -->
 <div id="authScreen" class="screen hidden">
     <div class="auth-box">
         <h1>MG FIGHTER</h1>
@@ -77,11 +71,8 @@
     </div>
 </div>
 
-<!-- ============================================
-     LOBBY SCREEN
-     ============================================ -->
+<!-- LOBBY SCREEN -->
 <div id="lobbyScreen" class="screen hidden">
-    <!-- LOBBY HEADER -->
     <div class="lobby-header">
         <div class="profile">
             <div class="avatar" id="playerAvatar" onclick="openProfile()"></div>
@@ -118,9 +109,8 @@
         </div>
     </div>
 
-    <!-- LOBBY CONTENT -->
     <div class="lobby-content">
-        <!-- LEFT PANEL: PLAY MODES -->
+        <!-- LEFT PANEL -->
         <div class="lobby-panel left-panel">
             <h2>🎮 GAME MODES</h2>
             
@@ -145,22 +135,14 @@
 
             <div class="mode-section">
                 <h3>🔥 SPECIAL MODES</h3>
-                <button class="special-btn" onclick="findMatch('snipers')">
-                    <span>🎯 SNIPERS ONLY</span>
-                </button>
-                <button class="special-btn" onclick="findMatch('melee')">
-                    <span>⚔️ MELEE ONLY</span>
-                </button>
-                <button class="special-btn" onclick="findMatch('zone')">
-                    <span>💨 FAST ZONE</span>
-                </button>
+                <button class="special-btn" onclick="findMatch('snipers')">🎯 SNIPERS ONLY</button>
+                <button class="special-btn" onclick="findMatch('melee')">⚔️ MELEE ONLY</button>
+                <button class="special-btn" onclick="findMatch('zone')">💨 FAST ZONE</button>
             </div>
 
             <div class="mode-section">
                 <h3>🏠 CUSTOM ROOM</h3>
-                <button class="custom-btn" onclick="createRoom()">
-                    <span>➕ CREATE ROOM</span>
-                </button>
+                <button class="custom-btn" onclick="createRoom()">➕ CREATE ROOM</button>
                 <div class="join-room">
                     <input id="roomCode" type="text" placeholder="ROOM CODE" maxlength="6">
                     <button onclick="joinRoom()">JOIN</button>
@@ -177,14 +159,14 @@
                     <div class="stat-bar">
                         <div class="stat-fill bp-fill" id="bpXP" style="width:0%"></div>
                     </div>
+                </div>
                 <button onclick="openBattlePass()">VIEW REWARDS</button>
                 <button onclick="buyBattlePass()" class="premium-btn">BUY PREMIUM</button>
             </div>
         </div>
 
-        <!-- CENTER PANEL: ROOM/EVENTS -->
+        <!-- CENTER PANEL -->
         <div class="lobby-panel center-panel">
-            <!-- ROOM SCREEN -->
             <div id="roomScreen" class="hidden">
                 <div class="room-header">
                     <h2>🏠 ROOM</h2>
@@ -230,7 +212,6 @@
                 </div>
             </div>
 
-            <!-- NEWS/EVENTS SCREEN -->
             <div id="newsScreen">
                 <h2>📰 NEWS & EVENTS</h2>
                 
@@ -291,7 +272,7 @@
             </div>
         </div>
 
-        <!-- RIGHT PANEL: SOCIAL -->
+        <!-- RIGHT PANEL -->
         <div class="lobby-panel right-panel">
             <h3>👥 FRIENDS</h3>
             <div class="friends-tabs">
@@ -328,14 +309,12 @@
     </div>
 </div>
 
-<!-- ============================================
-     MATCHMAKING SCREEN
-     ============================================ -->
+<!-- MATCHMAKING SCREEN -->
 <div id="matchmakingScreen" class="screen hidden">
     <div class="auth-box">
         <h1>FINDING MATCH</h1>
         <p class="subtitle" id="matchmakingMode">SOLO</p>
-        <div class="spinner"></div>
+        <div class="loading-spinner"></div>
         <p style="margin-top:20px;" id="matchmakingStatus">Searching players...</p>
         <div class="matchmaking-info">
             <p>Players Found: <span id="playersFound">0</span>/100</p>
@@ -345,13 +324,10 @@
     </div>
 </div>
 
-<!-- ============================================
-     GAME SCREEN
-     ============================================ -->
+<!-- GAME SCREEN -->
 <div id="gameScreen" class="screen hidden">
     <canvas id="game"></canvas>
 
-    <!-- UI OVERLAY -->
     <div id="ui">
         <div class="ui-row">
             <div class="ui-label">HP:</div>
@@ -401,32 +377,19 @@
         <div id="playersAlive" class="players-alive">Alive: <span id="aliveCount">100</span></div>
     </div>
 
-    <!-- MINIMAP -->
     <canvas id="minimap" width="200" height="200"></canvas>
-
-    <!-- KILL FEED -->
     <div id="killFeed"></div>
-
-    <!-- DAMAGE NUMBERS -->
     <div id="damageNumbers"></div>
-
-    <!-- ZONE WARNING -->
     <div id="zoneWarning" class="hidden">⚠️ OUT OF ZONE!</div>
-
-    <!-- SCOPE -->
     <div id="scope" class="hidden"><div class="scope-lines"></div></div>
-
-    <!-- HITMARKER -->
     <div id="hitmarker" class="hidden"></div>
 
-    <!-- LEADERBOARD -->
     <div id="leaderboard">
         <h3>🏆 TOP 10</h3>
         <ol id="lbList"></ol>
         <div style="margin-top:10px;text-align:center;font-size:14px;">Alive: <span id="aliveCountLB">0</span></div>
     </div>
 
-    <!-- SCOREBOARD -->
     <div id="scoreboard" class="hidden">
         <h2>SCOREBOARD</h2>
         <table>
@@ -445,11 +408,8 @@
         <p style="text-align:center;margin-top:15px;color:#666;">Press TAB to close</p>
     </div>
 
-    <!-- MOBILE CONTROLS -->
     <div id="mobileControls" class="hidden">
-        <div id="joystick">
-            <div id="joystickKnob"></div>
-        </div>
+        <div id="joystick"><div id="joystickKnob"></div></div>
         <div id="rightControls">
             <button class="mobile-btn" id="scopeBtn" title="Scope">🔍</button>
             <button class="mobile-btn" id="lootBtn" title="Loot">📦</button>
@@ -467,7 +427,6 @@
         </div>
     </div>
 
-    <!-- VICTORY SCREEN -->
     <div id="victoryScreen" class="hidden">
         <h1>VICTORY ROYALE!</h1>
         <div class="end-stats">
@@ -482,7 +441,6 @@
         </div>
     </div>
 
-    <!-- DEATH SCREEN -->
     <div id="deathScreen" class="hidden">
         <h1>ELIMINATED</h1>
         <div class="end-stats">
@@ -499,7 +457,6 @@
         </div>
     </div>
 
-    <!-- SPECTATE UI -->
     <div id="spectateUI" class="hidden">
         <div class="spectate-header">
             <h3>SPECTATING</h3>
@@ -510,9 +467,7 @@
     </div>
 </div>
 
-<!-- ============================================
-     SKIN MENU
-     ============================================ -->
+<!-- ALL MENUS -->
 <div id="skinMenu" class="hidden">
     <div class="menu-header">
         <h2>👕 CUSTOMIZE</h2>
@@ -529,19 +484,15 @@
     <div id="skinColorsTab" class="skin-tab-content">
         <h3>Character Colors</h3>
         <div class="skin-grid">
-            <div class="skin-item" style="background:#00ff00" onclick="changeSkinColor('#00ff00')" data-owned="true"></div>
-            <div class="skin-item" style="background:#ff0000" onclick="changeSkinColor('#ff0000')" data-owned="true"></div>
-            <div class="skin-item" style="background:#0088ff" onclick="changeSkinColor('#0088ff')" data-owned="true"></div>
-            <div class="skin-item" style="background:#ffff00" onclick="changeSkinColor('#ffff00')" data-owned="true"></div>
-            <div class="skin-item" style="background:#ff00ff" onclick="changeSkinColor('#ff00ff')" data-owned="true"></div>
-            <div class="skin-item" style="background:#ff6600" onclick="changeSkinColor('#ff6600')" data-owned="true"></div>
-            <div class="skin-item" style="background:#00ffff" onclick="changeSkinColor('#00ffff')" data-owned="true"></div>
-            <div class="skin-item" style="background:#ffffff" onclick="changeSkinColor('#ffffff')" data-owned="true"></div>
+            <div class="skin-item" style="background:#00ff00" onclick="changeSkinColor('#00ff00')"></div>
+            <div class="skin-item" style="background:#ff0000" onclick="changeSkinColor('#ff0000')"></div>
+            <div class="skin-item" style="background:#0088ff" onclick="changeSkinColor('#0088ff')"></div>
+            <div class="skin-item" style="background:#ffff00" onclick="changeSkinColor('#ffff00')"></div>
+            <div class="skin-item" style="background:#ff00ff" onclick="changeSkinColor('#ff00ff')"></div>
+            <div class="skin-item" style="background:#ff6600" onclick="changeSkinColor('#ff6600')"></div>
+            <div class="skin-item" style="background:#00ffff" onclick="changeSkinColor('#00ffff')"></div>
+            <div class="skin-item" style="background:#ffffff" onclick="changeSkinColor('#ffffff')"></div>
             <div class="skin-item locked" style="background:#800080" onclick="buySkin('purple', 100)">
-                <span class="lock-icon">🔒</span>
-                <span class="price">100💰</span>
-            </div>
-            <div class="skin-item locked" style="background:#ffc0cb" onclick="buySkin('pink', 100)">
                 <span class="lock-icon">🔒</span>
                 <span class="price">100💰</span>
             </div>
@@ -593,9 +544,6 @@
     </div>
 </div>
 
-<!-- ============================================
-     BATTLE PASS MENU
-     ============================================ -->
 <div id="battlePassMenu" class="hidden">
     <div class="menu-header">
         <h2>🎫 BATTLE PASS SEASON 1</h2>
@@ -620,9 +568,6 @@
     <div id="bpRewards" class="bp-rewards-grid"></div>
 </div>
 
-<!-- ============================================
-     SHOP MENU
-     ============================================ -->
 <div id="shopMenu" class="hidden">
     <div class="menu-header">
         <h2>🛒 SHOP</h2>
@@ -672,9 +617,6 @@
     </div>
 </div>
 
-<!-- ============================================
-     INVENTORY MENU
-     ============================================ -->
 <div id="inventoryMenu" class="hidden">
     <div class="menu-header">
         <h2>🎒 INVENTORY</h2>
@@ -705,9 +647,6 @@
     </div>
 </div>
 
-<!-- ============================================
-     SETTINGS MENU
-     ============================================ -->
 <div id="settingsMenu" class="hidden">
     <div class="menu-header">
         <h2>⚙️ SETTINGS</h2>
@@ -747,7 +686,7 @@
             <div class="setting-item">
                 <label>SFX Volume</label>
                 <input type="range" id="sfxVolume" min="0" max="100" value="100">
-                    <span id="sfxVolumeValue">100</span>
+                <span id="sfxVolumeValue">100</span>
             </div>
             <div class="setting-item">
                 <label>Voice Chat</label>
@@ -796,6 +735,7 @@
                 <input type="checkbox" id="showDamageToggle" checked>
             </div>
         </div>
+        </div>
 
         <div class="settings-section">
             <h3>⌨️ Controls</h3>
@@ -820,9 +760,7 @@
     </div>
 </div>
 
-<!-- ============================================
-     PROFILE MENU
-     ============================================ -->
+<!-- PROFILE MENU -->
 <div id="profileMenu" class="hidden">
     <div class="menu-header">
         <h2>👤 PROFILE</h2>
@@ -892,9 +830,7 @@
     </div>
 </div>
 
-<!-- ============================================
-     MAIL MENU
-     ============================================ -->
+<!-- MAIL MENU -->
 <div id="mailMenu" class="hidden">
     <div class="menu-header">
         <h2>📧 MAIL</h2>
@@ -925,9 +861,7 @@
     </div>
 </div>
 
-<!-- ============================================
-     FULL LEADERBOARD
-     ============================================ -->
+<!-- FULL LEADERBOARD -->
 <div id="fullLeaderboard" class="hidden">
     <div class="menu-header">
         <h2>🏆 GLOBAL LEADERBOARD</h2>
@@ -964,9 +898,7 @@
     </div>
 </div>
 
-<!-- ============================================
-     TERMS & PRIVACY MODALS
-     ============================================ -->
+<!-- TERMS MODAL -->
 <div id="termsModal" class="modal hidden">
     <div class="modal-content">
         <div class="modal-header">
@@ -992,6 +924,7 @@
     </div>
 </div>
 
+<!-- PRIVACY MODAL -->
 <div id="privacyModal" class="modal hidden">
     <div class="modal-content">
         <div class="modal-header">
@@ -1017,9 +950,7 @@
     </div>
 </div>
 
-<!-- ============================================
-     CREDITS SCREEN
-     ============================================ -->
+<!-- CREDITS SCREEN -->
 <div id="creditsScreen" class="hidden">
     <div class="credits-content">
         <h1>MG FIGHTER</h1>
@@ -1050,14 +981,10 @@
     </div>
 </div>
 
-<!-- ============================================
-     NOTIFICATION SYSTEM
-     ============================================ -->
+<!-- NOTIFICATION SYSTEM -->
 <div id="notificationContainer"></div>
 
-<!-- ============================================
-     CONFIRM DIALOG
-     ============================================ -->
+<!-- CONFIRM DIALOG -->
 <div id="confirmDialog" class="hidden">
     <div class="confirm-box">
         <h3 id="confirmTitle">Confirm Action</h3>
@@ -1069,21 +996,15 @@
     </div>
 </div>
 
-<!-- ============================================
-     TOAST MESSAGES
-     ============================================ -->
+<!-- TOAST MESSAGES -->
 <div id="toastContainer"></div>
 
-<!-- ============================================
-     SCRIPTS
-     ============================================ -->
+<!-- SCRIPTS -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script src="script.js"></script>
 
 <script>
-// ============================================
 // INLINE UTILITY FUNCTIONS
-// ============================================
 function showTerms() {
     document.getElementById('termsModal').classList.remove('hidden');
 }
