@@ -1,9 +1,4 @@
-/*
 
-MG FIGHTER v4.0 - SERVER.JS COMPLET
-2000+ Lines - Production Ready
-
-*/
 
 const express = require('express');
 const http = require('http');
