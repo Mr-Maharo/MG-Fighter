@@ -1,81 +1,77 @@
 
 /*
 ========================================
-MG FIGHTER v4 - FULL CLIENT SCRIPT
-Firebase + Socket.IO + Battle Royale
-FIXED VERSION
+MG FIGHTER - GOOGLE LOGIN ONLY
+FIXED + SIMPLE + STABLE
 ========================================
 */
 
 const socket = io("https://mg-fighter-1.onrender.com");
+
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 let myId = null;
 let currentUser = null;
 let gameState = null;
 
 // =====================================
-// FIREBASE INIT
-// =====================================
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-// =====================================
-// GOOGLE LOGIN (FIXED + FIRESTORE SAVE)
+// GOOGLE LOGIN ONLY
 // =====================================
 function loginWithGoogle() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    auth.signInWithRedirect(provider);
-}
+    auth.signInWithPopup(provider)
+    .then(async (result) => {
 
-// after redirect
-auth.getRedirectResult()
-.then(async (result) => {
+        const user = result.user;
 
-    const user = result.user;
+        if (!user) return;
 
-    if (!user) return;
+        currentUser = user.displayName || user.email.split("@")[0];
 
-    currentUser = user.displayName || user.email.split("@")[0];
+        console.log("✅ LOGIN:", currentUser);
 
-    console.log("✅ LOGIN:", currentUser);
+        // SAVE TO FIRESTORE
+        const ref = db.collection("players").doc(user.uid);
 
-    const ref = db.collection("players").doc(user.uid);
+        const snap = await ref.get();
 
-    const snap = await ref.get();
+        if (!snap.exists) {
 
-    if (!snap.exists) {
+            await ref.set({
+                username: currentUser,
+                email: user.email,
+                photo: user.photoURL || "",
+                level: 1,
+                coins: 100,
+                wins: 0,
+                kills: 0
+            });
 
-        await ref.set({
-            username: currentUser,
-            email: user.email,
-            photo: user.photoURL || "",
+            console.log("🔥 NEW PLAYER CREATED");
+        }
 
-            level: 1,
-            coins: 100,
-            wins: 0,
-            kills: 0
+        // UI SWITCH
+        document.getElementById("authScreen")?.classList.add("hidden");
+        document.getElementById("lobbyScreen")?.classList.remove("hidden");
+
+        document.getElementById("playerName").textContent = currentUser;
+
+        // JOIN GAME SERVER
+        socket.emit("joinGame", {
+            username: currentUser
         });
 
-        console.log("🔥 Player CREATED");
-    }
-
-    // UI
-    document.getElementById("authScreen")?.classList.add("hidden");
-    document.getElementById("lobbyScreen")?.classList.remove("hidden");
-
-    document.getElementById("playerName").textContent = currentUser;
-
-    socket.emit("joinGame", {
-        username: currentUser
+    })
+    .catch((err) => {
+        console.error("LOGIN ERROR:", err);
     });
-
-})
-.catch(err => console.error("Auth error:", err));
+}
 
 // =====================================
-// AUTH STATE LISTENER
+// AUTO AUTH CHECK
 // =====================================
 auth.onAuthStateChanged(user => {
 
@@ -84,7 +80,6 @@ auth.onAuthStateChanged(user => {
     currentUser = user.displayName || "Player";
 
     document.getElementById("playerName").textContent = currentUser;
-
 });
 
 // =====================================
@@ -92,11 +87,11 @@ auth.onAuthStateChanged(user => {
 // =====================================
 socket.on("connect", () => {
     myId = socket.id;
-    console.log("Socket:", myId);
+    console.log("Socket connected:", myId);
 });
 
 // =====================================
-// GAME STATE (SERVER)
+// PLAYERS UPDATE
 // =====================================
 socket.on("playersUpdate", (players) => {
 
@@ -113,14 +108,13 @@ socket.on("playersUpdate", (players) => {
 });
 
 // =====================================
-// MOVE + SHOOT
+// MOVEMENT
 // =====================================
 let keys = {};
 
 window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-// movement loop
 setInterval(() => {
 
     if (!myId) return;
@@ -134,13 +128,13 @@ setInterval(() => {
 
 }, 50);
 
-// shoot
+// =====================================
+// SHOOT
+// =====================================
 window.addEventListener("click", () => {
 
-    const angle = Math.random() * Math.PI * 2;
-
     socket.emit("shoot", {
-        angle
+        angle: Math.random() * Math.PI * 2
     });
 
 });
@@ -174,7 +168,6 @@ function renderGame(state) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const me = state.players.find(p => p.id === myId);
-
     if (!me) return;
 
     const camX = me.x - canvas.width / 2;
@@ -201,10 +194,9 @@ function renderGame(state) {
 }
 
 // =====================================
-// MATCHMAKING
+// MATCH SYSTEM
 // =====================================
 function findMatch(mode) {
-
     socket.emit("findMatch", mode);
 
     document.getElementById("matchmakingScreen")?.classList.remove("hidden");
@@ -212,7 +204,6 @@ function findMatch(mode) {
 }
 
 function cancelMatchmaking() {
-
     socket.emit("cancelMatchmaking");
 
     document.getElementById("matchmakingScreen")?.classList.add("hidden");
@@ -220,71 +211,11 @@ function cancelMatchmaking() {
 }
 
 // =====================================
-// ROOM SYSTEM
-// =====================================
-function createRoom() {
-    socket.emit("createRoom");
-}
-
-function joinRoom() {
-    const code = document.getElementById("roomCode")?.value;
-    socket.emit("joinRoom", code);
-}
-
-function leaveRoom() {
-    socket.emit("leaveRoom");
-}
-
-// =====================================
-// CHAT
-// =====================================
-function sendLobbyChat() {
-
-    const input = document.getElementById("lobbyChatInput");
-
-    if (input?.value) {
-
-        socket.emit("lobbyChat", {
-            username: currentUser,
-            msg: input.value
-        });
-
-        input.value = "";
-    }
-}
-
-socket.on("lobbyChat", data => {
-
-    const div = document.getElementById("lobbyChatMessages");
-
-    if (!div) return;
-
-    div.innerHTML += `
-        <p><b>${data.username}:</b> ${data.msg}</p>
-    `;
-});
-
-// =====================================
-// START GAME
-// =====================================
-socket.on("gameStart", () => {
-
-    document.getElementById("lobbyScreen")?.classList.add("hidden");
-    document.getElementById("gameScreen")?.classList.remove("hidden");
-
-    initGame();
-});
-
-// =====================================
-// EXPORT TO HTML
+// EXPORT
 // =====================================
 window.loginWithGoogle = loginWithGoogle;
 window.findMatch = findMatch;
 window.cancelMatchmaking = cancelMatchmaking;
-window.createRoom = createRoom;
-window.joinRoom = joinRoom;
-window.leaveRoom = leaveRoom;
-window.sendLobbyChat = sendLobbyChat;
 
-console.log("🔥 MG FIGHTER CLIENT LOADED");
+console.log("🔥 GOOGLE LOGIN ONLY READY");
 
