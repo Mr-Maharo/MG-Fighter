@@ -90,7 +90,30 @@ try {
 } catch (err) {
     console.error('❌ Error loading map:', err.message);
 }
+// =====================================
+// LOAD SPRITE DATA
+// =====================================
+let SPRITE_DATA = {
+    tileSize: 50,
+    tiles: {},
+    weapons: {},
+    characters: {},
+    items: {}
+};
 
+try {
+    const spritePath = path.join(__dirname, 'sprite.json');
+    if (fs.existsSync(spritePath)) {
+        SPRITE_DATA = JSON.parse(fs.readFileSync(spritePath, 'utf8'));
+        console.log('✅ Sprite.json loaded');
+        console.log(' Tiles:', Object.keys(SPRITE_DATA.tiles || {}).length);
+        console.log(' Weapons:', Object.keys(SPRITE_DATA.weapons || {}).length);
+    } else {
+        console.log('⚠️ sprite.json not found, using defaults');
+    }
+} catch (err) {
+    console.error('❌ Error loading sprite.json:', err.message);
+}
 // =====================================
 // 2. CONFIG
 // =====================================
@@ -320,6 +343,14 @@ function startMatch(matchId) {
 
     console.log(`Match ${matchId} started with ${Object.keys(match.players).length} players`);
 }
+     Object.values(match.players).forEach(p => {
+    io.to(p.id).emit('gameStart', {
+        matchId: matchId, players: match.players,
+        loot: match.loot, vehicles: match.vehicles, zone: match.zone,
+        mapData: { width: MAP_DATA.width, height: MAP_DATA.height, walls: MAP_DATA.walls },
+        spriteData: SPRITE_DATA // ← AMPIO ITY
+    });
+});
 
 // =====================================
 // 7. GAME LOOP
@@ -778,6 +809,10 @@ app.get('/', (req, res) => {
 
 app.get('/api/map', (req, res) => {
     res.json(MAP_DATA);
+});
+
+app.get('/api/sprites', (req, res) => {
+    res.json(SPRITE_DATA);
 });
 
 app.get('/api/stats', (req, res) => {
