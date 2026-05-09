@@ -1,9 +1,215 @@
 /*
 
-MG FIGHTER v4.0 - script.js COMPLET
-Map + Sprite Loading + Tile Rendering
+MG FIGHTER v4.0 - script.js COMPLET FINAL
+Map + Sprite Loading + Tile Rendering + Fixes
 
 */
+
+// ============================================
+// 0. GLOBAL FIXES - Apetraho ETO AMBONY INDINDRA
+// ============================================
+
+// Fix 1: Functions tsy hita - GLOBAL
+window.loadChatMessages = function(chat) {
+    const chatBox = document.getElementById('lobbyChatMessages');
+    if (chatBox) chatBox.innerHTML = `<p style="color:#666;text-align:center;">${chat.toUpperCase()} chat ready</p>`;
+};
+
+window.loadFriendsTab = function(tab) {
+    const friendsList = document.getElementById('friendsList');
+    if (friendsList) friendsList.innerHTML = `<p style="color:#666;text-align:center;">No ${tab} friends</p>`;
+};
+
+window.claimDailyReward = function(day) {
+    showToast(`Day ${day} reward claimed! +50 Coins`, 'success');
+    if (window.gameState?.player) {
+        window.gameState.player.coins += 50;
+        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
+    }
+    event.target.disabled = true;
+    event.target.textContent = 'CLAIMED';
+};
+
+window.openFullLeaderboard = function() {
+    document.getElementById('fullLeaderboard').classList.remove('hidden');
+    loadLeaderboardData();
+};
+
+window.loadLeaderboardData = function() {
+    const tbody = document.getElementById('fullLeaderboardBody');
+    if (!tbody) return;
+    const mockData = [
+        {rank: 1, name: 'ProGamer', level: 50, wins: 120, kills: 2500, kd: 5.2, score: 5000},
+        {rank: 2, name: 'EliteSniper', level: 48, wins: 115, kills: 2300, kd: 4.8, score: 4800},
+        {rank: 3, name: 'KingSlayer', level: 45, wins: 100, kills: 2100, kd: 4.5, score: 4600},
+        {rank: 4, name: 'ShadowStrike', level: 42, wins: 95, kills: 1900, kd: 4.2, score: 4300},
+        {rank: 5, name: 'ThunderBolt', level: 40, wins: 88, kills: 1750, kd: 3.9, score: 4100}
+    ];
+    tbody.innerHTML = mockData.map(p => `
+        <tr><td>${p.rank}</td><td>${p.name}</td><td>${p.level}</td><td>${p.wins}</td><td>${p.kills}</td><td>${p.kd}</td><td>${p.score}</td></tr>
+    `).join('');
+};
+
+window.openInventory = function() {
+    document.getElementById('inventoryMenu').classList.remove('hidden');
+    const grid = document.getElementById('invSkinsGrid');
+    if (grid) grid.innerHTML = '<p style="color:#666;text-align:center;padding:40px;">No items yet. Visit shop!</p>';
+};
+
+window.openSettings = function() { document.getElementById('settingsMenu').classList.remove('hidden'); };
+window.openShop = function() { 
+    document.getElementById('shopMenu').classList.remove('hidden');
+    const grid = document.getElementById('shopSkinsGrid');
+    if (grid) grid.innerHTML = `
+        <div class="shop-item"><div class="item-image">👕</div><h4>Red Skin</h4><p>Rare</p><div class="item-price">100 💰</div><button onclick="buyItem('red_skin', 100)">BUY</button></div>
+        <div class="shop-item"><div class="item-image">👑</div><h4>Golden Crown</h4><p>Legendary</p><div class="item-price">500 💰</div><button onclick="buyItem('gold_crown', 500)">BUY</button></div>
+    `;
+};
+window.openProfile = function() { 
+    document.getElementById('profileMenu').classList.remove('hidden');
+    if (window.gameState) {
+        document.getElementById('profileLevel').textContent = window.gameState.player.level || 1;
+        document.getElementById('statWins').textContent = window.gameState.player.wins || 0;
+        document.getElementById('statKills').textContent = window.gameState.player.kills || 0;
+        document.getElementById('statDeaths').textContent = window.gameState.player.deaths || 0;
+        document.getElementById('statMatches').textContent = window.gameState.player.matches || 0;
+        document.getElementById('profileKDR').textContent = ((window.gameState.player.kills || 0) / (window.gameState.player.deaths || 1)).toFixed(2);
+    }
+};
+window.openMail = function() { 
+    document.getElementById('mailMenu').classList.remove('hidden');
+    const inbox = document.getElementById('mailInboxList');
+    if (inbox) inbox.innerHTML = `<div class="mail-item unread"><div class="mail-item-header"><span class="mail-sender">System</span><span class="mail-date">Today</span></div><div class="mail-subject">Welcome to MG FIGHTER!</div><div class="mail-preview">Thanks for joining. Claim your starter reward!</div></div>`;
+};
+window.openBattlePass = function() { 
+    document.getElementById('battlePassMenu').classList.remove('hidden');
+    const container = document.getElementById('bpRewards');
+    if (container) {
+        let html = '';
+        for (let i = 1; i <= 20; i++) {
+            html += `<div class="bp-item ${i <= 3 ? 'unlocked' : ''}"><div class="bp-level">${i}</div><div class="bp-reward">🎁</div></div>`;
+        }
+        container.innerHTML = html;
+    }
+};
+
+window.buyItem = function(id, price) {
+    if (window.gameState?.player?.coins >= price) {
+        window.gameState.player.coins -= price;
+        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
+        showToast('Item purchased!', 'success');
+    } else {
+        showToast('Not enough coins!', 'error');
+    }
+};
+
+window.buyBattlePass = function() {
+    if (window.gameState?.player?.coins >= 500) {
+        window.gameState.player.coins -= 500;
+        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
+        showToast('Premium Battle Pass unlocked!', 'success');
+    } else {
+        showToast('Not enough coins! Need 500', 'error');
+    }
+};
+
+window.addFriend = function() {
+    const input = document.getElementById('addFriendInput');
+    if (input?.value.trim()) {
+        showToast(`Friend request sent to ${input.value}`, 'success');
+        input.value = '';
+    }
+};
+
+window.filterLeaderboard = function(type) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    loadLeaderboardData();
+};
+
+window.prevLeaderboardPage = () => showToast('Previous page', 'info');
+window.nextLeaderboardPage = () => showToast('Next page', 'info');
+
+window.saveUsername = function() {
+    const newName = document.getElementById('profileUsername').value;
+    if (newName && newName.length >= 3) {
+        document.getElementById('playerName').textContent = newName;
+        if (window.gameState) window.gameState.player.name = newName;
+        showToast('Username updated!', 'success');
+    } else {
+        showToast('Username must be 3+ characters', 'error');
+    }
+};
+
+window.saveSettings = function() { showToast('Settings saved!', 'success'); closeSettings(); };
+window.resetSettings = function() { showToast('Settings reset!', 'info'); };
+window.resetControls = function() { showToast('Controls reset to default', 'info'); };
+window.claimAllMail = function() { showToast('All rewards claimed!', 'success'); document.getElementById('mailBadge').classList.add('hidden'); };
+window.deleteReadMail = function() { showToast('Read mail deleted', 'info'); };
+window.spectate = function() { document.getElementById('deathScreen').classList.add('hidden'); document.getElementById('spectateUI').classList.remove('hidden'); showToast('Spectating...', 'info'); };
+window.nextSpectate = function() { showToast('Switching player...', 'info'); };
+window.closeSkinMenu = () => document.getElementById('skinMenu').classList.add('hidden');
+window.closeBattlePass = () => document.getElementById('battlePassMenu').classList.add('hidden');
+window.closeShop = () => document.getElementById('shopMenu').classList.add('hidden');
+window.closeInventory = () => document.getElementById('inventoryMenu').classList.add('hidden');
+window.closeSettings = () => document.getElementById('settingsMenu').classList.add('hidden');
+window.closeProfile = () => document.getElementById('profileMenu').classList.add('hidden');
+window.closeMail = () => document.getElementById('mailMenu').classList.add('hidden');
+window.closeFullLeaderboard = () => document.getElementById('fullLeaderboard').classList.add('hidden');
+window.closeTerms = () => document.getElementById('termsModal').classList.add('hidden');
+window.closePrivacy = () => document.getElementById('privacyModal').classList.add('hidden');
+window.closeCredits = () => document.getElementById('creditsScreen').classList.add('hidden');
+window.showTerms = () => document.getElementById('termsModal').classList.remove('hidden');
+window.showPrivacy = () => document.getElementById('privacyModal').classList.remove('hidden');
+window.showSkinTab = function(tab) {
+    document.querySelectorAll('.skin-tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.skin-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('skin' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Tab').classList.remove('hidden');
+    event.target.classList.add('active');
+};
+window.showShopTab = function(tab) {
+    document.querySelectorAll('.shop-tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.shop-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('shop' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Tab').classList.remove('hidden');
+    event.target.classList.add('active');
+};
+window.showInvTab = function(tab) {
+    document.querySelectorAll('.inv-tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.inv-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('inv' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Tab').classList.remove('hidden');
+    event.target.classList.add('active');
+};
+window.showMailTab = function(tab) {
+    document.querySelectorAll('.mail-tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.mail-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('mail' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Tab').classList.remove('hidden');
+    event.target.classList.add('active');
+};
+window.switchChat = function(chat) {
+    document.querySelectorAll('.chat-tab').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+    loadChatMessages(chat);
+};
+window.showFriendsTab = function(tab) {
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+    loadFriendsTab(tab);
+};
+window.changeSkinColor = function(color) {
+    if (window.gameState) window.gameState.player.skin.color = color;
+    socket.emit("changeSkin", window.gameState?.player?.skin);
+    showToast('Skin color changed!');
+};
+window.changeSkinHat = function(hat) {
+    if (window.gameState) window.gameState.player.skin.hat = hat;
+    socket.emit("changeSkin", window.gameState?.player?.skin);
+    showToast('Hat changed!');
+};
+window.changeOutfit = function(outfit) { showToast(`Outfit: ${outfit}`, 'info'); };
+window.useEmote = function(emote) { showToast(`Emote: ${emote}`, 'info'); };
+window.confirmYes = function() { document.getElementById('confirmDialog').classList.add('hidden'); };
+window.confirmNo = function() { document.getElementById('confirmDialog').classList.add('hidden'); };
+window.changeAvatar = function() { showToast('Avatar change coming soon!', 'info'); };
 
 (() => {
     // =====================================
@@ -24,21 +230,26 @@ Map + Sprite Loading + Tile Rendering
         coins: 100,
         wins: 0,
         kills: 0,
+        deaths: 0,
+        matches: 0,
         xp: 0,
         bpLevel: 1,
         bpXP: 0,
-        skin: { color: '#00ff00', hat: 'none' }
+        rank: "Bronze III",
+        skin: { color: '#00ff00', hat: 'none' },
+        friends: []
     };
 
     let gameState = {
         players: {},
+        enemies: [],
         bullets: [],
         loot: [],
         vehicles: [],
         zone: { x: 2000, y: 2000, radius: 2000, targetRadius: 2000, timer: 0 },
         aliveCount: 0,
         matchMode: 'solo',
-        mapData: { width: 2000, height: 2000, walls: [] }
+        mapData: { width: 4000, height: 4000, walls: [] }
     };
 
     let roomState = {
@@ -84,16 +295,19 @@ Map + Sprite Loading + Tile Rendering
         playerCoins: document.getElementById('playerCoins'),
         playerWins: document.getElementById('playerWins'),
         playerKills: document.getElementById('playerKills'),
+        playerRank: document.getElementById('playerRank'),
         onlineCount: document.getElementById('onlineCount'),
         playerAvatar: document.getElementById('playerAvatar'),
         bpXP: document.getElementById('bpXP'),
         bpLevel: document.getElementById('bpLevel'),
+        bpXPText: document.getElementById('bpXPText'),
         battlePassMenu: document.getElementById('battlePassMenu'),
         bpRewards: document.getElementById('bpRewards'),
         roomIdDisplay: document.getElementById('roomIdDisplay'),
         roomCount: document.getElementById('roomCount'),
         roomPlayers: document.getElementById('roomPlayers'),
         readyBtn: document.getElementById('readyBtn'),
+        startMatchBtn: document.getElementById('startMatchBtn'),
         roomCode: document.getElementById('roomCode'),
         roomChatMessages: document.getElementById('roomChatMessages'),
         roomChatInput: document.getElementById('roomChatInput'),
@@ -102,6 +316,8 @@ Map + Sprite Loading + Tile Rendering
         lobbyChatMessages: document.getElementById('lobbyChatMessages'),
         lobbyChatInput: document.getElementById('lobbyChatInput'),
         matchmakingMode: document.getElementById('matchmakingMode'),
+        playersFound: document.getElementById('playersFound'),
+        estimatedTime: document.getElementById('estimatedTime'),
         game: document.getElementById('game'),
         minimap: document.getElementById('minimap'),
         hp: document.getElementById('hp'),
@@ -115,6 +331,7 @@ Map + Sprite Loading + Tile Rendering
         level: document.getElementById('level'),
         xp: document.getElementById('xp'),
         zoneTimer: document.getElementById('zoneTimer'),
+        playersAlive: document.getElementById('playersAlive'),
         killFeed: document.getElementById('killFeed'),
         damageNumbers: document.getElementById('damageNumbers'),
         zoneWarning: document.getElementById('zoneWarning'),
@@ -122,14 +339,19 @@ Map + Sprite Loading + Tile Rendering
         hitmarker: document.getElementById('hitmarker'),
         lbList: document.getElementById('lbList'),
         aliveCount: document.getElementById('aliveCount'),
+        aliveCountLB: document.getElementById('aliveCountLB'),
         scoreboard: document.getElementById('scoreboard'),
         scoreboardBody: document.getElementById('scoreboardBody'),
         victoryScreen: document.getElementById('victoryScreen'),
         deathScreen: document.getElementById('deathScreen'),
         victoryKills: document.getElementById('victoryKills'),
+        victoryDamage: document.getElementById('victoryDamage'),
+        victoryTime: document.getElementById('victoryTime'),
         victoryReward: document.getElementById('victoryReward'),
         finalRank: document.getElementById('finalRank'),
         finalKills: document.getElementById('finalKills'),
+        finalDamage: document.getElementById('finalDamage'),
+        finalTime: document.getElementById('finalTime'),
         finalReward: document.getElementById('finalReward'),
         mobileControls: document.getElementById('mobileControls'),
         joystick: document.getElementById('joystick'),
@@ -140,43 +362,123 @@ Map + Sprite Loading + Tile Rendering
         sprintBtn: document.getElementById('sprintBtn'),
         grenadeBtn: document.getElementById('grenadeBtn'),
         vehicleBtn: document.getElementById('vehicleBtn'),
-        skinMenu: document.getElementById('skinMenu')
+        reloadBtn: document.getElementById('reloadBtn'),
+        skinMenu: document.getElementById('skinMenu'),
+        shopMenu: document.getElementById('shopMenu'),
+        inventoryMenu: document.getElementById('inventoryMenu'),
+        settingsMenu: document.getElementById('settingsMenu'),
+        profileMenu: document.getElementById('profileMenu'),
+        mailMenu: document.getElementById('mailMenu'),
+        fullLeaderboard: document.getElementById('fullLeaderboard'),
+        termsModal: document.getElementById('termsModal'),
+        privacyModal: document.getElementById('privacyModal'),
+        creditsScreen: document.getElementById('creditsScreen'),
+        notificationContainer: document.getElementById('notificationContainer'),
+        confirmDialog: document.getElementById('confirmDialog'),
+        toastContainer: document.getElementById('toastContainer'),
+        spectateUI: document.getElementById('spectateUI'),
+        spectatePlayerName: document.getElementById('spectatePlayerName'),
+        mailBadge: document.getElementById('mailBadge'),
+        mailInboxList: document.getElementById('mailInboxList'),
+        mailSentList: document.getElementById('mailSentList'),
+        mailRewardsList: document.getElementById('mailRewardsList'),
+        fullLeaderboardBody: document.getElementById('fullLeaderboardBody'),
+        leaderboardPage: document.getElementById('leaderboardPage'),
+        bpLevelDisplay: document.getElementById('bpLevelDisplay'),
+        bpXPBar: document.getElementById('bpXPBar'),
+        bpCurrentXP: document.getElementById('bpCurrentXP'),
+        bpRequiredXP: document.getElementById('bpRequiredXP'),
+        shopFeaturedTab: document.getElementById('shopFeaturedTab'),
+        shopSkinsTab: document.getElementById('shopSkinsTab'),
+        shopWeaponsTab: document.getElementById('shopWeaponsTab'),
+        shopBundlesTab: document.getElementById('shopBundlesTab'),
+        shopSkinsGrid: document.getElementById('shopSkinsGrid'),
+        shopWeaponsGrid: document.getElementById('shopWeaponsGrid'),
+        shopBundlesGrid: document.getElementById('shopBundlesGrid'),
+        invSkinsTab: document.getElementById('invSkinsTab'),
+        invWeaponsTab: document.getElementById('invWeaponsTab'),
+        invEmotesTab: document.getElementById('invEmotesTab'),
+        invItemsTab: document.getElementById('invItemsTab'),
+        invSkinsGrid: document.getElementById('invSkinsGrid'),
+        invWeaponsGrid: document.getElementById('invWeaponsGrid'),
+        invEmotesGrid: document.getElementById('invEmotesGrid'),
+        invItemsGrid: document.getElementById('invItemsGrid'),
+        mailInboxTab: document.getElementById('mailInboxTab'),
+        mailSentTab: document.getElementById('mailSentTab'),
+        mailRewardsTab: document.getElementById('mailRewardsTab'),
+        profileAvatarLarge: document.getElementById('profileAvatarLarge'),
+        profileUsername: document.getElementById('profileUsername'),
+        profileLevel: document.getElementById('profileLevel'),
+        profileRank: document.getElementById('profileRank'),
+        profileKDR: document.getElementById('profileKDR'),
+        statWins: document.getElementById('statWins'),
+        statKills: document.getElementById('statKills'),
+        statDeaths: document.getElementById('statDeaths'),
+        statMatches: document.getElementById('statMatches'),
+        statDamage: document.getElementById('statDamage'),
+        statTime: document.getElementById('statTime'),
+        achievementsGrid: document.getElementById('achievementsGrid'),
+        sensitivitySlider: document.getElementById('sensitivitySlider'),
+        sensitivityValue: document.getElementById('sensitivityValue'),
+        autoSprintToggle: document.getElementById('autoSprintToggle'),
+        aimAssistToggle: document.getElementById('aimAssistToggle'),
+        masterVolume: document.getElementById('masterVolume'),
+        masterVolumeValue: document.getElementById('masterVolumeValue'),
+        musicVolume: document.getElementById('musicVolume'),
+        musicVolumeValue: document.getElementById('musicVolumeValue'),
+        sfxVolume: document.getElementById('sfxVolume'),
+        sfxVolumeValue: document.getElementById('sfxVolumeValue'),
+        voiceChatToggle: document.getElementById('voiceChatToggle'),
+        graphicsQuality: document.getElementById('graphicsQuality'),
+        fpsLimit: document.getElementById('fpsLimit'),
+        showFPSToggle: document.getElementById('showFPSToggle'),
+        fullscreenToggle: document.getElementById('fullscreenToggle'),
+        showMinimapToggle: document.getElementById('showMinimapToggle'),
+        showDamageToggle: document.getElementById('showDamageToggle'),
+        confirmTitle: document.getElementById('confirmTitle'),
+        confirmMessage: document.getElementById('confirmMessage'),
+        loadingScreen: document.getElementById('loadingScreen'),
+        loadingText: document.getElementById('loadingText'),
+        skinColorsTab: document.getElementById('skinColorsTab'),
+        skinHatsTab: document.getElementById('skinHatsTab'),
+        skinOutfitsTab: document.getElementById('skinOutfitsTab'),
+        skinEmotesTab: document.getElementById('skinEmotesTab'),
+        roomMode: document.getElementById('roomMode'),
+        roomMap: document.getElementById('roomMap')
     };
 
     // =====================================
     // 3. ASSET LOADING
     // =====================================
     async function loadAssets() {
-    try {
-        // Load map.json
-        const mapResponse = await fetch('/map.json');
-        if (mapResponse.ok) {
-            mapTiles = await mapResponse.json();
-            console.log('✅ Map loaded:', mapTiles.length, 'tiles');
+        try {
+            const mapResponse = await fetch('./map.json');
+            if (mapResponse.ok) {
+                const data = await mapResponse.json();
+                mapTiles = data.tiles || [];
+                gameState.mapData = data;
+                console.log('✅ Map loaded:', mapTiles.length, 'tiles');
+            }
+
+            const spriteResponse = await fetch('./sprites.json');
+            if (spriteResponse.ok) {
+                spriteData = await spriteResponse.json();
+                console.log('✅ Sprite data loaded');
+            }
+
+            spriteImage = new Image();
+            spriteImage.src = './sprites.png';
+            await new Promise((resolve) => {
+                spriteImage.onload = () => { console.log('✅ sprites.png loaded'); resolve(); };
+                spriteImage.onerror = () => { console.warn('⚠️ sprites.png failed, using fallback'); resolve(); };
+            });
+
+            mapLoaded = true;
+            spritesLoaded = true;
+        } catch (err) {
+            console.error('❌ Asset loading error:', err);
         }
-
-        // Load sprite.json
-        const spriteResponse = await fetch('/sprite.json');
-        if (spriteResponse.ok) {
-            spriteData = await spriteResponse.json();
-            console.log('✅ Sprite data loaded');
-        }
-
-        // Load sprites.png
-        spriteImage = new Image();
-        spriteImage.src = '/sprites.png';
-        await new Promise((resolve, reject) => {
-            spriteImage.onload = resolve;
-            spriteImage.onerror = reject;
-        });
-        console.log('✅ Sprites image loaded');
-
-        mapLoaded = true;
-        spritesLoaded = true;
-    } catch (err) {
-        console.error('❌ Asset loading error:', err);
     }
-}
 
     // =====================================
     // 4. UTILITY FUNCTIONS
@@ -197,6 +499,18 @@ Map + Sprite Loading + Tile Rendering
         setTimeout(() => div.remove(), 3000);
     }
 
+    window.showToast = function(msg, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = msg;
+        DOM.toastContainer.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    };
+
     function formatTime(seconds) {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
@@ -209,6 +523,10 @@ Map + Sprite Loading + Tile Rendering
 
     function getMyPlayer() {
         return gameState.players[myId] || null;
+    }
+
+    function getDistance(x1, y1, x2, y2) {
+        return Math.hypot(x2 - x1, y2 - y1);
     }
 
     // =====================================
@@ -234,8 +552,8 @@ Map + Sprite Loading + Tile Rendering
                     username: currentUser,
                     email: user.email,
                     photo: user.photoURL || "",
-                    level: 1, coins: 100, wins: 0, kills: 0, xp: 0,
-                    bpLevel: 1, bpXP: 0,
+                    level: 1, coins: 100, wins: 0, kills: 0, deaths: 0, matches: 0, xp: 0,
+                    bpLevel: 1, bpXP: 0, rank: "Bronze III",
                     skin: { color: '#00ff00', hat: 'none' },
                     friends: [],
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -262,8 +580,40 @@ Map + Sprite Loading + Tile Rendering
         }
     };
 
+    window.loginAnonymously = async function() {
+        try {
+            const result = await auth.signInAnonymously();
+            const user = result.user;
+            currentUser = "Guest" + Math.floor(Math.random() * 10000);
+            currentUserId = user.uid;
+
+            playerData = {
+                username: currentUser,
+                level: 1, coins: 100, wins: 0, kills: 0, deaths: 0, matches: 0, xp: 0,
+                bpLevel: 1, bpXP: 0, rank: "Bronze III",
+                skin: { color: '#00ff00', hat: 'none' },
+                friends: [],
+                isGuest: true
+            };
+
+            updateLobbyUI();
+            showScreen('lobbyScreen');
+
+            socket.connect();
+            socket.emit("joinGame", {
+                username: currentUser,
+                uid: currentUserId,
+                skin: playerData.skin
+            });
+
+        } catch (err) {
+            console.error("GUEST LOGIN ERROR:", err);
+            DOM.authError.textContent = 'Guest login failed.';
+        }
+    };
+
     auth.onAuthStateChanged(async user => {
-        if (user &&!currentUser) {
+        if (user && !currentUser) {
             currentUserId = user.uid;
             currentUser = user.displayName || "Player";
             const ref = db.collection("players").doc(user.uid);
@@ -291,8 +641,10 @@ Map + Sprite Loading + Tile Rendering
         DOM.playerCoins.textContent = playerData.coins;
         DOM.playerWins.textContent = playerData.wins;
         DOM.playerKills.textContent = playerData.kills;
+        DOM.playerRank.textContent = playerData.rank;
         DOM.bpLevel.textContent = playerData.bpLevel;
         DOM.bpXP.style.width = `${(playerData.bpXP % 100)}%`;
+        DOM.bpXPText.textContent = `${playerData.bpXP % 100}/100 XP`;
         if (playerData.photo) {
             DOM.playerAvatar.style.backgroundImage = `url(${playerData.photo})`;
             DOM.playerAvatar.style.backgroundSize = 'cover';
@@ -301,7 +653,7 @@ Map + Sprite Loading + Tile Rendering
     }
 
     async function savePlayerData() {
-        if (!currentUserId) return;
+        if (!currentUserId || playerData.isGuest) return;
         await db.collection("players").doc(currentUserId).update(playerData);
     }
 
@@ -310,7 +662,37 @@ Map + Sprite Loading + Tile Rendering
     // =====================================
     socket.on("connect", () => {
         myId = socket.id;
-        console.log("Connected:", myId);
+        console.log("✅ Connected:", myId);
+        showToast('Connected to server!', 'success');
+    });
+
+    socket.on("disconnect", () => {
+        console.log('❌ Disconnected from server');
+        if (isGameRunning) {
+            showNotification('Connection lost! Reconnecting...', true);
+        }
+    });
+
+    socket.on("connect_error", (error) => {
+        console.error('❌ Connection error:', error);
+        showNotification('Server connection failed!', true);
+        DOM.authError.textContent = 'Server offline. Try again later.';
+    });
+
+    socket.on("reconnect", (attemptNumber) => {
+        console.log('✅ Reconnected to server');
+        showNotification('Reconnected!', 'success');
+        if (currentUser) {
+            socket.emit("joinGame", {
+                username: currentUser,
+                uid: currentUserId,
+                skin: playerData.skin
+            });
+        }
+    });
+
+    socket.on("reconnect_attempt", () => {
+        console.log('🔄 Reconnecting...');
     });
 
     socket.on("onlineCount", (count) => {
@@ -321,6 +703,7 @@ Map + Sprite Loading + Tile Rendering
         gameState.players = players;
         gameState.aliveCount = Object.values(players).filter(p => p.hp > 0).length;
         DOM.aliveCount.textContent = gameState.aliveCount;
+        DOM.aliveCountLB.textContent = gameState.aliveCount;
         updateLeaderboard();
         if (isGameRunning) updateScoreboard();
     });
@@ -331,16 +714,15 @@ Map + Sprite Loading + Tile Rendering
             gameState.mapData = data.mapData;
         }
         if (data.spriteData) {
-        spriteData = data.spriteData;
+            spriteData = data.spriteData;
         }
             
         showScreen('gameScreen');
         initGame();
         isGameRunning = true;
         if (isMobile) DOM.mobileControls.classList.remove('hidden');
+        showToast('Match Started!', 'success');
     });
-
-    
 
     socket.on("gameUpdate", (data) => {
         Object.assign(gameState, data);
@@ -378,20 +760,27 @@ Map + Sprite Loading + Tile Rendering
             isGameRunning = false;
             DOM.finalRank.textContent = data.rank;
             DOM.finalKills.textContent = data.kills;
+            DOM.finalDamage.textContent = data.damage || 0;
+            DOM.finalTime.textContent = formatTime(data.time || 0);
             DOM.finalReward.textContent = `+${data.coins} Coins +${data.xp} XP`;
             DOM.deathScreen.classList.remove('hidden');
 
             playerData.coins += data.coins;
             playerData.xp += data.xp;
             playerData.kills += data.kills;
+            playerData.deaths++;
+            playerData.matches++;
             levelUpCheck();
             savePlayerData();
+            updateLobbyUI();
         }
     });
 
     socket.on("victory", (data) => {
         isGameRunning = false;
         DOM.victoryKills.textContent = data.kills;
+        DOM.victoryDamage.textContent = data.damage || 0;
+        DOM.victoryTime.textContent = formatTime(data.time || 0);
         DOM.victoryReward.textContent = `+${data.coins} Coins +${data.xp} XP`;
         DOM.victoryScreen.classList.remove('hidden');
 
@@ -399,8 +788,10 @@ Map + Sprite Loading + Tile Rendering
         playerData.xp += data.xp;
         playerData.wins++;
         playerData.kills += data.kills;
+        playerData.matches++;
         levelUpCheck();
         savePlayerData();
+        updateLobbyUI();
     });
 
     socket.on("roomUpdate", (room) => {
@@ -415,7 +806,72 @@ Map + Sprite Loading + Tile Rendering
 
     socket.on("friendUpdate", () => {
         loadFriendsList();
+        showToast('Friends list updated!', 'info');
     });
+
+    socket.on("friendRequest", (data) => {
+        showNotification(`Friend request from ${data.username}!`, false);
+    });
+
+    socket.on("friendInvite", (data) => {
+        showNotification(`${data.username} invited you to play!`, false);
+    });
+
+    socket.on("matchmakingUpdate", (data) => {
+        if (DOM.playersFound) DOM.playersFound.textContent = data.found;
+        if (DOM.estimatedTime) DOM.estimatedTime.textContent = formatTime(data.eta);
+    });
+
+    socket.on("matchmakingFailed", (reason) => {
+        showNotification(`Matchmaking failed: ${reason}`, true);
+        showScreen('lobbyScreen');
+    });
+
+    socket.on("roomError", (error) => {
+        showNotification(`Room error: ${error}`, true);
+    });
+
+    socket.on("kickedFromRoom", () => {
+        showNotification('You were kicked from the room', true);
+        DOM.roomScreen.classList.add('hidden');
+        roomState = { id: null, players: [], isReady: false };
+    });
+
+    socket.on("serverMessage", (msg) => {
+        showNotification(msg.text, msg.type === 'error');
+    });
+
+    socket.on("levelUp", (data) => {
+        showNotification(`LEVEL UP! You are now level ${data.level}`, false);
+        playerData.level = data.level;
+        updateLobbyUI();
+    });
+
+    socket.on("achievementUnlocked", (data) => {
+        showNotification(`🏆 Achievement Unlocked: ${data.name}`, false);
+    });
+
+    socket.on("battlePassLevelUp", (data) => {
+        showNotification(`Battle Pass Level ${data.level} unlocked!`, false);
+        playerData.bpLevel = data.level;
+        updateLobbyUI();
+    });
+
+    socket.on("itemUnlocked", (data) => {
+        showNotification(`New item unlocked: ${data.name}!`, false);
+    });
+
+    socket.on("coinsEarned", (amount) => {
+        playerData.coins += amount;
+        DOM.playerCoins.textContent = playerData.coins;
+        showToast(`+${amount} Coins!`, 'success');
+    });
+
+    socket.on("xpEarned", (amount) => {
+        playerData.xp += amount;
+        levelUpCheck();
+    });
+            
 
     // =====================================
     // 7. LOBBY FUNCTIONS
@@ -457,6 +913,10 @@ Map + Sprite Loading + Tile Rendering
         DOM.readyBtn.style.background = roomState.isReady? '#ff4444' : 'linear-gradient(135deg, #00ff88, #00ff00)';
     };
 
+    window.startMatch = function() {
+        socket.emit("startMatch");
+    };
+
     function updateRoomUI() {
         if (!roomState.id) return;
         DOM.roomIdDisplay.textContent = roomState.id;
@@ -474,6 +934,8 @@ Map + Sprite Loading + Tile Rendering
         });
 
         const allReady = roomState.players.length >= 2 && roomState.players.every(p => p.ready);
+        const isHost = roomState.host === myId;
+        DOM.startMatchBtn.classList.toggle('hidden',!isHost ||!allReady);
         DOM.readyBtn.disabled =!allReady &&!roomState.isReady;
     }
 
@@ -576,6 +1038,7 @@ Map + Sprite Loading + Tile Rendering
             const div = document.createElement('div');
             div.className = 'bp-item';
             if (reward.level <= playerData.bpLevel) div.classList.add('unlocked');
+            if (reward.level <= playerData.bpLevel) div.classList.add('claimed');
             let icon = '💰';
             if (reward.type === 'skin') icon = '🎨';
             else if (reward.type === 'hat') icon = '👑';
@@ -585,7 +1048,7 @@ Map + Sprite Loading + Tile Rendering
                 <div class="bp-reward">${icon}</div>
                 <div style="font-size:11px">${reward.type === 'coins'? reward.amount : reward.item}</div>
             `;
-            if (reward.level <= playerData.bpLevel) {
+            if (reward.level <= playerData.bpLevel &&!div.classList.contains('claimed')) {
                 div.onclick = () => claimBPReward(reward);
             }
             DOM.bpRewards.appendChild(div);
@@ -606,6 +1069,7 @@ Map + Sprite Loading + Tile Rendering
         savePlayerData();
         updateLobbyUI();
         socket.emit('changeSkin', playerData.skin);
+        renderBattlePass();
     }
 
     window.changeSkinColor = function(color) {
@@ -705,46 +1169,40 @@ Map + Sprite Loading + Tile Rendering
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Draw tiles from map.json
-        // Draw tiles from map.json miaraka amin'ny sprites
-if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
-    const startX = Math.floor(camera.x / TILE_SIZE) - 1;
-    const startY = Math.floor(camera.y / TILE_SIZE) - 1;
-    const endX = Math.ceil((camera.x + canvas.width) / TILE_SIZE) + 1;
-    const endY = Math.ceil((camera.y + canvas.height) / TILE_SIZE) + 1;
+        if (mapLoaded && mapTiles.length > 0) {
+            const startX = Math.floor(camera.x / TILE_SIZE) - 1;
+            const startY = Math.floor(camera.y / TILE_SIZE) - 1;
+            const endX = Math.ceil((camera.x + canvas.width) / TILE_SIZE) + 1;
+            const endY = Math.ceil((camera.y + canvas.height) / TILE_SIZE) + 1;
 
-    for (let y = startY; y < endY; y++) {
-        for (let x = startX; x < endX; x++) {
-            const tileIndex = y * (MAP_DATA.width / TILE_SIZE) + x;
-            if (tileIndex >= 0 && tileIndex < mapTiles.length) {
-                const tile = mapTiles[tileIndex];
-                if (!tile) continue;
+            for (let y = startY; y < endY; y++) {
+                for (let x = startX; x < endX; x++) {
+                    const tileIndex = y * (gameState.mapData.width / TILE_SIZE) + x;
+                    if (tileIndex >= 0 && tileIndex < mapTiles.length) {
+                        const tile = mapTiles[tileIndex];
+                        if (!tile) continue;
 
-                const drawX = tile.x - camera.x;
-                const drawY = tile.y - camera.y;
+                        const drawX = tile.x - camera.x;
+                        const drawY = tile.y - camera.y;
 
-                // Mampiasa sprite.json raha misy
-                if (tile.spriteId && spriteData.tiles && spriteData.tiles[tile.spriteId]) {
-                    const sprite = spriteData.tiles[tile.spriteId];
-                    ctx.drawImage(
-                        spriteImage,
-                        sprite.x, sprite.y, sprite.w, sprite.h,
-                        drawX, drawY, tile.s, tile.s
-                    );
-                } else {
-                    // Fallback color
-                    if (tile.collision) {
-                        ctx.fillStyle = '#444';
-                    } else if (tile.swimmable) {
-                        ctx.fillStyle = '#0088ff';
-                    } else {
-                        ctx.fillStyle = '#2a2a2a';
+                        if (tile.spriteId && spriteData.tiles && spriteData.tiles[tile.spriteId] && spriteImage) {
+                            const sprite = spriteData.tiles[tile.spriteId];
+                            ctx.drawImage(
+                                spriteImage,
+                                sprite.x, sprite.y, sprite.w, sprite.h,
+                                drawX, drawY, tile.s, tile.s
+                            );
+                        } else {
+                            if (tile.collision) ctx.fillStyle = '#444';
+                            else if (tile.swimmable) ctx.fillStyle = '#0088ff';
+                            else ctx.fillStyle = '#2a';
+                            ctx.fillRect(drawX, drawY, tile.s, tile.s);
+                        }
                     }
-                    ctx.fillRect(drawX, drawY, tile.s, tile.s);
                 }
             }
         }
-    }
-}
+
         // Draw zone
         if (gameState.zone) {
             ctx.strokeStyle = '#0088ff';
@@ -759,13 +1217,13 @@ if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
             ctx.fill();
         }
 
-        // Draw loot
+        // Draw loot - ✅ FIXED
         gameState.loot.forEach(l => {
             ctx.fillStyle = '#ffff00';
-            ctx.fillRect(l.x - camera.x - 10, l.y - camera.y - 10, 20);
+            ctx.fillRect(l.x - camera.x - 10, l.y - camera.y - 10, 20, 20);
         });
 
-        // Draw vehicles
+        // Draw vehicles - ✅ FIXED
         gameState.vehicles.forEach(v => {
             ctx.fillStyle = '#888888';
             ctx.fillRect(v.x - camera.x - 30, v.y - camera.y - 20, 60, 40);
@@ -790,34 +1248,34 @@ if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
             // Shadow
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.beginPath();
-            ctx.ellipse(x, y + 15, 15, 8, 0, 0, Math.PI * 2);
+            ctx.ellipse(x, y + 15, 15, 8, 0, Math.PI * 2);
             ctx.fill();
 
             // Body
             ctx.fillStyle = isMe? playerData.skin.color : '#ff4444';
-            ctx.fillRect(x - 12, y - 12, 24, 24);
+            ctx.fillRect(x - 12, y - 12, 24);
 
             // Hat
             if (p.skin?.hat && p.skin.hat!== 'none') {
                 ctx.font = '20px Arial';
                 const hatEmoji = { crown: '👑', helmet: '🪖', cap: '🧢' }[p.skin.hat];
-                ctx.fillText(hatEmoji, x - 10, y - 15);
+                if (hatEmoji) ctx.fillText(hatEmoji, x - 10, y - 15);
             }
 
-            // Draw weapon miaraka amin'ny sprite
-           if (p.weapon && p.weapon!== 'fist' && spriteData.weapons && spriteData.weapons[p.weapon] && spriteImage) {
-           const weaponSprite = spriteData.weapons[p.weapon];
-           ctx.save();
-           ctx.translate(x, y);
-           ctx.rotate(p.angle);
-           ctx.drawImage(
-           spriteImage,
-           weaponSprite.x, weaponSprite.y, weaponSprite.w, weaponSprite.h,
-           12, -5, 30, 10
-           );
-           ctx.restore();
-           }
-            
+            // Weapon sprite
+            if (p.weapon && p.weapon!== 'fist' && spriteData.weapons && spriteData.weapons[p.weapon] && spriteImage) {
+                const weaponSprite = spriteData.weapons[p.weapon];
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(p.angle);
+                ctx.drawImage(
+                    spriteImage,
+                    weaponSprite.x, weaponSprite.y, weaponSprite.w, weaponSprite.h,
+                    12, -5, 30, 10
+                );
+                ctx.restore();
+            }
+
             // Name & HP
             ctx.fillStyle = '#fff';
             ctx.font = '12px Arial';
@@ -849,7 +1307,7 @@ if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
         minimapCtx.fillStyle = '#000';
         minimapCtx.fillRect(0, 0, 180, 180);
 
-        const scale = 180 / MAP_DATA.width;
+        const scale = 180 / (gameState.mapData.width || 4000);
 
         // Zone
         if (gameState.zone) {
@@ -950,7 +1408,7 @@ if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
             touchShootInterval = setInterval(() => {
                 socket.emit('shoot', { angle: mouseAngle });
             }, 100);
-                });
+        });
 
         DOM.shootBtn.addEventListener('touchend', () => {
             if (touchShootInterval) clearInterval(touchShootInterval);
@@ -963,6 +1421,7 @@ if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
         DOM.sprintBtn.addEventListener('touchend', () => keys['shift'] = false);
         DOM.grenadeBtn.addEventListener('touchstart', () => socket.emit('grenade', { angle: mouseAngle }));
         DOM.vehicleBtn.addEventListener('touchstart', () => socket.emit('enterVehicle'));
+        DOM.reloadBtn.addEventListener('touchstart', () => socket.emit('reload'));
 
         // Auto aim for mobile
         setInterval(() => {
@@ -1035,9 +1494,9 @@ if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
 
     function updateLeaderboard() {
         const sorted = Object.values(gameState.players)
-            .filter(p => p.hp > 0)
-            .sort((a, b) => (b.kills || 0) - (a.kills || 0))
-            .slice(0, 10);
+           .filter(p => p.hp > 0)
+           .sort((a, b) => (b.kills || 0) - (a.kills || 0))
+           .slice(0, 10);
 
         DOM.lbList.innerHTML = '';
         sorted.forEach((p, i) => {
@@ -1067,229 +1526,6 @@ if (mapLoaded && spritesLoaded && mapTiles.length > 0) {
         });
     }
 
-
-
-    // ============================================
-// MISSING FUNCTIONS FIX
-// ============================================
-
-function loadChatMessages(chat) {
-    const chatBox = document.getElementById('lobbyChatMessages');
-    chatBox.innerHTML = `<p style="color:#666;text-align:center;">${chat} chat loaded</p>`;
-}
-
-function loadFriendsTab(tab) {
-    const friendsList = document.getElementById('friendsList');
-    friendsList.innerHTML = `<p style="color:#666;text-align:center;">No ${tab} friends</p>`;
-}
-
-function claimDailyReward(day) {
-    showToast(`Daily reward Day ${day} claimed! +50 Coins`, 'success');
-    if (window.gameState) {
-        window.gameState.player.coins += 50;
-        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
-    }
-}
-
-function openFullLeaderboard() {
-    document.getElementById('fullLeaderboard').classList.remove('hidden');
-    loadLeaderboardData();
-}
-
-function loadLeaderboardData() {
-    const tbody = document.getElementById('fullLeaderboardBody');
-    const mockData = [
-        {rank: 1, name: 'ProGamer', level: 50, wins: 120, kills: 2500, kd: 5.2, score: 5000},
-        {rank: 2, name: 'EliteSniper', level: 48, wins: 115, kills: 2300, kd: 4.8, score: 4800},
-        {rank: 3, name: 'KingSlayer', level: 45, wins: 100, kills: 2100, kd: 4.5, score: 4600}
-    ];
-    
-    tbody.innerHTML = mockData.map(p => `
-        <tr>
-            <td>${p.rank}</td>
-            <td>${p.name}</td>
-            <td>${p.level}</td>
-            <td>${p.wins}</td>
-            <td>${p.kills}</td>
-            <td>${p.kd}</td>
-            <td>${p.score}</td>
-        </tr>
-    `).join('');
-}
-
-function openInventory() {
-    document.getElementById('inventoryMenu').classList.remove('hidden');
-    loadInventory();
-}
-
-function loadInventory() {
-    const grid = document.getElementById('invSkinsGrid');
-    grid.innerHTML = '<p style="color:#666;text-align:center;padding:40px;">No items yet. Visit shop!</p>';
-}
-
-function openSettings() {
-    document.getElementById('settingsMenu').classList.remove('hidden');
-}
-
-function openShop() {
-    document.getElementById('shopMenu').classList.remove('hidden');
-    loadShopItems();
-}
-
-function loadShopItems() {
-    const grid = document.getElementById('shopSkinsGrid');
-    grid.innerHTML = `
-        <div class="shop-item">
-            <div class="item-image">👕</div>
-            <h4>Red Skin</h4>
-            <p>Rare</p>
-            <div class="item-price">100 💰</div>
-            <button onclick="buyItem('red_skin', 100)">BUY</button>
-        </div>
-        <div class="shop-item">
-            <div class="item-image">👑</div>
-            <h4>Golden Crown</h4>
-            <p>Legendary</p>
-            <div class="item-price">500 💰</div>
-            <button onclick="buyItem('gold_crown', 500)">BUY</button>
-        </div>
-    `;
-}
-
-function buyItem(id, price) {
-    if (window.gameState && window.gameState.player.coins >= price) {
-        window.gameState.player.coins -= price;
-        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
-        showToast('Item purchased!', 'success');
-    } else {
-        showToast('Not enough coins!', 'error');
-    }
-}
-
-function openProfile() {
-    document.getElementById('profileMenu').classList.remove('hidden');
-    updateProfileStats();
-}
-
-function updateProfileStats() {
-    if (window.gameState) {
-        document.getElementById('profileLevel').textContent = window.gameState.player.level;
-        document.getElementById('profileRank').textContent = window.gameState.player.rank || 'Bronze III';
-        document.getElementById('statWins').textContent = window.gameState.player.wins;
-        document.getElementById('statKills').textContent = window.gameState.player.kills;
-        document.getElementById('statDeaths').textContent = window.gameState.player.deaths || 0;
-        document.getElementById('statMatches').textContent = window.gameState.player.matches || 0;
-        document.getElementById('profileKDR').textContent = (window.gameState.player.kills / (window.gameState.player.deaths || 1)).toFixed(2);
-    }
-}
-
-function openMail() {
-    document.getElementById('mailMenu').classList.remove('hidden');
-    loadMail();
-}
-
-function loadMail() {
-    const inbox = document.getElementById('mailInboxList');
-    inbox.innerHTML = `
-        <div class="mail-item unread">
-            <div class="mail-item-header">
-                <span class="mail-sender">System</span>
-                <span class="mail-date">Today</span>
-            </div>
-            <div class="mail-subject">Welcome to MG FIGHTER!</div>
-            <div class="mail-preview">Thanks for joining. Claim your starter reward!</div>
-        </div>
-    `;
-}
-
-function saveUsername() {
-    const newName = document.getElementById('profileUsername').value;
-    if (newName && newName.length >= 3) {
-        document.getElementById('playerName').textContent = newName;
-        if (window.gameState) window.gameState.player.name = newName;
-        showToast('Username updated!', 'success');
-    } else {
-        showToast('Username must be 3+ characters', 'error');
-    }
-}
-
-function saveSettings() {
-    showToast('Settings saved!', 'success');
-    closeSettings();
-}
-
-function resetSettings() {
-    showToast('Settings reset!', 'info');
-}
-
-function resetControls() {
-    showToast('Controls reset to default', 'info');
-}
-
-function claimAllMail() {
-    showToast('All rewards claimed!', 'success');
-    document.getElementById('mailBadge').classList.add('hidden');
-}
-
-function deleteReadMail() {
-    showToast('Read mail deleted', 'info');
-}
-
-function spectate() {
-    document.getElementById('deathScreen').classList.add('hidden');
-    document.getElementById('spectateUI').classList.remove('hidden');
-    showToast('Spectating...', 'info');
-}
-
-function nextSpectate() {
-    showToast('Switching player...', 'info');
-}
-
-function prevLeaderboardPage() {
-    showToast('Previous page', 'info');
-}
-
-function nextLeaderboardPage() {
-    showToast('Next page', 'info');
-}
-
-function filterLeaderboard(type) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    loadLeaderboardData();
-}
-
-// ============================================
-// FIX fillRect BUG - Line 765
-// ============================================
-// Tadiavo ity ao amin'ny renderGame():
-// ctx.fillRect(x, y, width);  <- DISO
-// Soloy ity:
-function renderMinimap() {
-    const minimap = document.getElementById('minimap');
-    if (!minimap) return;
-    const ctx = minimap.getContext('2d');
-    ctx.clearRect(0, 0, 200, 200);
-    
-    // Draw zone
-    ctx.strokeStyle = '#00d4ff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, 10, 180, 180);
-    
-    // Draw player - FIX: 4 arguments
-    ctx.fillStyle = '#00ff88';
-    ctx.fillRect(95, 95, 10, 10); // x, y, width, height
-    
-    // Draw enemies
-    if (window.gameState && window.gameState.enemies) {
-        ctx.fillStyle = '#ff3366';
-        window.gameState.enemies.forEach(e => {
-            const x = (e.x / 4000) * 180 + 10;
-            const y = (e.y / 4000) * 180 + 10;
-            ctx.fillRect(x, y, 6, 6); // FIX: 4 arguments
-        });
-    }
-}
     // =====================================
     // 14. GAME END & RETURN
     // =====================================
@@ -1297,10 +1533,16 @@ function renderMinimap() {
         DOM.victoryScreen.classList.add('hidden');
         DOM.deathScreen.classList.add('hidden');
         DOM.scoreboard.classList.add('hidden');
+        DOM.spectateUI.classList.add('hidden');
         showScreen('lobbyScreen');
         isGameRunning = false;
         if (socket.connected) socket.disconnect();
         setTimeout(() => socket.connect(), 500);
+    };
+
+    window.playAgain = function() {
+        returnToLobby();
+        setTimeout(() => findMatch(gameState.matchMode), 1000);
     };
 
     // =====================================
@@ -1366,346 +1608,19 @@ function renderMinimap() {
         socket.emit('enterVehicle');
     }
 
-
-    // ============================================
-// FIX 1: MISSING FUNCTIONS - Ampio eo amin'ny TOP
-// ============================================
-
-// 1. Chat Functions
-function loadChatMessages(chat) {
-    const chatBox = document.getElementById('lobbyChatMessages');
-    if (chatBox) {
-        chatBox.innerHTML = `<p style="color:#666;text-align:center;">${chat.toUpperCase()} chat - Welcome!</p>`;
-    }
-}
-
-function sendLobbyChat() {
-    const input = document.getElementById('lobbyChatInput');
-    if (!input || !input.value.trim()) return;
-    
-    const chatBox = document.getElementById('lobbyChatMessages');
-    const msg = document.createElement('p');
-    msg.innerHTML = `<span class="chat-time">${new Date().toLocaleTimeString()}</span><span class="chat-user">You:</span>${input.value}`;
-    chatBox.appendChild(msg);
-    chatBox.scrollTop = chatBox.scrollHeight;
-    input.value = '';
-}
-
-function sendRoomChat() {
-    const input = document.getElementById('roomChatInput');
-    if (!input || !input.value.trim()) return;
-    
-    const chatBox = document.getElementById('roomChatMessages');
-    const msg = document.createElement('p');
-    msg.innerHTML = `<span class="chat-time">${new Date().toLocaleTimeString()}</span><span class="chat-user">You:</span>${input.value}`;
-    chatBox.appendChild(msg);
-    chatBox.scrollTop = chatBox.scrollHeight;
-    input.value = '';
-}
-
-// 2. Daily Reward
-function claimDailyReward(day) {
-    showToast(`Day ${day} reward claimed! +50 Coins`, 'success');
-    if (window.gameState && window.gameState.player) {
-        window.gameState.player.coins += 50;
-        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
-    }
-    event.target.disabled = true;
-    event.target.textContent = 'CLAIMED';
-}
-
-// 3. Leaderboard
-function openFullLeaderboard() {
-    document.getElementById('fullLeaderboard').classList.remove('hidden');
-    loadLeaderboardData();
-}
-
-function loadLeaderboardData() {
-    const tbody = document.getElementById('fullLeaderboardBody');
-    if (!tbody) return;
-    
-    const mockData = [
-        {rank: 1, name: 'ProGamer', level: 50, wins: 120, kills: 2500, kd: 5.2, score: 5000},
-        {rank: 2, name: 'EliteSniper', level: 48, wins: 115, kills: 2300, kd: 4.8, score: 4800},
-        {rank: 3, name: 'KingSlayer', level: 45, wins: 100, kills: 2100, kd: 4.5, score: 4600},
-        {rank: 4, name: 'ShadowStrike', level: 42, wins: 95, kills: 1900, kd: 4.2, score: 4300},
-        {rank: 5, name: 'ThunderBolt', level: 40, wins: 88, kills: 1750, kd: 3.9, score: 4100}
-    ];
-    
-    tbody.innerHTML = mockData.map(p => `
-        <tr>
-            <td>${p.rank}</td>
-            <td>${p.name}</td>
-            <td>${p.level}</td>
-            <td>${p.wins}</td>
-            <td>${p.kills}</td>
-            <td>${p.kd}</td>
-            <td>${p.score}</td>
-        </tr>
-    `).join('');
-}
-
-function filterLeaderboard(type) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    loadLeaderboardData();
-}
-
-function prevLeaderboardPage() {
-    showToast('Previous page', 'info');
-}
-
-function nextLeaderboardPage() {
-    showToast('Next page', 'info');
-}
-
-// 4. Inventory & Shop
-function openInventory() {
-    document.getElementById('inventoryMenu').classList.remove('hidden');
-    loadInventory();
-}
-
-function loadInventory() {
-    const grid = document.getElementById('invSkinsGrid');
-    if (grid) {
-        grid.innerHTML = '<p style="color:#666;text-align:center;padding:40px;">No items yet. Visit shop!</p>';
-    }
-}
-
-function openShop() {
-    document.getElementById('shopMenu').classList.remove('hidden');
-    loadShopItems();
-}
-
-function loadShopItems() {
-    const grid = document.getElementById('shopSkinsGrid');
-    if (grid) {
-        grid.innerHTML = `
-            <div class="shop-item">
-                <div class="item-image">👕</div>
-                <h4>Red Skin</h4>
-                <p>Rare</p>
-                <div class="item-price">100 💰</div>
-                <button onclick="buyItem('red_skin', 100)">BUY</button>
-            </div>
-            <div class="shop-item">
-                <div class="item-image">👑</div>
-                <h4>Golden Crown</h4>
-                <p>Legendary</p>
-                <div class="item-price">500 💰</div>
-                <button onclick="buyItem('gold_crown', 500)">BUY</button>
-            </div>
-        `;
-    }
-}
-
-function buyItem(id, price) {
-    if (window.gameState && window.gameState.player.coins >= price) {
-        window.gameState.player.coins -= price;
-        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
-        showToast('Item purchased!', 'success');
-    } else {
-        showToast('Not enough coins!', 'error');
-    }
-}
-
-// 5. Menus
-function openSettings() {
-    document.getElementById('settingsMenu').classList.remove('hidden');
-}
-
-function openProfile() {
-    document.getElementById('profileMenu').classList.remove('hidden');
-    updateProfileStats();
-}
-
-function updateProfileStats() {
-    if (window.gameState && window.gameState.player) {
-        document.getElementById('profileLevel').textContent = window.gameState.player.level || 1;
-        document.getElementById('statWins').textContent = window.gameState.player.wins || 0;
-        document.getElementById('statKills').textContent = window.gameState.player.kills || 0;
-        document.getElementById('statDeaths').textContent = window.gameState.player.deaths || 0;
-        document.getElementById('statMatches').textContent = window.gameState.player.matches || 0;
-        document.getElementById('profileKDR').textContent = ((window.gameState.player.kills || 0) / (window.gameState.player.deaths || 1)).toFixed(2);
-    }
-}
-
-function openMail() {
-    document.getElementById('mailMenu').classList.remove('hidden');
-    loadMail();
-}
-
-function loadMail() {
-    const inbox = document.getElementById('mailInboxList');
-    if (inbox) {
-        inbox.innerHTML = `
-            <div class="mail-item unread">
-                <div class="mail-item-header">
-                    <span class="mail-sender">System</span>
-                    <span class="mail-date">Today</span>
-                </div>
-                <div class="mail-subject">Welcome to MG FIGHTER!</div>
-                <div class="mail-preview">Thanks for joining. Claim your starter reward!</div>
-            </div>
-        `;
-    }
-}
-
-// 6. Friends
-function loadFriendsTab(tab) {
-    const friendsList = document.getElementById('friendsList');
-    if (friendsList) {
-        friendsList.innerHTML = `<p style="color:#666;text-align:center;">No ${tab} friends yet</p>`;
-    }
-}
-
-function addFriend() {
-    const input = document.getElementById('addFriendInput');
-    if (input && input.value.trim()) {
-        showToast(`Friend request sent to ${input.value}`, 'success');
-        input.value = '';
-    }
-}
-
-// 7. Battle Pass
-function openBattlePass() {
-    document.getElementById('battlePassMenu').classList.remove('hidden');
-    loadBattlePassRewards();
-}
-
-function loadBattlePassRewards() {
-    const container = document.getElementById('bpRewards');
-    if (!container) return;
-    
-    let html = '';
-    for (let i = 1; i <= 20; i++) {
-        html += `
-            <div class="bp-item ${i <= 3 ? 'unlocked' : ''}">
-                <div class="bp-level">${i}</div>
-                <div class="bp-reward">🎁</div>
-            </div>
-        `;
-    }
-    container.innerHTML = html;
-}
-
-function buyBattlePass() {
-    if (window.gameState && window.gameState.player.coins >= 500) {
-        window.gameState.player.coins -= 500;
-        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
-        showToast('Premium Battle Pass unlocked!', 'success');
-    } else {
-        showToast('Not enough coins! Need 500', 'error');
-    }
-}
-
-// 8. Utility
-function saveUsername() {
-    const newName = document.getElementById('profileUsername').value;
-    if (newName && newName.length >= 3) {
-        document.getElementById('playerName').textContent = newName;
-        if (window.gameState) window.gameState.player.name = newName;
-        showToast('Username updated!', 'success');
-    } else {
-        showToast('Username must be 3+ characters', 'error');
-    }
-}
-
-function saveSettings() {
-    showToast('Settings saved!', 'success');
-    closeSettings();
-}
-
-function resetSettings() {
-    showToast('Settings reset!', 'info');
-}
-
-function resetControls() {
-    showToast('Controls reset to default', 'info');
-}
-
-function claimAllMail() {
-    showToast('All rewards claimed!', 'success');
-    document.getElementById('mailBadge').classList.add('hidden');
-}
-
-function deleteReadMail() {
-    showToast('Read mail deleted', 'info');
-}
-
-function spectate() {
-    document.getElementById('deathScreen').classList.add('hidden');
-    document.getElementById('spectateUI').classList.remove('hidden');
-    showToast('Spectating...', 'info');
-}
-
-function nextSpectate() {
-    showToast('Switching player...', 'info');
-}
-
-// ============================================
-// FIX 2: fillRect BUG - Tadiavo ity ao amin'ny renderGame na renderMinimap
-// ============================================
-// Tadiavo: ctx.fillRect(x, y, width); 
-// Soloy:   ctx.fillRect(x, y, width, height);
-
-// Ohatra fix:
-function renderMinimapFixed() {
-    const minimap = document.getElementById('minimap');
-    if (!minimap) return;
-    const ctx = minimap.getContext('2d');
-    ctx.clearRect(0, 0, 200, 200);
-    
-    // Draw zone border
-    ctx.strokeStyle = '#00d4ff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, 10, 180);
-    
-    // Draw player - FIX: 4 arguments
-    ctx.fillStyle = '#00ff88';
-    ctx.fillRect(95, 95, 10, 10); // x, y, width, height
-    
-    // Draw enemies
-    if (window.gameState && window.gameState.enemies) {
-        ctx.fillStyle = '#ff3366';
-        window.gameState.enemies.forEach(e => {
-            const x = (e.x / 4000) * 180 + 10;
-            const y = (e.y / 4000) * 180 + 10;
-            ctx.fillRect(x, y, 6, 6); // FIX: 4 arguments
-        });
-    }
-}
-
-// ============================================
-// FIX 3: Asset Loading - Ataovy async
-// ============================================
-async function loadAssetsFixed() {
-    try {
-        const mapRes = await fetch('map.json');
-        const mapData = await mapRes.json();
-        console.log('✅ Map loaded:', mapData);
-        
-        const spriteRes = await fetch('sprites.json');
-        const spriteData = await spriteRes.json();
-        console.log('✅ Sprites loaded:', spriteData);
-        
-        // Load image
-        const img = new Image();
-        img.src = 'sprites.png';
-        img.onload = () => console.log('✅ sprites.png loaded');
-        img.onerror = () => console.warn('⚠️ sprites.png failed, using fallback');
-        
-    } catch (err) {
-        console.error('❌ Asset loading error:', err);
-        // Continue anyway with fallback
-    }
-}
     // =====================================
     // 17. INIT ON LOAD
     // =====================================
     window.addEventListener('load', async () => {
         console.log('MG FIGHTER v4.0 Loaded');
+        DOM.loadingText.textContent = 'Loading assets...';
         await loadAssets();
+        DOM.loadingText.textContent = 'Ready!';
+        setTimeout(() => {
+            DOM.loadingScreen.classList.add('hidden');
+            showScreen('authScreen');
+        }, 500);
+
         if (isMobile) {
             document.body.classList.add('mobile');
         }
@@ -1721,12 +1636,14 @@ async function loadAssetsFixed() {
 
     // Expose global functions for HTML onclick
     window.loginWithGoogle = loginWithGoogle;
+    window.loginAnonymously = loginAnonymously;
     window.findMatch = findMatch;
     window.cancelMatchmaking = cancelMatchmaking;
     window.createRoom = createRoom;
     window.joinRoom = joinRoom;
     window.leaveRoom = leaveRoom;
     window.ready = ready;
+    window.startMatch = startMatch;
     window.sendLobbyChat = sendLobbyChat;
     window.sendRoomChat = sendRoomChat;
     window.addFriend = addFriend;
@@ -1734,7 +1651,10 @@ async function loadAssetsFixed() {
     window.openBattlePass = openBattlePass;
     window.changeSkinColor = changeSkinColor;
     window.changeSkinHat = changeSkinHat;
+    window.changeOutfit = changeOutfit;
+    window.useEmote = useEmote;
     window.returnToLobby = returnToLobby;
+    window.playAgain = playAgain;
 
     console.log('🔥 MG FIGHTER v4.0 - FULL SYSTEM READY');
     console.log('📱 Mobile:', isMobile);
