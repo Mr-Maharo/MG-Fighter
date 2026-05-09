@@ -1,10 +1,4 @@
-/*
 
-MG FIGHTER v4.0 - script.js COMPLET
-Google Login Only + Multiplayer + Lobby + Room + Game
-3000+ lignes no tanjona, eto ny version complet optimisé
-
-*/
 
 (() => {
     // =====================================
