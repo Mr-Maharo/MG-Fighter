@@ -1,13 +1,3 @@
-# MG Fighter — Clean JS Architecture (Starter)
-
-Ity structure ity dia version voadio sy stable kokoa amin’ilay code nalefanao. Tsy 2000 lignes feno gameplay rehetra izy ity, fa architecture matanjaka sy scalable: modular state, renderer, input, network sync, entity system, interpolation, cleanup, anti-crash guards.
-
-```js
-'use strict';
-
-// =====================================================
-// MG FIGHTER CLEAN ENGINE
-// =====================================================
 
 // =====================================================
 // 1. SAFE HELPERS
