@@ -67,7 +67,6 @@ Map + Sprite Loading + Tile Rendering
     const TILE_SIZE = 50;
 
     let spriteData = {};
-    let spriteImage = null;
     let spritesLoaded = false;
 
     // =====================================
