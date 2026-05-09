@@ -1,4 +1,4 @@
-```javascript
+
 /*
 ========================================
 MG FIGHTER v4 - FULL CLIENT SCRIPT
@@ -287,4 +287,4 @@ window.leaveRoom = leaveRoom;
 window.sendLobbyChat = sendLobbyChat;
 
 console.log("🔥 MG FIGHTER CLIENT LOADED");
-```
+
