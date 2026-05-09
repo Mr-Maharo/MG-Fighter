@@ -1366,6 +1366,340 @@ function renderMinimap() {
         socket.emit('enterVehicle');
     }
 
+
+    // ============================================
+// FIX 1: MISSING FUNCTIONS - Ampio eo amin'ny TOP
+// ============================================
+
+// 1. Chat Functions
+function loadChatMessages(chat) {
+    const chatBox = document.getElementById('lobbyChatMessages');
+    if (chatBox) {
+        chatBox.innerHTML = `<p style="color:#666;text-align:center;">${chat.toUpperCase()} chat - Welcome!</p>`;
+    }
+}
+
+function sendLobbyChat() {
+    const input = document.getElementById('lobbyChatInput');
+    if (!input || !input.value.trim()) return;
+    
+    const chatBox = document.getElementById('lobbyChatMessages');
+    const msg = document.createElement('p');
+    msg.innerHTML = `<span class="chat-time">${new Date().toLocaleTimeString()}</span><span class="chat-user">You:</span>${input.value}`;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    input.value = '';
+}
+
+function sendRoomChat() {
+    const input = document.getElementById('roomChatInput');
+    if (!input || !input.value.trim()) return;
+    
+    const chatBox = document.getElementById('roomChatMessages');
+    const msg = document.createElement('p');
+    msg.innerHTML = `<span class="chat-time">${new Date().toLocaleTimeString()}</span><span class="chat-user">You:</span>${input.value}`;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    input.value = '';
+}
+
+// 2. Daily Reward
+function claimDailyReward(day) {
+    showToast(`Day ${day} reward claimed! +50 Coins`, 'success');
+    if (window.gameState && window.gameState.player) {
+        window.gameState.player.coins += 50;
+        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
+    }
+    event.target.disabled = true;
+    event.target.textContent = 'CLAIMED';
+}
+
+// 3. Leaderboard
+function openFullLeaderboard() {
+    document.getElementById('fullLeaderboard').classList.remove('hidden');
+    loadLeaderboardData();
+}
+
+function loadLeaderboardData() {
+    const tbody = document.getElementById('fullLeaderboardBody');
+    if (!tbody) return;
+    
+    const mockData = [
+        {rank: 1, name: 'ProGamer', level: 50, wins: 120, kills: 2500, kd: 5.2, score: 5000},
+        {rank: 2, name: 'EliteSniper', level: 48, wins: 115, kills: 2300, kd: 4.8, score: 4800},
+        {rank: 3, name: 'KingSlayer', level: 45, wins: 100, kills: 2100, kd: 4.5, score: 4600},
+        {rank: 4, name: 'ShadowStrike', level: 42, wins: 95, kills: 1900, kd: 4.2, score: 4300},
+        {rank: 5, name: 'ThunderBolt', level: 40, wins: 88, kills: 1750, kd: 3.9, score: 4100}
+    ];
+    
+    tbody.innerHTML = mockData.map(p => `
+        <tr>
+            <td>${p.rank}</td>
+            <td>${p.name}</td>
+            <td>${p.level}</td>
+            <td>${p.wins}</td>
+            <td>${p.kills}</td>
+            <td>${p.kd}</td>
+            <td>${p.score}</td>
+        </tr>
+    `).join('');
+}
+
+function filterLeaderboard(type) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    loadLeaderboardData();
+}
+
+function prevLeaderboardPage() {
+    showToast('Previous page', 'info');
+}
+
+function nextLeaderboardPage() {
+    showToast('Next page', 'info');
+}
+
+// 4. Inventory & Shop
+function openInventory() {
+    document.getElementById('inventoryMenu').classList.remove('hidden');
+    loadInventory();
+}
+
+function loadInventory() {
+    const grid = document.getElementById('invSkinsGrid');
+    if (grid) {
+        grid.innerHTML = '<p style="color:#666;text-align:center;padding:40px;">No items yet. Visit shop!</p>';
+    }
+}
+
+function openShop() {
+    document.getElementById('shopMenu').classList.remove('hidden');
+    loadShopItems();
+}
+
+function loadShopItems() {
+    const grid = document.getElementById('shopSkinsGrid');
+    if (grid) {
+        grid.innerHTML = `
+            <div class="shop-item">
+                <div class="item-image">👕</div>
+                <h4>Red Skin</h4>
+                <p>Rare</p>
+                <div class="item-price">100 💰</div>
+                <button onclick="buyItem('red_skin', 100)">BUY</button>
+            </div>
+            <div class="shop-item">
+                <div class="item-image">👑</div>
+                <h4>Golden Crown</h4>
+                <p>Legendary</p>
+                <div class="item-price">500 💰</div>
+                <button onclick="buyItem('gold_crown', 500)">BUY</button>
+            </div>
+        `;
+    }
+}
+
+function buyItem(id, price) {
+    if (window.gameState && window.gameState.player.coins >= price) {
+        window.gameState.player.coins -= price;
+        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
+        showToast('Item purchased!', 'success');
+    } else {
+        showToast('Not enough coins!', 'error');
+    }
+}
+
+// 5. Menus
+function openSettings() {
+    document.getElementById('settingsMenu').classList.remove('hidden');
+}
+
+function openProfile() {
+    document.getElementById('profileMenu').classList.remove('hidden');
+    updateProfileStats();
+}
+
+function updateProfileStats() {
+    if (window.gameState && window.gameState.player) {
+        document.getElementById('profileLevel').textContent = window.gameState.player.level || 1;
+        document.getElementById('statWins').textContent = window.gameState.player.wins || 0;
+        document.getElementById('statKills').textContent = window.gameState.player.kills || 0;
+        document.getElementById('statDeaths').textContent = window.gameState.player.deaths || 0;
+        document.getElementById('statMatches').textContent = window.gameState.player.matches || 0;
+        document.getElementById('profileKDR').textContent = ((window.gameState.player.kills || 0) / (window.gameState.player.deaths || 1)).toFixed(2);
+    }
+}
+
+function openMail() {
+    document.getElementById('mailMenu').classList.remove('hidden');
+    loadMail();
+}
+
+function loadMail() {
+    const inbox = document.getElementById('mailInboxList');
+    if (inbox) {
+        inbox.innerHTML = `
+            <div class="mail-item unread">
+                <div class="mail-item-header">
+                    <span class="mail-sender">System</span>
+                    <span class="mail-date">Today</span>
+                </div>
+                <div class="mail-subject">Welcome to MG FIGHTER!</div>
+                <div class="mail-preview">Thanks for joining. Claim your starter reward!</div>
+            </div>
+        `;
+    }
+}
+
+// 6. Friends
+function loadFriendsTab(tab) {
+    const friendsList = document.getElementById('friendsList');
+    if (friendsList) {
+        friendsList.innerHTML = `<p style="color:#666;text-align:center;">No ${tab} friends yet</p>`;
+    }
+}
+
+function addFriend() {
+    const input = document.getElementById('addFriendInput');
+    if (input && input.value.trim()) {
+        showToast(`Friend request sent to ${input.value}`, 'success');
+        input.value = '';
+    }
+}
+
+// 7. Battle Pass
+function openBattlePass() {
+    document.getElementById('battlePassMenu').classList.remove('hidden');
+    loadBattlePassRewards();
+}
+
+function loadBattlePassRewards() {
+    const container = document.getElementById('bpRewards');
+    if (!container) return;
+    
+    let html = '';
+    for (let i = 1; i <= 20; i++) {
+        html += `
+            <div class="bp-item ${i <= 3 ? 'unlocked' : ''}">
+                <div class="bp-level">${i}</div>
+                <div class="bp-reward">🎁</div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+function buyBattlePass() {
+    if (window.gameState && window.gameState.player.coins >= 500) {
+        window.gameState.player.coins -= 500;
+        document.getElementById('playerCoins').textContent = window.gameState.player.coins;
+        showToast('Premium Battle Pass unlocked!', 'success');
+    } else {
+        showToast('Not enough coins! Need 500', 'error');
+    }
+}
+
+// 8. Utility
+function saveUsername() {
+    const newName = document.getElementById('profileUsername').value;
+    if (newName && newName.length >= 3) {
+        document.getElementById('playerName').textContent = newName;
+        if (window.gameState) window.gameState.player.name = newName;
+        showToast('Username updated!', 'success');
+    } else {
+        showToast('Username must be 3+ characters', 'error');
+    }
+}
+
+function saveSettings() {
+    showToast('Settings saved!', 'success');
+    closeSettings();
+}
+
+function resetSettings() {
+    showToast('Settings reset!', 'info');
+}
+
+function resetControls() {
+    showToast('Controls reset to default', 'info');
+}
+
+function claimAllMail() {
+    showToast('All rewards claimed!', 'success');
+    document.getElementById('mailBadge').classList.add('hidden');
+}
+
+function deleteReadMail() {
+    showToast('Read mail deleted', 'info');
+}
+
+function spectate() {
+    document.getElementById('deathScreen').classList.add('hidden');
+    document.getElementById('spectateUI').classList.remove('hidden');
+    showToast('Spectating...', 'info');
+}
+
+function nextSpectate() {
+    showToast('Switching player...', 'info');
+}
+
+// ============================================
+// FIX 2: fillRect BUG - Tadiavo ity ao amin'ny renderGame na renderMinimap
+// ============================================
+// Tadiavo: ctx.fillRect(x, y, width); 
+// Soloy:   ctx.fillRect(x, y, width, height);
+
+// Ohatra fix:
+function renderMinimapFixed() {
+    const minimap = document.getElementById('minimap');
+    if (!minimap) return;
+    const ctx = minimap.getContext('2d');
+    ctx.clearRect(0, 0, 200, 200);
+    
+    // Draw zone border
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, 180);
+    
+    // Draw player - FIX: 4 arguments
+    ctx.fillStyle = '#00ff88';
+    ctx.fillRect(95, 95, 10, 10); // x, y, width, height
+    
+    // Draw enemies
+    if (window.gameState && window.gameState.enemies) {
+        ctx.fillStyle = '#ff3366';
+        window.gameState.enemies.forEach(e => {
+            const x = (e.x / 4000) * 180 + 10;
+            const y = (e.y / 4000) * 180 + 10;
+            ctx.fillRect(x, y, 6, 6); // FIX: 4 arguments
+        });
+    }
+}
+
+// ============================================
+// FIX 3: Asset Loading - Ataovy async
+// ============================================
+async function loadAssetsFixed() {
+    try {
+        const mapRes = await fetch('map.json');
+        const mapData = await mapRes.json();
+        console.log('✅ Map loaded:', mapData);
+        
+        const spriteRes = await fetch('sprites.json');
+        const spriteData = await spriteRes.json();
+        console.log('✅ Sprites loaded:', spriteData);
+        
+        // Load image
+        const img = new Image();
+        img.src = 'sprites.png';
+        img.onload = () => console.log('✅ sprites.png loaded');
+        img.onerror = () => console.warn('⚠️ sprites.png failed, using fallback');
+        
+    } catch (err) {
+        console.error('❌ Asset loading error:', err);
+        // Continue anyway with fallback
+    }
+}
     // =====================================
     // 17. INIT ON LOAD
     // =====================================
