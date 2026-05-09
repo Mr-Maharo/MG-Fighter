@@ -2135,3 +2135,104 @@ body::before {
 .shadow { box-shadow: var(--shadow); }
 .shadow-lg { box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); }
 .glow { box-shadow: var(--glow); }
+/* ============================================
+   EMERGENCY FIX - FORCE ALL MENUS TO OVERLAY
+   ============================================ */
+
+/* FORCE: Tous les menus en plein écran overlay */
+#skinMenu, 
+#battlePassMenu, 
+#shopMenu, 
+#inventoryMenu, 
+#settingsMenu, 
+#profileMenu, 
+#mailMenu, 
+#fullLeaderboard,
+#termsModal,
+#privacyModal,
+#creditsScreen,
+#roomScreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(10, 14, 39, 0.98) !important;
+    backdrop-filter: blur(15px) !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+}
+
+/* FORCE: Cache quand hidden - PRIORITE MAXIMALE */
+#skinMenu.hidden, 
+#battlePassMenu.hidden, 
+#shopMenu.hidden, 
+#inventoryMenu.hidden, 
+#settingsMenu.hidden, 
+#profileMenu.hidden, 
+#mailMenu.hidden, 
+#fullLeaderboard.hidden,
+#termsModal.hidden,
+#privacyModal.hidden,
+#creditsScreen.hidden,
+#roomScreen.hidden {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+/* FORCE: Container anaty menu */
+#skinMenu > *:not(.hidden),
+#battlePassMenu > *:not(.hidden),
+#shopMenu > *:not(.hidden),
+#inventoryMenu > *:not(.hidden),
+#settingsMenu > *:not(.hidden),
+#profileMenu > *:not(.hidden),
+#mailMenu > *:not(.hidden),
+#fullLeaderboard > *:not(.hidden) {
+    background: var(--glass) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 2px solid var(--primary) !important;
+    border-radius: 20px !important;
+    width: 100% !important;
+    max-width: 900px !important;
+    max-height: 85vh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: 0 0 60px rgba(0, 212, 255, 0.4) !important;
+    position: relative !important;
+    z-index: 100000 !important;
+}
+
+/* FIX: Screen z-index hierarchy */
+#authScreen { z-index: 1 !important; }
+#lobbyScreen { z-index: 1 !important; }
+#gameScreen { z-index: 1 !important; }
+#matchmakingScreen { z-index: 1 !important; }
+
+/* FIX: HUD elements tsy ho voasakana */
+#ui, #minimap, #leaderboard, #mobileControls, #killFeed, #damageNumbers, #zoneWarning, #scope, #hitmarker {
+    z-index: 100 !important;
+}
+
+/* FIX: Death/Victory screens */
+#deathScreen, #victoryScreen, #scoreboard {
+    z-index: 5000 !important;
+}
+
+/* FIX: Notifications ambony indrindra */
+#notificationContainer, #toastContainer {
+    z-index: 100001 !important;
+}
+
+#confirmDialog {
+    z-index: 100002 !important;
+}
