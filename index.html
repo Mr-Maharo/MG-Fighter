@@ -12,14 +12,15 @@
         <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script>
   const firebaseConfig = {
-    apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
-    authDomain: "mgfigther-b3760.firebaseapp.com",
-    projectId: "mgfigther-b3760",
-    storageBucket: "mgfigther-b3760.firebasestorage.app",
-    messagingSenderId: "829325634031",
-    appId: "1:829325634031:web:b9c13b78ffec75a372ee1a",
-    measurementId: "G-30QH3M5E9Z"
-  };
+  apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
+  authDomain: "mgfigther-b3760.firebaseapp.com",
+  databaseURL: "https://mgfigther-b3760-default-rtdb.firebaseio.com",
+  projectId: "mgfigther-b3760",
+  storageBucket: "mgfigther-b3760.firebasestorage.app",
+  messagingSenderId: "829325634031",
+  appId: "1:829325634031:web:b9c13b78ffec75a372ee1a",
+  measurementId: "G-30QH3M5E9Z"
+};
   
   if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
