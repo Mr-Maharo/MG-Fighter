@@ -1,102 +1,156 @@
 /*
- * ============================================================================
- * MG FIGHTER SIMPLE - MATCH HTML EXISTANT
- * Login + Lobby + Room + Chat + Matchmaking
- * Tsy ovaina ny HTML-nao
- * ============================================================================
+ * MG FIGHTER CLIENT - FIX LOGIN REDIRECT
  */
 
-// ============================================
-// 1. GLOBALS
-// ============================================
-const socket = io('https://mg-fighter-1.onrender.com', {
-    reconnection: true,
-    reconnectionDelay: 1000
-});
-
+const socket = io('https://mg-fighter-1.onrender.com');
 let myId = null;
 let currentUser = null;
-let currentRoom = null;
-let onlineCount = 0;
-
-const MAP_SIZE = 3000;
 
 // ============================================
-// 2. FIREBASE AUTH - EFA AO @ HTML FA MIANO LISTENER ETO
+// 1. FIREBASE AUTH - IRAY IHANY, TSY MISY DUPLICATE
 // ============================================
 firebase.auth().onAuthStateChanged(user => {
+    console.log('🔥 Auth state changed:', user?.displayName);
+
     if (user) {
         currentUser = user.displayName || user.email.split('@')[0];
-        console.log("✅ Tafiditra:", currentUser);
 
-        socket.emit('playerLogin', {
+        // 1. Alefa any @ server
+        socket.emit('joinGame', {
             name: currentUser,
-            uid: user.uid,
             skin: 'boy'
         });
+
+        // 2. Ovay UI
+        document.getElementById('authScreen')?.classList.add('hidden');
+        document.getElementById('lobbyScreen')?.classList.remove('hidden');
+        const nameEl = document.getElementById('playerName');
+        if(nameEl) nameEl.textContent = currentUser;
+
+        // 3. Save any @ Firestore
+        firebase.firestore().collection('users').doc(user.uid).set({
+            uid: user.uid,
+            name: currentUser,
+            email: user.email,
+            photo: user.photoURL || "",
+            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+    } else {
+        document.getElementById('authScreen')?.classList.remove('hidden');
+        document.getElementById('lobbyScreen')?.classList.add('hidden');
     }
 });
 
-socket.on('loginSuccess', (data) => {
-    myId = data.id;
-    console.log('✅ Server nanaiky:', data);
+// ============================================
+// 2. LOGIN FUNCTION - ATAO GLOBAL
+// ============================================
+window.loginWithGoogle = function() {
+    console.log('🔵 Login Google clicked');
+    const provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithRedirect(provider);
+};
+
+// ============================================
+// 3. SOCKET
+// ============================================
+socket.on('connect', () => {
+    myId = socket.id;
+    console.log('✅ Socket connected:', myId);
+});
+
+socket.on('gameState', (state) => {
+    const onlineEl = document.getElementById('onlineCount');
+    if(onlineEl) onlineEl.textContent = state.players.length;
+
+    if(!document.getElementById('gameScreen')?.classList.contains('hidden')) {
+        renderGame(state);
+    }
 });
 
 // ============================================
-// 3. LOBBY UPDATE
+// 4. LOBBY FUNCTIONS
 // ============================================
-socket.on('lobbyUpdate', (count) => {
-    onlineCount = count;
-    const el = document.getElementById('onlineCount');
-    if(el) el.textContent = count;
-});
-
-// ============================================
-// 4. MATCHMAKING
-// ============================================
-function findMatch(mode) {
+window.findMatch = function(mode) {
     socket.emit('findMatch', mode);
     document.getElementById('matchmakingScreen')?.classList.remove('hidden');
     document.getElementById('lobbyScreen')?.classList.add('hidden');
     const modeEl = document.getElementById('matchmakingMode');
     if(modeEl) modeEl.textContent = mode.toUpperCase();
-}
+};
 
-function cancelMatchmaking() {
+window.cancelMatchmaking = function() {
     socket.emit('cancelMatchmaking');
     document.getElementById('matchmakingScreen')?.classList.add('hidden');
     document.getElementById('lobbyScreen')?.classList.remove('hidden');
-}
+};
 
-socket.on('matchFound', (roomId) => {
-    alert('Match hita! Room: ' + roomId);
-    document.getElementById('matchmakingScreen')?.classList.add('hidden');
-    // Eto ianao miantso game start
-});
-
-// ============================================
-// 5. ROOM SYSTEM
-// ============================================
-function createRoom() {
+window.createRoom = function() {
     socket.emit('createRoom', 'custom');
-}
+};
 
-function joinRoom() {
+window.joinRoom = function() {
     const code = document.getElementById('roomCode')?.value.toUpperCase().trim();
     if(code?.length === 6) socket.emit('joinRoom', code);
-}
+};
 
-function leaveRoom() {
+window.leaveRoom = function() {
     socket.emit('leaveRoom');
     document.getElementById('roomScreen')?.classList.add('hidden');
-}
+};
 
-function ready() {
+window.ready = function() {
     socket.emit('ready');
     const btn = document.getElementById('readyBtn');
     if(btn) { btn.disabled = true; btn.textContent = 'READY ✅'; }
+};
+
+// ============================================
+// 5. CHAT
+// ============================================
+window.sendLobbyChat = function() {
+    const input = document.getElementById('lobbyChatInput');
+    const msg = input?.value.trim();
+    if(msg && msg.length < 200) {
+        socket.emit('lobbyChat', msg);
+        if(input) input.value = '';
+    }
+};
+
+window.sendRoomChat = function() {
+    const input = document.getElementById('roomChatInput');
+    const msg = input?.value.trim();
+    if(msg && msg.length < 200) {
+        socket.emit('roomChat', msg);
+        if(input) input.value = '';
+    }
+};
+
+socket.on('lobbyChat', (data) => {
+    const div = document.getElementById('lobbyChatMessages');
+    if(!div) return;
+    const time = new Date(data.time || Date.now()).toLocaleTimeString('mg', {hour:'2-digit',minute:'2-digit'});
+    div.innerHTML += `<p><span class="chat-time">${time}</span> <b class="chat-user">${escapeHtml(data.username || 'Anon')}:</b> ${escapeHtml(data.msg || '')}</p>`;
+    div.scrollTop = div.scrollHeight;
+});
+
+socket.on('roomChat', (data) => {
+    const div = document.getElementById('roomChatMessages');
+    if(!div) return;
+    const time = new Date(data.time || Date.now()).toLocaleTimeString('mg', {hour:'2-digit',minute:'2-digit'});
+    div.innerHTML += `<p><span class="chat-time">${time}</span> <b class="chat-user">${escapeHtml(data.username || 'Anon')}:</b> ${escapeHtml(data.msg || '')}</p>`;
+    div.scrollTop = div.scrollHeight;
+});
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
 }
 
+// ============================================
+// 6. ROOM EVENTS
+// ============================================
 socket.on('roomCreated', (roomId) => {
     showRoom(roomId);
 });
@@ -124,172 +178,95 @@ function showRoom(roomId) {
     document.getElementById('roomScreen')?.classList.remove('hidden');
     const idEl = document.getElementById('roomIdDisplay');
     if(idEl) idEl.textContent = roomId;
-    currentRoom = roomId;
 }
 
-socket.on('gameStart', (roomId) => {
-    alert('Game manomboka! Room: ' + roomId);
-    // Eto ianao miantso game init
+socket.on('gameStart', () => {
+    document.getElementById('roomScreen')?.classList.add('hidden');
+    document.getElementById('matchmakingScreen')?.classList.add('hidden');
+    document.getElementById('gameScreen')?.classList.remove('hidden');
+    initGame();
 });
 
 // ============================================
-// 6. CHAT
+// 7. GAME SIMPLE
 // ============================================
-function sendLobbyChat() {
-    const input = document.getElementById('lobbyChatInput');
-    const msg = input?.value.trim();
-    if(msg && msg.length < 200) {
-        socket.emit('lobbyChat', msg);
-        if(input) input.value = '';
-    }
-}
+let canvas, ctx, keys = {};
 
-function sendRoomChat() {
-    const input = document.getElementById('roomChatInput');
-    const msg = input?.value.trim();
-    if(msg && msg.length < 200) {
-        socket.emit('roomChat', msg);
-        if(input) input.value = '';
-    }
-}
+function initGame() {
+    canvas = document.getElementById('game');
+    if(!canvas) return;
+    ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-socket.on('lobbyChat', (data) => {
-    const div = document.getElementById('lobbyChatMessages');
-    if(!div) return;
-    const time = new Date(data.time || Date.now()).toLocaleTimeString('mg', {hour:'2-digit',minute:'2-digit'});
-    div.innerHTML += `<p><span class="chat-time">${time}</span> <b class="chat-user">${escapeHtml(data.username || 'Anon')}:</b> ${escapeHtml(data.msg || '')}</p>`;
-    div.scrollTop = div.scrollHeight;
-});
-
-socket.on('roomChat', (data) => {
-    const div = document.getElementById('roomChatMessages');
-    if(!div) return;
-    const time = new Date(data.time || Date.now()).toLocaleTimeString('mg', {hour:'2-digit',minute:'2-digit'});
-    div.innerHTML += `<p><span class="chat-time">${time}</span> <b class="chat-user">${escapeHtml(data.username || 'Anon')}:</b> ${escapeHtml(data.msg || '')}</p>`;
-    div.scrollTop = div.scrollHeight;
-});
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text || '';
-    return div.innerHTML;
-}
-
-// ============================================
-// 7. FRIENDS
-// ============================================
-function addFriend() {
-    const name = document.getElementById('addFriendInput')?.value.trim();
-    if(name && name!== currentUser) {
-        socket.emit('addFriend', name);
-        const input = document.getElementById('addFriendInput');
-        if(input) input.value = '';
-    }
-}
-
-function loadFriends() {
-    socket.emit('getFriends');
-}
-
-socket.on('friendAdded', (name) => {
-    loadFriends();
-});
-
-socket.on('friendsList', (data) => {
-    const div = document.getElementById('friendsList');
-    if(!div) return;
-    div.innerHTML = '<h4>Online</h4>';
-    (data.online || []).forEach(f => {
-        div.innerHTML += `<div class="friend online" onclick="inviteFriend('${f}')">🟢 ${escapeHtml(f)} <button>INVITE</button></div>`;
+    window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+    window.addEventListener('click', e => {
+        const rect = canvas.getBoundingClientRect();
+        const angle = Math.atan2(e.clientY - canvas.height/2, e.clientX - canvas.width/2);
+        socket.emit('shoot', angle);
     });
-    div.innerHTML += '<h4>Offline</h4>';
-    (data.all || []).filter(f =>!(data.online || []).includes(f)).forEach(f => {
-        div.innerHTML += `<div class="friend">⚫ ${escapeHtml(f)}</div>`;
-    });
-});
 
-function inviteFriend(name) {
-    socket.emit('inviteFriend', name);
+    gameLoop();
 }
 
-// ============================================
-// 8. SKIN SYSTEM
-// ============================================
-function openSkinMenu() {
-    document.getElementById('skinMenu')?.classList.remove('hidden');
-}
-
-function changeSkinColor(color) {
-    socket.emit('setSkinColor', color);
-}
-
-function changeSkinHat(hat) {
-    socket.emit('setSkinHat', hat);
-}
-
-// ============================================
-// 9. BATTLE PASS
-// ============================================
-function openBattlePass() {
-    document.getElementById('battlePassMenu')?.classList.remove('hidden');
-    socket.emit('getBattlePass');
-}
-
-socket.on('battlePassData', (data) => {
-    const container = document.getElementById('bpRewards');
-    if(!container) return;
-    container.innerHTML = '';
-    for(let i=1; i<=100; i++) {
-        const claimed = (data.claimed || []).includes(i);
-        const unlocked = data.level >= i;
-        const div = document.createElement('div');
-        div.className = `bp-item ${claimed?'claimed':''} ${unlocked?'unlocked':''}`;
-        div.innerHTML = `
-            <div class="bp-level">LV ${i}</div>
-            <div class="bp-reward">${getBPReward(i)}</div>
-            ${unlocked &&!claimed?`<button onclick="claimBP(${i})">CLAIM</button>`:''}
-        `;
-        container.appendChild(div);
+function update() {
+    const dir = {
+        up: keys['w'] || keys['z'],
+        down: keys['s'],
+        left: keys['a'] || keys['q'],
+        right: keys['d']
+    };
+    if(dir.up || dir.down || dir.left || dir.right) {
+        socket.emit('move', dir);
     }
-    const bpLevel = document.getElementById('bpLevel');
-    if(bpLevel) bpLevel.textContent = data.level;
-    const bpXP = document.getElementById('bpXP');
-    if(bpXP) bpXP.style.width = (data.xp % 100) + '%';
-});
-
-function getBPReward(level) {
-    if(level % 10 === 0) return '🎩 Skin Special';
-    if(level % 5 === 0) return '💰 50 Coins';
-    return '💰 10 Coins';
 }
 
-function claimBP(level) {
-    socket.emit('claimBP', level);
+function renderGame(state) {
+    if(!ctx ||!canvas) return;
+    ctx.fillStyle = '#1a3a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const me = state.players.find(p => p.id === myId);
+    if(!me) return;
+
+    const camX = me.x - canvas.width/2;
+    const camY = me.y - canvas.height/2;
+
+    // Buildings
+    ctx.fillStyle = '#444';
+    state.buildings.forEach(b => {
+        ctx.fillRect(b.x - camX, b.y - camY, b.w, b.h);
+    });
+
+    // Water
+    ctx.fillStyle = 'rgba(0,100,255,0.5)';
+    state.water.forEach(w => {
+        ctx.fillRect(w.x - camX, w.y - camY, w.w, w.h);
+    });
+
+    // Players
+    state.players.forEach(p => {
+        ctx.fillStyle = p.id === myId? '#00ff00' : '#ff0000';
+        ctx.fillRect(p.x - camX, p.y - camY, 30, 30);
+        ctx.fillStyle = 'white';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.name, p.x - camX + 15, p.y - camY - 5);
+    });
+
+    // Bullets
+    ctx.fillStyle = '#ffff00';
+    state.bullets.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x - camX, b.y - camY, 4, 0, Math.PI*2);
+        ctx.fill();
+    });
 }
 
-// ============================================
-// 10. UTILS
-// ============================================
-window.loginWithGoogle = function() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithRedirect(provider);
-};
+function gameLoop() {
+    update();
+    requestAnimationFrame(gameLoop);
+}
 
-// Export functions ho an'ny HTML onclick
-window.findMatch = findMatch;
-window.createRoom = createRoom;
-window.joinRoom = joinRoom;
-window.leaveRoom = leaveRoom;
-window.ready = ready;
-window.sendLobbyChat = sendLobbyChat;
-window.sendRoomChat = sendRoomChat;
-window.addFriend = addFriend;
-window.inviteFriend = inviteFriend;
-window.openSkinMenu = openSkinMenu;
-window.changeSkinColor = changeSkinColor;
-window.changeSkinHat = changeSkinHat;
-window.openBattlePass = openBattlePass;
-window.claimBP = claimBP;
-window.cancelMatchmaking = cancelMatchmaking;
-
-console.log('✅ MG FIGHTER SIMPLE loaded');
+console.log('✅ MG FIGHTER CLIENT loaded');
