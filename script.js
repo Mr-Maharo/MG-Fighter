@@ -966,7 +966,7 @@ window.drawPlayer = function(p) {
 
     if (!spriteLoaded) {
         ctx.fillStyle = p.id === myId? '#00ff00' : '#ff0000';
-        ctx.fillRect(p.x - 16, p.y - 16, 32);
+        ctx.fillRect(p.x - 16, p.y - 16, 32, 32);
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 2;
         ctx.strokeRect(p.x - 16, p.y - 16, 32, 32);
@@ -978,11 +978,16 @@ window.drawPlayer = function(p) {
         const drawSize = size * 2;
 
         ctx.drawImage(
-            spriteImg,
-            frame.x, frame.y, size,
-            p.x - drawSize/2, p.y - drawSize/2,
-            drawSize, drawSize
-        );
+    spriteImg,
+    frame.x,
+    frame.y,
+    size,
+    size,
+    p.x - drawSize / 2,
+    p.y - drawSize / 2,
+    drawSize,
+    drawSize
+);
     }
 
     if (p.hp < 100) {
