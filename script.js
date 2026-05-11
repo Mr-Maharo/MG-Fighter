@@ -275,14 +275,8 @@ window.changeAvatar = function() { showToast('Avatar change coming soon!', 'info
     let joystickActive = false;
     let joystickPos = { x: 0, y: 0 };
 
-    // Map & Sprite assets
     
-    let spriteImage = null;
-    let mapLoaded = false;
-    const TILE_SIZE = 50;
-
-    let spriteData = {};
-    let spritesLoaded = false;
+   
 
     // =====================================
     // 2. DOM ELEMENTS CACHE
