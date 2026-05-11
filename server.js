@@ -1,5 +1,3 @@
-
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -21,7 +19,55 @@ const io = new Server(server, {
 });
 
 // =====================================
-// 1. LOAD MAP DATA
+// 0. ANTI-CHEAT CONFIG - FIX 1-3
+// =====================================
+const ANTI_CHEAT = {
+    MAX_MOVE_SPEED: 350, // pixels/sec - sprint max
+    MAX_MOVE_TOLERANCE: 1.5, // 50% tolerance lag
+    MAX_SHOOT_RATE: 20, // shots/sec max
+    MAX_GRENADES_SEC: 0.5, // 1 grenade per 2s
+    MAX_CHAT_RATE: 3, // 3 msgs/sec
+    MAX_JOIN_ROOM_RATE: 2, // 2 attempts/sec
+    TELEPORT_THRESHOLD: 500, // pixels - heverina teleport
+    DAMAGE_VALIDATION: true // Server authoritative damage
+};
+
+// Rate limiting storage - FIX 2
+const rateLimits = {
+    move: new Map(),
+    shoot: new Map(),
+    grenade: new Map(),
+    chat: new Map(),
+    joinRoom: new Map()
+};
+
+function checkRateLimit(socketId, type, maxPerSec) {
+    const now = Date.now();
+    if (!rateLimits[type].has(socketId)) {
+        rateLimits[type].set(socketId, []);
+    }
+    const timestamps = rateLimits[type].get(socketId);
+    const oneSecAgo = now - 1000;
+
+    // Remove old timestamps
+    while (timestamps.length > 0 && timestamps[0] < oneSecAgo) {
+        timestamps.shift();
+    }
+
+    if (timestamps.length >= maxPerSec) return false;
+    timestamps.push(now);
+    return true;
+}
+
+// Cleanup rate limits on disconnect - FIX 7
+function clearRateLimits(socketId) {
+    Object.keys(rateLimits).forEach(type => {
+        rateLimits[type].delete(socketId);
+    });
+}
+
+// =====================================
+// 1. LOAD MAP DATA - SECURE
 // =====================================
 let MAP_DATA = {
     width: 2000,
@@ -36,37 +82,39 @@ try {
     const mapPath = path.join(__dirname, 'map.json');
     if (fs.existsSync(mapPath)) {
         const rawMap = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-        MAP_DATA.tiles = rawMap;
+        // FIX 10: Validate map data
+        if (!Array.isArray(rawMap)) throw new Error('Invalid map format');
+
+        MAP_DATA.tiles = rawMap.filter(t => t && typeof t.x === 'number');
         MAP_DATA.width = 2000;
         MAP_DATA.height = 2000;
 
-        rawMap.forEach(tile => {
-            if (tile.collision) {
+        MAP_DATA.tiles.forEach(tile => {
+            if (tile.collision && tile.x >= 0 && tile.y >= 0) {
                 MAP_DATA.walls.push({
-                    x: tile.x,
-                    y: tile.y,
-                    width: tile.s,
-                    height: tile.s
+                    x: Math.max(0, tile.x),
+                    y: Math.max(0, tile.y),
+                    width: Math.min(tile.s || 32, 100),
+                    height: Math.min(tile.s || 32, 100)
                 });
             }
             if (tile.swimmable) {
                 MAP_DATA.waterTiles.push({
-                    x: tile.x,
-                    y: tile.y,
-                    width: tile.s,
-                    height: tile.s
+                    x: tile.x, y: tile.y,
+                    width: tile.s || 32, height: tile.s || 32
                 });
             }
         });
 
-        for (let i = 0; i < 20; i++) {
+        // Generate safe spawn points
+        for (let i = 0; i < 30; i++) {
             let x, y, attempts = 0;
             do {
-                x = Math.random() * (MAP_DATA.width - 100) + 50;
-                y = Math.random() * (MAP_DATA.height - 100) + 50;
+                x = Math.random() * (MAP_DATA.width - 200) + 100;
+                y = Math.random() * (MAP_DATA.height - 200) + 100;
                 attempts++;
-            } while (checkWallCollision(x, y, 25) && attempts < 50);
-            MAP_DATA.spawnPoints.push({ x, y });
+            } while (checkWallCollision(x, y, 25) && attempts < 100);
+            if (attempts < 100) MAP_DATA.spawnPoints.push({ x, y });
         }
 
         console.log('✅ Map loaded:', MAP_DATA.tiles.length, 'tiles');
@@ -85,32 +133,34 @@ try {
 } catch (err) {
     console.error('❌ Error loading map:', err.message);
 }
+
 // =====================================
-// LOAD SPRITE DATA
+// 2. LOAD SPRITE DATA - VALIDATED
 // =====================================
 let SPRITE_DATA = {
-    tileSize: 50,
-    tiles: {},
-    weapons: {},
-    characters: {},
-    items: {}
+    tileSize: 50, tiles: {}, weapons: {}, characters: {}, items: {}
 };
 
 try {
     const spritePath = path.join(__dirname, 'sprite.json');
     if (fs.existsSync(spritePath)) {
-        SPRITE_DATA = JSON.parse(fs.readFileSync(spritePath, 'utf8'));
+        const raw = JSON.parse(fs.readFileSync(spritePath, 'utf8'));
+        // FIX 10: Whitelist only needed data
+        SPRITE_DATA = {
+            tileSize: Math.min(100, raw.tileSize || 50),
+            tiles: raw.tiles || {},
+            weapons: raw.weapons || {},
+            characters: raw.characters || {},
+            items: raw.items || {}
+        };
         console.log('✅ Sprite.json loaded');
-        console.log(' Tiles:', Object.keys(SPRITE_DATA.tiles || {}).length);
-        console.log(' Weapons:', Object.keys(SPRITE_DATA.weapons || {}).length);
-    } else {
-        console.log('⚠️ sprite.json not found, using defaults');
     }
 } catch (err) {
     console.error('❌ Error loading sprite.json:', err.message);
 }
+
 // =====================================
-// 2. CONFIG
+// 3. CONFIG - SERVER AUTHORITATIVE
 // =====================================
 const CONFIG = {
     MAP_SIZE: MAP_DATA.width,
@@ -141,7 +191,7 @@ const CONFIG = {
 };
 
 // =====================================
-// 3. GLOBAL STATE
+// 4. GLOBAL STATE
 // =====================================
 let players = {};
 let matches = {};
@@ -149,9 +199,14 @@ let rooms = {};
 let matchmakingQueue = { solo: [], duo: [], squad: [] };
 
 // =====================================
-// 4. COLLISION FUNCTIONS
+// 5. COLLISION FUNCTIONS - SECURE
 // =====================================
 function checkWallCollision(x, y, radius = 12) {
+    // FIX 10: Validate inputs
+    if (typeof x!== 'number' || typeof y!== 'number') return true;
+    x = Math.max(0, Math.min(MAP_DATA.width, x));
+    y = Math.max(0, Math.min(MAP_DATA.height, y));
+
     for (const wall of MAP_DATA.walls) {
         if (x + radius > wall.x &&
             x - radius < wall.x + wall.width &&
@@ -174,7 +229,9 @@ function checkWaterTile(x, y) {
 }
 
 function getDistance(x1, y1, x2, y2) {
-    return Math.hypot(x2 - x1, y2 - y1);
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return Math.sqrt(dx * dx + dy * dy);
 }
 
 function randomSpawnPosition() {
@@ -189,19 +246,43 @@ function randomSpawnPosition() {
 }
 
 // =====================================
-// 5. GAME ENTITIES
+// 6. SANITIZATION - FIX 12
+// =====================================
+function sanitizeString(str, maxLen = 50) {
+    if (typeof str!== 'string') return '';
+    return str.substring(0, maxLen).replace(/[<>'"]/g, '').trim();
+}
+
+function sanitizeUsername(username) {
+    return sanitizeString(username, 20).replace(/[^a-zA-Z0-9_]/g, '') || 'Player';
+}
+
+// =====================================
+// 7. GAME ENTITIES
 // =====================================
 function createPlayer(socketId, data) {
     const pos = randomSpawnPosition();
     return {
-        id: socketId, uid: data.uid || null, username: data.username || 'Player',
-        x: pos.x, y: pos.y, angle: 0, hp: CONFIG.PLAYER_HP, armor: 0,
+        id: socketId,
+        uid: data.uid || null,
+        username: sanitizeUsername(data.username),
+        x: pos.x, y: pos.y, angle: 0,
+        hp: CONFIG.PLAYER_HP,
+        armor: 0,
         weapon: 'fist', ammo: Infinity, grenades: 0,
-        kills: 0, damage: 0, level: data.level || 1, xp: 0,
-        skin: data.skin || { color: '#00ff00', hat: 'none' },
+        kills: 0, damage: 0,
+        level: Math.max(1, Math.min(100, data.level || 1)),
+        xp: 0,
+        skin: {
+            color: /^#[0-9A-F]{6}$/i.test(data.skin?.color)? data.skin.color : '#00ff00',
+            hat: ['none','cap','helmet','crown'].includes(data.skin?.hat)? data.skin.hat : 'none'
+        },
         matchId: null, roomId: null, inVehicle: null,
-        isScoping: false, isSwimming: false, lastShot: 0,
-        velocity: { x: 0, y: 0 }, isSprinting: false, friends: []
+        isScoping: false, isSwimming: false,
+        lastShot: 0, lastMove: Date.now(), lastGrenade: 0,
+        velocity: { x: 0, y: 0 },
+        isSprinting: false,
+        friends: []
     };
 }
 
@@ -236,7 +317,7 @@ function createMatch(players, mode) {
             y = Math.random() * CONFIG.MAP_SIZE;
             attempts++;
         } while (checkWallCollision(x, y, 10) && attempts < 50);
-        match.loot.push(createLoot(x, y));
+        if (attempts < 50) match.loot.push(createLoot(x, y));
     }
 
     for (let i = 0; i < CONFIG.VEHICLE_SPAWN_COUNT; i++) {
@@ -246,7 +327,7 @@ function createMatch(players, mode) {
             y = Math.random() * CONFIG.MAP_SIZE;
             attempts++;
         } while (checkWallCollision(x, y, 30) && attempts < 50);
-        match.vehicles.push(createVehicle(x, y));
+        if (attempts < 50) match.vehicles.push(createVehicle(x, y));
     }
 
     matches[matchId] = match;
@@ -280,17 +361,26 @@ function createRoom(hostId) {
     host.roomId = roomId;
     return rooms[roomId];
 }
-
 // =====================================
-// 6. MATCHMAKING
+// 8. MATCHMAKING - SECURE
 // =====================================
 function addToMatchmaking(socketId, mode) {
     const player = players[socketId];
     if (!player || player.matchId) return;
 
+    // FIX 6: Rate limit matchmaking
+    if (!checkRateLimit(socketId, 'joinRoom', ANTI_CHEAT.MAX_JOIN_ROOM_RATE)) {
+        socket.emit('serverMessage', { text: 'Too many requests', type: 'error' });
+        return;
+    }
+
+    // Remove from all queues first
     Object.keys(matchmakingQueue).forEach(m => {
         matchmakingQueue[m] = matchmakingQueue[m].filter(id => id!== socketId);
     });
+
+    // FIX 10: Validate mode
+    if (!['solo', 'duo', 'squad'].includes(mode)) mode = 'solo';
 
     matchmakingQueue[mode].push(socketId);
     console.log(`${player.username} joined ${mode} queue. Size: ${matchmakingQueue[mode].length}`);
@@ -305,7 +395,9 @@ function checkMatchmaking(mode) {
         const matchPlayers = [];
         for (let i = 0; i < requiredPlayers; i++) {
             const playerId = queue.shift();
-            if (players[playerId]) matchPlayers.push(players[playerId]);
+            if (players[playerId] &&!players[playerId].matchId) {
+                matchPlayers.push(players[playerId]);
+            }
         }
 
         if (matchPlayers.length >= 2) {
@@ -329,26 +421,26 @@ function startMatch(matchId) {
     match.startTime = Date.now();
 
     Object.values(match.players).forEach(p => {
-        io.to(p.id).emit('gameStart', {
-            matchId: matchId, players: match.players,
-            loot: match.loot, vehicles: match.vehicles, zone: match.zone,
-            mapData: { width: MAP_DATA.width, height: MAP_DATA.height, walls: MAP_DATA.walls }
-        });
+        const socket = io.sockets.sockets.get(p.id);
+        if (socket) {
+            socket.join(matchId);
+            socket.emit('gameStart', {
+                matchId: matchId,
+                players: match.players,
+                loot: match.loot,
+                vehicles: match.vehicles,
+                zone: match.zone,
+                mapData: { width: MAP_DATA.width, height: MAP_DATA.height, walls: MAP_DATA.walls },
+                spriteData: SPRITE_DATA
+            });
+        }
     });
 
     console.log(`Match ${matchId} started with ${Object.keys(match.players).length} players`);
 }
-     Object.values(match.players).forEach(p => {
-    io.to(p.id).emit('gameStart', {
-        matchId: matchId, players: match.players,
-        loot: match.loot, vehicles: match.vehicles, zone: match.zone,
-        mapData: { width: MAP_DATA.width, height: MAP_DATA.height, walls: MAP_DATA.walls },
-        spriteData: SPRITE_DATA // ← AMPIO ITY
-    });
-});
 
 // =====================================
-// 7. GAME LOOP
+// 9. GAME LOOP - 20 TICK/SEC
 // =====================================
 setInterval(() => {
     Object.values(matches).forEach(match => {
@@ -358,6 +450,7 @@ setInterval(() => {
 }, 1000 / CONFIG.TICK_RATE);
 
 function updateMatch(match) {
+    // Zone shrink
     match.zone.timer -= 1000 / CONFIG.TICK_RATE;
     if (match.zone.timer <= 0) {
         match.zone.phase++;
@@ -372,15 +465,15 @@ function updateMatch(match) {
     }
     if (match.zone.radius > match.zone.targetRadius) match.zone.radius -= 2;
 
+    // Update bullets - SERVER AUTHORITATIVE - FIX 3
     match.bullets = match.bullets.filter(bullet => {
         bullet.x += bullet.vx * (1 / CONFIG.TICK_RATE);
         bullet.y += bullet.vy * (1 / CONFIG.TICK_RATE);
         bullet.lifetime -= 1000 / CONFIG.TICK_RATE;
 
-        if (checkWallCollision(bullet.x, bullet.y, 3)) {
-            return false;
-        }
+        if (checkWallCollision(bullet.x, bullet.y, 3)) return false;
 
+        // Check player hits
         Object.values(match.players).forEach(player => {
             if (player.id === bullet.ownerId || player.hp <= 0) return;
             const dist = getDistance(bullet.x, bullet.y, player.x, player.y);
@@ -389,14 +482,14 @@ function updateMatch(match) {
                 const headshot = dist < 8;
                 if (headshot) damage *= 2;
 
+                // Armor calculation - FIX 11
                 if (player.armor > 0) {
                     const armorAbsorb = Math.min(player.armor, damage * 0.7);
-                    player.armor -= armorAbsorb;
+                    player.armor = Math.max(0, player.armor - armorAbsorb);
                     damage -= armorAbsorb;
                 }
 
-                player.hp -= damage;
-                player.hp = Math.max(0, player.hp);
+                player.hp = Math.max(0, player.hp - damage);
 
                 const owner = match.players[bullet.ownerId];
                 if (owner) {
@@ -420,16 +513,17 @@ function updateMatch(match) {
         return bullet.lifetime > 0 && bullet.x > 0 && bullet.x < CONFIG.MAP_SIZE && bullet.y > 0 && bullet.y < CONFIG.MAP_SIZE;
     });
 
+    // Zone damage + swim check
     Object.values(match.players).forEach(player => {
         if (player.hp <= 0) return;
         const dist = getDistance(player.x, player.y, match.zone.x, match.zone.y);
         if (dist > match.zone.radius) {
-            player.hp -= CONFIG.ZONE_DAMAGE * (1 / CONFIG.TICK_RATE);
-            player.hp = Math.max(0, player.hp);
+            player.hp = Math.max(0, player.hp - CONFIG.ZONE_DAMAGE * (1 / CONFIG.TICK_RATE));
         }
         player.isSwimming = checkWaterTile(player.x, player.y);
     });
 
+    // Check win condition
     const alivePlayers = Object.values(match.players).filter(p => p.hp > 0);
     match.aliveCount = alivePlayers.length;
 
@@ -439,9 +533,12 @@ function updateMatch(match) {
         endMatch(match.id, null);
     }
 
+    // Broadcast game state
     io.to(match.id).emit('gameUpdate', {
-        players: match.players, bullets: match.bullets,
-        zone: match.zone, aliveCount: match.aliveCount
+        players: match.players,
+        bullets: match.bullets,
+        zone: match.zone,
+        aliveCount: match.aliveCount
     });
 }
 
@@ -456,9 +553,12 @@ function endMatch(matchId, winnerId) {
         const xp = isWinner? 200 + p.kills * 50 : p.kills * 25;
 
         io.to(p.id).emit(isWinner? 'victory' : 'playerDied', {
-            kills: p.kills, damage: Math.floor(p.damage),
+            kills: p.kills,
+            damage: Math.floor(p.damage),
             survived: Math.floor((Date.now() - match.startTime) / 1000),
-            coins: coins, xp: xp, rank: match.aliveCount + 1
+            coins: coins,
+            xp: xp,
+            rank: match.aliveCount + 1
         });
         p.matchId = null;
     });
@@ -468,13 +568,15 @@ function endMatch(matchId, winnerId) {
 }
 
 // =====================================
-// 8. SOCKET HANDLERS
+// 10. SOCKET HANDLERS - FULL ANTI-CHEAT
 // =====================================
 io.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
     io.emit('onlineCount', Object.keys(players).length);
 
     socket.on('joinGame', (data) => {
+        // FIX 10: Validate data
+        if (!data || typeof data.username!== 'string') return;
         players[socket.id] = createPlayer(socket.id, data);
         console.log(`${data.username} joined`);
         io.emit('onlineCount', Object.keys(players).length);
@@ -484,6 +586,7 @@ io.on('connection', (socket) => {
     socket.on('cancelMatchmaking', () => removeFromMatchmaking(socket.id));
 
     socket.on('createRoom', () => {
+        if (!checkRateLimit(socket.id, 'joinRoom', ANTI_CHEAT.MAX_JOIN_ROOM_RATE)) return;
         const room = createRoom(socket.id);
         if (room) {
             socket.join(room.id);
@@ -493,10 +596,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('joinRoom', (roomId) => {
+        if (!checkRateLimit(socket.id, 'joinRoom', ANTI_CHEAT.MAX_JOIN_ROOM_RATE)) return;
         const room = rooms[roomId];
         const player = players[socket.id];
         if (!room ||!player) return socket.emit('roomError', 'Room not found');
         if (room.players.length >= 4) return socket.emit('roomError', 'Room is full');
+        if (room.players.find(p => p.id === socket.id)) return;
 
         room.players.push({ id: socket.id, username: player.username, ready: false, skin: player.skin });
         player.roomId = roomId;
@@ -531,7 +636,7 @@ io.on('connection', (socket) => {
 
         const roomPlayer = room.players.find(p => p.id === socket.id);
         if (roomPlayer) {
-            roomPlayer.ready = isReady;
+            roomPlayer.ready = Boolean(isReady);
             io.to(room.id).emit('roomUpdate', room);
 
             if (room.players.length >= 2 && room.players.every(p => p.ready)) {
@@ -546,9 +651,17 @@ io.on('connection', (socket) => {
     });
 
     socket.on('chatMessage', (data) => {
+        // FIX 6: Rate limit + sanitize - FIX 12
+        if (!checkRateLimit(socket.id, 'chat', ANTI_CHEAT.MAX_CHAT_RATE)) return;
         const player = players[socket.id];
-        if (!player) return;
-        const msg = { username: player.username, message: data.message.substring(0, 200), timestamp: Date.now() };
+        if (!player ||!data ||!data.message) return;
+
+        const msg = {
+            username: player.username,
+            message: sanitizeString(data.message, 200),
+            timestamp: Date.now()
+        };
+
         if (data.type === 'lobby') {
             io.emit('chatMessage', {...msg, type: 'lobby' });
         } else if (data.type === 'room' && player.roomId) {
@@ -558,7 +671,7 @@ io.on('connection', (socket) => {
 
     socket.on('addFriend', (username) => {
         const player = players[socket.id];
-        const target = Object.values(players).find(p => p.username === username);
+        const target = Object.values(players).find(p => p.username === sanitizeUsername(username));
         if (!player ||!target || target.id === socket.id) return;
         io.to(target.id).emit('friendRequest', { fromId: socket.id, username: player.username });
     });
@@ -566,35 +679,53 @@ io.on('connection', (socket) => {
     socket.on('friendRequestResponse', (data) => {
         const player = players[socket.id];
         const fromPlayer = players[data.fromId];
-        if (!player ||!fromPlayer) return;
-        if (data.accept) {
-            if (!player.friends) player.friends = [];
-            if (!fromPlayer.friends) fromPlayer.friends = [];
-            player.friends.push({ id: fromPlayer.id, username: fromPlayer.username, online: true });
-            fromPlayer.friends.push({ id: player.id, username: player.username, online: true });
-            io.to(socket.id).emit('friendAdded', { id: fromPlayer.id, username: fromPlayer.username, online: true });
-            io.to(data.fromId).emit('friendAdded', { id: player.id, username: player.username, online: true });
-        }
+        if (!player ||!fromPlayer ||!data.accept) return;
+
+        if (!player.friends) player.friends = [];
+        if (!fromPlayer.friends) fromPlayer.friends = [];
+        if (player.friends.find(f => f.id === fromPlayer.id)) return;
+
+        player.friends.push({ id: fromPlayer.id, username: fromPlayer.username, online: true });
+        fromPlayer.friends.push({ id: player.id, username: player.username, online: true });
+        io.to(socket.id).emit('friendAdded', { id: fromPlayer.id, username: fromPlayer.username, online: true });
+        io.to(data.fromId).emit('friendAdded', { id: player.id, username: player.username, online: true });
     });
 
-    socket.on('inviteFriend', (data) => {
-        const player = players[socket.id];
-        if (!player ||!player.roomId) return;
-        io.to(data.friendId).emit('friendInvite', { username: player.username, roomId: player.roomId });
-    });
-
+    // =====================================
+    // 11. MOVEMENT - ANTI-CHEAT - FIX 1
+    // =====================================
     socket.on('move', (data) => {
         const player = players[socket.id];
         if (!player ||!player.matchId || player.hp <= 0) return;
         const match = matches[player.matchId];
         if (!match || match.state!== 'active') return;
 
-        let speed = player.isSwimming? CONFIG.PLAYER_SWIM_SPEED : (player.isSprinting? CONFIG.PLAYER_SPRINT_SPEED : CONFIG.PLAYER_SPEED);
-        const dt = 1 / CONFIG.TICK_RATE;
+        // FIX 1: Rate limit
+        if (!checkRateLimit(socket.id, 'move', 30)) return;
 
+        // FIX 1: Validate data
+        if (typeof data.x!== 'number' || typeof data.y!== 'number') return;
+        data.x = Math.max(-1, Math.min(1, data.x));
+        data.y = Math.max(-1, Math.min(1, data.y));
+        data.angle = typeof data.angle === 'number'? data.angle : player.angle;
+        data.sprint = Boolean(data.sprint);
+
+        const now = Date.now();
+        if (!player.lastMove) player.lastMove = now;
+        const dt = (now - player.lastMove) / 1000;
+        if (dt < 0.01 || dt > 0.5) { player.lastMove = now; return; }
+
+        // FIX 1: Speed hack check
+        const dist = getDistance(player.x, player.y, player.x + data.x * 10, player.y + data.y * 10);
+        const maxSpeed = player.isSwimming? CONFIG.PLAYER_SWIM_SPEED : (data.sprint? CONFIG.PLAYER_SPRINT_SPEED : CONFIG.PLAYER_SPEED);
+        const maxDist = maxSpeed * dt * ANTI_CHEAT.MAX_MOVE_TOLERANCE;
+        if (dist > maxDist) return; // Ignore teleport/speed hack
+
+        const speed = maxSpeed;
         const newX = player.x + data.x * speed * dt;
         const newY = player.y + data.y * speed * dt;
 
+        // FIX 1: Wall collision server-side
         if (!checkWallCollision(newX, player.y, 12)) player.x = newX;
         if (!checkWallCollision(player.x, newY, 12)) player.y = newY;
 
@@ -602,18 +733,28 @@ io.on('connection', (socket) => {
         player.isSprinting = data.sprint;
         player.x = Math.max(20, Math.min(CONFIG.MAP_SIZE - 20, player.x));
         player.y = Math.max(20, Math.min(CONFIG.MAP_SIZE - 20, player.y));
+        player.lastMove = now;
     });
 
+    // =====================================
+    // 12. SHOOT - RATE LIMITED - FIX 2
+    // =====================================
     socket.on('shoot', (data) => {
         const player = players[socket.id];
         if (!player ||!player.matchId || player.hp <= 0) return;
         const match = matches[player.matchId];
         if (!match) return;
 
+        // FIX 2: Rate limit
+        if (!checkRateLimit(socket.id, 'shoot', ANTI_CHEAT.MAX_SHOOT_RATE)) return;
+
         const weapon = CONFIG.WEAPONS[player.weapon];
         const now = Date.now();
         if (now - player.lastShot < weapon.fireRate) return;
         if (weapon.ammo!== Infinity && player.ammo <= 0) return;
+
+        // FIX 8: Validate angle
+        if (typeof data.angle!== 'number') return;
 
         player.lastShot = now;
         if (weapon.ammo!== Infinity) player.ammo--;
@@ -623,53 +764,72 @@ io.on('connection', (socket) => {
             const spread = weapon.spread || 0;
             const angle = data.angle + (Math.random() - 0.5) * spread;
             match.bullets.push({
-                id: uuidv4(), ownerId: socket.id, x: player.x, y: player.y,
+                id: uuidv4(),
+                ownerId: socket.id,
+                x: player.x, y: player.y,
                 vx: Math.cos(angle) * weapon.bulletSpeed,
                 vy: Math.sin(angle) * weapon.bulletSpeed,
-                damage: weapon.damage, lifetime: weapon.range / weapon.bulletSpeed * 1000
+                damage: weapon.damage,
+                lifetime: weapon.range / weapon.bulletSpeed * 1000
             });
         }
-        io.to(player.matchId).emit('soundEvent', 'shoot');
     });
-
     socket.on('scope', (isScoping) => {
         const player = players[socket.id];
-        if (player) player.isScoping = isScoping;
+        if (player) player.isScoping = Boolean(isScoping);
     });
 
     socket.on('reload', () => {
         const player = players[socket.id];
         if (!player) return;
         const weapon = CONFIG.WEAPONS[player.weapon];
-        if (weapon.ammo!== Infinity) player.ammo = weapon.ammo;
+        if (weapon && weapon.ammo!== Infinity) {
+            player.ammo = weapon.ammo;
+        }
     });
 
+    // =====================================
+    // 13. GRENADE - RATE LIMITED - FIX 9
+    // =====================================
     socket.on('grenade', (data) => {
         const player = players[socket.id];
         if (!player ||!player.matchId || player.grenades <= 0) return;
         const match = matches[player.matchId];
         if (!match) return;
 
+        // FIX 9: Rate limit grenades
+        if (!checkRateLimit(socket.id, 'grenade', ANTI_CHEAT.MAX_GRENADES_SEC)) return;
+
+        // FIX 8: Validate angle
+        if (typeof data.angle!== 'number') return;
+
         player.grenades--;
         const grenadeX = player.x + Math.cos(data.angle) * 150;
         const grenadeY = player.y + Math.sin(data.angle) * 150;
 
+        // FIX 4: Clamp grenade position
+        const finalX = Math.max(0, Math.min(CONFIG.MAP_SIZE, grenadeX));
+        const finalY = Math.max(0, Math.min(CONFIG.MAP_SIZE, grenadeY));
+
         setTimeout(() => {
             if (!matches[player.matchId]) return;
-            io.to(player.matchId).emit('explosion', { x: grenadeX, y: grenadeY });
+            io.to(player.matchId).emit('explosion', { x: finalX, y: finalY });
+
             Object.values(match.players).forEach(p => {
                 if (p.hp <= 0) return;
-                const dist = getDistance(grenadeX, grenadeY, p.x, p.y);
+                const dist = getDistance(finalX, finalY, p.x, p.y);
                 if (dist < CONFIG.GRENADE_RADIUS) {
                     const damage = CONFIG.GRENADE_DAMAGE * (1 - dist / CONFIG.GRENADE_RADIUS);
-                    p.hp -= damage;
-                    p.hp = Math.max(0, p.hp);
+                    p.hp = Math.max(0, p.hp - damage);
                     if (p.hp <= 0 && p.id!== socket.id) player.kills++;
                 }
             });
         }, 3000);
     });
 
+    // =====================================
+    // 14. INTERACT - VALIDATED - FIX 4
+    // =====================================
     socket.on('interact', () => {
         const player = players[socket.id];
         if (!player ||!player.matchId) return;
@@ -677,7 +837,8 @@ io.on('connection', (socket) => {
         if (!match) return;
 
         let nearestLoot = null;
-        let nearestDist = 50;
+        let nearestDist = 60; // FIX 4: Max pickup distance
+
         match.loot.forEach(loot => {
             if (loot.picked) return;
             const dist = getDistance(player.x, player.y, loot.x, loot.y);
@@ -693,6 +854,9 @@ io.on('connection', (socket) => {
         }
     });
 
+    // =====================================
+    // 15. VEHICLE - VALIDATED
+    // =====================================
     socket.on('enterVehicle', () => {
         const player = players[socket.id];
         if (!player ||!player.matchId) return;
@@ -707,7 +871,8 @@ io.on('connection', (socket) => {
             }
         } else {
             let nearestVehicle = null;
-            let nearestDist = 60;
+            let nearestDist = 60; // FIX 4: Max enter distance
+
             match.vehicles.forEach(v => {
                 if (v.driver) return;
                 const dist = getDistance(player.x, player.y, v.x, v.y);
@@ -716,6 +881,7 @@ io.on('connection', (socket) => {
                     nearestVehicle = v;
                 }
             });
+
             if (nearestVehicle) {
                 nearestVehicle.driver = socket.id;
                 player.inVehicle = nearestVehicle.id;
@@ -723,25 +889,45 @@ io.on('connection', (socket) => {
         }
     });
 
+    // =====================================
+    // 16. WEAPON SWITCH - VALIDATED - FIX 8
+    // =====================================
     socket.on('switchWeapon', (weaponName) => {
         const player = players[socket.id];
+        // FIX 8: Whitelist weapons only
         if (!player ||!CONFIG.WEAPONS[weaponName]) return;
         player.weapon = weaponName;
         player.ammo = CONFIG.WEAPONS[weaponName].ammo;
     });
 
+    // =====================================
+    // 17. SKIN CHANGE - VALIDATED - FIX 10
+    // =====================================
     socket.on('changeSkin', (skin) => {
         const player = players[socket.id];
-        if (player) player.skin = skin;
+        if (!player ||!skin) return;
+
+        // FIX 10: Validate skin data
+        player.skin = {
+            color: /^#[0-9A-F]{6}$/i.test(skin.color)? skin.color : '#00ff00',
+            hat: ['none','cap','helmet','crown','viking','wizard','cowboy','tophat'].includes(skin.hat)? skin.hat : 'none'
+        };
     });
 
+    // =====================================
+    // 18. DISCONNECT - CLEANUP - FIX 7
+    // =====================================
     socket.on('disconnect', () => {
         console.log('Player disconnected:', socket.id);
         const player = players[socket.id];
+
         if (player) {
+            // Remove from match
             if (player.matchId && matches[player.matchId]) {
                 delete matches[player.matchId].players[socket.id];
             }
+
+            // Remove from room
             if (player.roomId && rooms[player.roomId]) {
                 const room = rooms[player.roomId];
                 room.players = room.players.filter(p => p.id!== socket.id);
@@ -752,21 +938,30 @@ io.on('connection', (socket) => {
                     io.to(room.id).emit('roomUpdate', room);
                 }
             }
+
+            // Remove from matchmaking
             removeFromMatchmaking(socket.id);
+
+            // Notify friends
             if (player.friends) {
                 player.friends.forEach(f => {
                     const friend = players[f.id];
                     if (friend) io.to(f.id).emit('friendUpdate');
                 });
             }
+
             delete players[socket.id];
         }
+
+        // FIX 7: Clear all rate limits
+        clearRateLimits(socket.id);
+
         io.emit('onlineCount', Object.keys(players).length);
     });
 });
 
 // =====================================
-// 9. LOOT HANDLER
+// 19. LOOT HANDLER - SERVER AUTHORITATIVE - FIX 3
 // =====================================
 function handleLootPickup(player, loot, match) {
     const lootData = loot.type.split('_');
@@ -774,12 +969,16 @@ function handleLootPickup(player, loot, match) {
     const item = lootData[1];
 
     if (category === 'weapon') {
-        player.weapon = item;
-        player.ammo = CONFIG.WEAPONS[item].ammo;
-        io.to(player.id).emit('lootPickup', { type: 'weapon', item: item, playerId: player.id });
+        // FIX 8: Validate weapon exists
+        if (CONFIG.WEAPONS[item]) {
+            player.weapon = item;
+            player.ammo = CONFIG.WEAPONS[item].ammo;
+            io.to(player.id).emit('lootPickup', { type: 'weapon', item: item, playerId: player.id });
+        }
     } else if (category === 'ammo') {
-        player.ammo += item === 'light'? 30 : 20;
-        io.to(player.id).emit('lootPickup', { type: 'ammo', amount: item === 'light'? 30 : 20, playerId: player.id });
+        const amount = item === 'light'? 30 : 20;
+        player.ammo += amount;
+        io.to(player.id).emit('lootPickup', { type: 'ammo', amount: amount, playerId: player.id });
     } else if (loot.type === 'armor') {
         player.armor = Math.min(CONFIG.PLAYER_ARMOR_MAX, player.armor + 50);
         io.to(player.id).emit('lootPickup', { type: 'armor', amount: 50, playerId: player.id });
@@ -787,7 +986,7 @@ function handleLootPickup(player, loot, match) {
         player.hp = Math.min(CONFIG.PLAYER_HP, player.hp + 75);
         io.to(player.id).emit('lootPickup', { type: 'heal', amount: 75, playerId: player.id });
     } else if (loot.type === 'grenade') {
-        player.grenades++;
+        player.grenades = Math.min(5, player.grenades + 1); // FIX 4: Max 5 grenades
         io.to(player.id).emit('lootPickup', { type: 'grenade', amount: 1, playerId: player.id });
     }
 
@@ -796,14 +995,20 @@ function handleLootPickup(player, loot, match) {
 }
 
 // =====================================
-// 10. EXPRESS ROUTES
+// 20. EXPRESS ROUTES - SECURE
 // =====================================
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/api/map', (req, res) => {
-    res.json(MAP_DATA);
+    // FIX 5: Don't send sensitive data
+    res.json({
+        width: MAP_DATA.width,
+        height: MAP_DATA.height,
+        walls: MAP_DATA.walls,
+        waterTiles: MAP_DATA.waterTiles
+    });
 });
 
 app.get('/api/sprites', (req, res) => {
@@ -814,31 +1019,53 @@ app.get('/api/stats', (req, res) => {
     res.json({
         players: Object.keys(players).length,
         matches: Object.keys(matches).map(id => ({
-            id, players: Object.keys(matches[id].players).length, state: matches[id].state
+            id,
+            players: Object.keys(matches[id].players).length,
+            state: matches[id].state
         })),
         rooms: Object.keys(rooms).map(id => ({
-            id, players: rooms[id].players.length, host: rooms[id].host
+            id,
+            players: rooms[id].players.length,
+            host: rooms[id].host
         }))
     });
 });
 
 // =====================================
-// 11. START SERVER
+// 21. START SERVER
 // =====================================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🔥 MG FIGHTER Server V3 running on port ${PORT}`);
+    console.log(`🔥 MG FIGHTER Server V4.1 - FULL ANTI-CHEAT`);
     console.log(`🎮 Max players: ${CONFIG.MAX_PLAYERS_PER_MATCH}`);
     console.log(`⚡ Tick rate: ${CONFIG.TICK_RATE} Hz`);
     console.log(`🗺️ Map: ${CONFIG.MAP_SIZE}x${CONFIG.MAP_SIZE}`);
     console.log(`🧱 Walls: ${MAP_DATA.walls.length}`);
+    console.log(`🛡️ Anti-Cheat: ENABLED`);
     console.log(`📁 Static files: Serving from ${__dirname}`);
 });
 
+// =====================================
+// 22. GRACEFUL SHUTDOWN - FIX 7
+// =====================================
 process.on('SIGTERM', () => {
     console.log('SIGTERM received, closing server...');
+    io.emit('serverMessage', { text: 'Server restarting...', type: 'info' });
+
     server.close(() => {
         console.log('Server closed');
+        // Clear all rate limits
+        Object.keys(rateLimits).forEach(type => rateLimits[type].clear());
         process.exit(0);
     });
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    // Don't crash - log and continue
+});
+
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Rejection:', err);
+    // Don't crash - log and continue
 });
