@@ -898,28 +898,73 @@
     </div>
 </div>
 
-<!-- TERMS MODAL -->
 <div id="termsModal" class="modal hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Terms of Service</h2>
-            <button class="close-btn" onclick="closeTerms()">✕</button>
+    <div class="modal-content" style="max-width:500px;">
+        <h2>Terms of Service</h2>
+        <div style="max-height:300px;overflow-y:auto;margin:15px 0;padding:10px;background:#1a1a1a;border-radius:6px;font-size:12px;line-height:1.6;">
+            <p><strong>1. Acceptance of Terms</strong><br>By playing MG FIGHTER, you agree to these terms...</p>
+            <p><strong>2. User Conduct</strong><br>No cheating, hacking, or exploiting bugs...</p>
+            <p><strong>3. Account Security</strong><br>You are responsible for your account...</p>
+            <p><strong>4. Privacy</strong><br>We collect gameplay data to improve service...</p>
+            <p><strong>5. Termination</strong><br>We reserve the right to ban violators...</p>
         </div>
-        <div class="modal-body">
-            <h3>1. Acceptance of Terms</h3>
-            <p>By accessing and playing MG FIGHTER, you accept and agree to be bound by the terms and provision of this agreement.</p>
-            
-            <h3>2. Game Rules</h3>
-            <p>Players must follow fair play guidelines. Cheating, hacking, or exploiting bugs is strictly prohibited.</p>
-            
-            <h3>3. Account Responsibility</h3>
-            <p>You are responsible for maintaining the confidentiality of your account and password.</p>
-            
-            <h3>4. Content Guidelines</h3>
-            <p>Offensive language, harassment, or inappropriate behavior will result in account suspension.</p>
-            
-            <h3>5. Termination</h3>
-            <p>We reserve the right to terminate accounts that violate our terms of service.</p>
+        <div style="display:flex;gap:10px;">
+            <button onclick="closeTerms()" class="btn-secondary" style="flex:1;">Cancel</button>
+            <button onclick="acceptTerms()" class="btn-primary" style="flex:1;">OK - Accept</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADMIN LOGIN SIDEBAR - MIAFINA -->
+<div id="adminLoginSidebar" style="
+    position: fixed;
+    top: 0;
+    right: -350px;
+    width: 320px;
+    height: 100vh;
+    background: linear-gradient(135deg, #1a0000, #000);
+    border-left: 3px solid #ff0000;
+    z-index: 99999;
+    transition: right 0.3s ease;
+    box-shadow: -5px 0 20px rgba(255,0,0,0.5);
+    display: none;
+">
+    <div style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid #ff0000;padding-bottom:10px;">
+            <h3 style="color:#ff0000;margin:0;font-size:16px;">🔐 ADMIN ACCESS</h3>
+            <button onclick="closeAdminLogin()" style="background:#ff0000;border:none;color:#fff;padding:5px 12px;cursor:pointer;border-radius:4px;font-weight:bold;">✕</button>
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label style="font-size:12px;color:#aaa;display:block;margin-bottom:5px;">Password:</label>
+            <input type="password" id="adminPassword" placeholder="Enter admin password" style="
+                width:100%;
+                padding:10px;
+                background:#222;
+                border:1px solid #444;
+                color:#fff;
+                border-radius:6px;
+                font-size:14px;
+            " onkeypress="if(event.key==='Enter') checkAdminPassword()">
+        </div>
+
+        <button onclick="checkAdminPassword()" style="
+            width:100%;
+            padding:12px;
+            background:#ff0000;
+            border:none;
+            color:#fff;
+            cursor:pointer;
+            border-radius:6px;
+            font-weight:bold;
+            font-size:14px;
+            margin-bottom:10px;
+        ">UNLOCK ADMIN</button>
+
+        <div id="adminLoginMsg" style="font-size:11px;color:#ff6666;text-align:center;min-height:20px;"></div>
+
+        <div style="margin-top:30px;padding-top:20px;border-top:1px solid #333;font-size:10px;color:#666;text-align:center;">
+            Authorized personnel only
         </div>
     </div>
 </div>
@@ -980,7 +1025,129 @@
         <button onclick="closeCredits()">BACK TO MENU</button>
     </div>
 </div>
+<!-- ADMIN PAGE - MIAFINA -->
+<div id="adminPage" class="screen hidden" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #0a0000, #000);
+    z-index: 99999;
+    overflow-y: auto;
+">
+    <div style="max-width:1200px;margin:0 auto;padding:20px;">
+        <!-- HEADER -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;border-bottom:2px solid #ff0000;padding-bottom:15px;">
+            <h1 style="color:#ff0000;margin:0;font-size:28px;">👑 ADMIN CONTROL CENTER</h1>
+            <button onclick="AdminPage.logout()" style="background:#ff0000;border:none;color:#fff;padding:10px 20px;cursor:pointer;border-radius:6px;font-weight:bold;">LOGOUT</button>
+        </div>
 
+        <!-- STATS -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:30px;">
+            <div style="background:#1a0000;border:1px solid #ff0000;padding:15px;border-radius:8px;">
+                <div style="font-size:12px;color:#aaa;">Online Players</div>
+                <div id="adminOnlineCount" style="font-size:32px;color:#00ff00;font-weight:bold;">0</div>
+            </div>
+            <div style="background:#1a0000;border:1px solid #ff0000;padding:15px;border-radius:8px;">
+                <div style="font-size:12px;color:#aaa;">Total Bans</div>
+                <div id="adminBanCount" style="font-size:32px;color:#ff0000;font-weight:bold;">0</div>
+            </div>
+            <div style="background:#1a0000;border:1px solid #ff0000;padding:15px;border-radius:8px;">
+                <div style="font-size:12px;color:#aaa;">Active Games</div>
+                <div id="adminGameCount" style="font-size:32px;color:#00aaff;font-weight:bold;">0</div>
+            </div>
+            <div style="background:#1a0000;border:1px solid #ff0000;padding:15px;border-radius:8px;">
+                <div style="font-size:12px;color:#aaa;">Server Uptime</div>
+                <div id="adminUptime" style="font-size:32px;color:#ffaa00;font-weight:bold;">0h</div>
+            </div>
+        </div>
+
+        <!-- CONTROLS -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <!-- LEFT: PLAYER MANAGEMENT -->
+            <div style="background:#0a0a0a;border:1px solid #333;padding:20px;border-radius:8px;">
+                <h3 style="color:#ffaa00;margin:0 0 15px 0;border-bottom:1px solid #333;padding-bottom:10px;">👤 PLAYER MANAGEMENT</h3>
+
+                <input id="adminPlayerSearch" placeholder="Search username..." style="
+                    width:100%;padding:10px;margin-bottom:15px;background:#222;border:1px solid #444;color:#fff;border-radius:6px;
+                " oninput="AdminPage.searchPlayer()">
+
+                <div id="adminPlayerList" style="max-height:300px;overflow-y:auto;margin-bottom:15px;"></div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <button onclick="AdminPage.giveDiamonds(1000)" class="btn-admin">💎 +1K</button>
+                    <button onclick="AdminPage.giveDiamonds(10000)" class="btn-admin">💎 +10K</button>
+                    <button onclick="AdminPage.giveCoins(5000)" class="btn-admin">💰 +5K</button>
+                    <button onclick="AdminPage.giveCoins(50000)" class="btn-admin">💰 +50K</button>
+                    <button onclick="AdminPage.giveLevel(10)" class="btn-admin">⭐ +10 LVL</button>
+                    <button onclick="AdminPage.giveBP()" class="btn-admin">🎫 MAX BP</button>
+                    <button onclick="AdminPage.healPlayer()" class="btn-admin">❤️ HEAL</button>
+                    <button onclick="AdminPage.killPlayer()" class="btn-admin danger">💀 KILL</button>
+                    <button onclick="AdminPage.banPlayer()" class="btn-admin danger">🚫 BAN</button>
+                    <button onclick="AdminPage.unbanPlayer()" class="btn-admin">✅ UNBAN</button>
+                </div>
+            </div>
+
+            <!-- RIGHT: SERVER CONTROL -->
+            <div style="background:#0a0a0a;border:1px solid #333;padding:20px;border-radius:8px;">
+                <h3 style="color:#00aaff;margin:0 0 15px 0;border-bottom:1px solid #333;padding-bottom:10px;">🌍 SERVER CONTROL</h3>
+
+                <textarea id="adminBroadcast" placeholder="Broadcast message to all players..." style="
+                    width:100%;height:80px;padding:10px;margin-bottom:10px;background:#222;border:1px solid #444;color:#fff;border-radius:6px;resize:none;
+                "></textarea>
+                <button onclick="AdminPage.broadcast()" class="btn-admin" style="width:100%;margin-bottom:15px;">📢 SEND BROADCAST</button>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px;">
+                    <button onclick="AdminPage.spawnLoot()" class="btn-admin">🎁 SPAWN LOOT</button>
+                    <button onclick="AdminPage.spawnVehicle()" class="btn-admin">🚗 SPAWN CAR</button>
+                    <button onclick="AdminPage.forceZone()" class="btn-admin">⭕ FORCE ZONE</button>
+                    <button onclick="AdminPage.kickAll()" class="btn-admin danger">👢 KICK ALL</button>
+                </div>
+
+                <div style="background:#1a0000;padding:10px;border-radius:6px;margin-top:15px;">
+                    <div style="font-size:11px;color:#aaa;margin-bottom:8px;">SERVER CONSOLE</div>
+                    <div id="adminConsole" style="background:#000;padding:10px;border-radius:4px;height:150px;overflow-y:auto;font-family:monospace;font-size:11px;color:#0f0;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SKINS -->
+        <div style="background:#0a0a0a;border:1px solid #333;padding:20px;border-radius:8px;margin-top:20px;">
+            <h3 style="color:#ff00ff;margin:0 0 15px 0;border-bottom:1px solid #333;padding-bottom:10px;">👑 GIVE COSMETICS</h3>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;">
+                <button onclick="AdminPage.giveSkin('crown')" class="btn-admin">👑 Crown</button>
+                <button onclick="AdminPage.giveSkin('viking')" class="btn-admin">🪖 Viking</button>
+                <button onclick="AdminPage.giveSkin('wizard')" class="btn-admin">🧙 Wizard</button>
+                <button onclick="AdminPage.giveSkin('gold_skin')" class="btn-admin">✨ Gold</button>
+                <button onclick="AdminPage.giveSkin('pink_skin')" class="btn-admin">💖 Pink</button>
+                <button onclick="AdminPage.giveSkin('purple_skin')" class="btn-admin">💜 Purple</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-admin {
+    padding: 10px;
+    background: #222;
+    border: 1px solid #444;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+.btn-admin:hover {
+    background: #333;
+    border-color: #ff0000;
+    transform: translateY(-2px);
+}
+.btn-admin.danger:hover {
+    background: #ff0000;
+    border-color: #ff0000;
+}
+</style>
 <!-- NOTIFICATION SYSTEM -->
 <div id="notificationContainer"></div>
 
