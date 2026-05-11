@@ -962,8 +962,8 @@
         }
     };
 
-    // ============================================
-// 21. GAME CORE - COMPLET 700 LIGNES
+// ============================================
+// 21. GAME CORE - TOKANA IHANY - 700 LIGNES
 // ============================================
 const Game = {
     loadAssets: async function() {
@@ -978,7 +978,7 @@ const Game = {
                 mapTiles = mapData.tiles || [];
                 console.log('✅ Map.json loaded:', mapTiles.length, 'tiles');
             } else {
-                console.warn('⚠️ map.json not found - using empty map');
+                console.warn('⚠️ map.json not found');
                 gameState.mapData = { width: 4000, height: 4000, walls: [], water: [] };
             }
 
@@ -1013,7 +1013,6 @@ const Game = {
                         else if (frame.row === 3) spriteData.animations.purple_walk_up.push(key);
                     });
                     spriteData.animations.purple_walk_right = spriteData.animations.purple_walk_left;
-                    console.log('✅ Purple animations loaded');
                 }
 
                 // Parse pink_character
@@ -1039,12 +1038,10 @@ const Game = {
                         else if (frame.row === 3) spriteData.animations.pink_walk_up.push(key);
                     });
                     spriteData.animations.pink_walk_right = spriteData.animations.pink_walk_left;
-                    console.log('✅ Pink animations loaded');
                 }
 
                 console.log('✅ sprite.json loaded:', Object.keys(spriteData.tiles).length, 'frames');
             } else {
-                console.warn('⚠️ sprite.json not found');
                 spriteData = { tiles: {}, animations: {} };
             }
 
@@ -1054,22 +1051,16 @@ const Game = {
             mapImg.src = './map.png';
             await new Promise((resolve) => {
                 mapImg.onload = () => {
-                    console.log('✅ map.png loaded:', mapImg.width, 'x', mapImg.height);
                     gameState.mapImage = mapImg;
                     gameState.mapLoaded = true;
+                    console.log('✅ map.png loaded');
                     resolve();
                 };
                 mapImg.onerror = () => {
-                    console.error('❌ map.png FAILED - Check raha misy ilay fichier');
                     gameState.mapLoaded = false;
                     resolve();
                 };
-                setTimeout(() => {
-                    if (!gameState.mapLoaded) {
-                        console.warn('⚠️ map.png timeout');
-                        resolve();
-                    }
-                }, 5000);
+                setTimeout(() => resolve(), 5000);
             });
 
             // 4. Load sprites.png
@@ -1078,21 +1069,15 @@ const Game = {
             spriteImage.src = './sprites.png';
             await new Promise((resolve) => {
                 spriteImage.onload = () => {
-                    console.log('✅ sprites.png loaded:', spriteImage.width, 'x', spriteImage.height);
                     gameState.spritesLoaded = true;
+                    console.log('✅ sprites.png loaded');
                     resolve();
                 };
                 spriteImage.onerror = () => {
-                    console.warn('⚠️ sprites.png not found - using fallback colors');
                     gameState.spritesLoaded = false;
                     resolve();
                 };
-                setTimeout(() => {
-                    if (!gameState.spritesLoaded) {
-                        console.warn('⚠️ sprites.png timeout');
-                        resolve();
-                    }
-                }, 3000);
+                setTimeout(resolve, 3000);
             });
 
             if (DOM.loadingText) DOM.loadingText.textContent = 'Ready!';
@@ -1100,8 +1085,6 @@ const Game = {
 
         } catch (error) {
             console.error('❌ Error loading assets:', error);
-            Notify.show('Failed to load game assets. Check console.', true);
-            if (DOM.loadingText) DOM.loadingText.textContent = 'Error loading assets';
             return false;
         }
     },
@@ -1124,10 +1107,7 @@ const Game = {
         Audio.init();
 
         const loaded = await this.loadAssets();
-        if (!loaded) {
-            Notify.show('Asset loading failed!', true);
-            return;
-        }
+        if (!loaded) return;
 
         lastFrameTime = performance.now();
         requestAnimationFrame(() => this.loop());
@@ -1164,25 +1144,21 @@ const Game = {
         const me = gameState.players[myId];
         if (!me) return;
 
-        // Update animation frames
         gameState.animations.frameTime += dt * 1000;
         if (gameState.animations.frameTime >= gameState.animations.frameDuration) {
             gameState.animations.frameTime = 0;
             gameState.animations.currentFrame = (gameState.animations.currentFrame + 1) % 4;
         }
 
-        // Smooth camera follow
         camera.x = Utils.lerp(camera.x, me.x - canvas.width / 2, 0.1);
         camera.y = Utils.lerp(camera.y, me.y - canvas.height / 2, 0.1);
 
-        // Camera shake
         if (camera.shake > 0) {
             camera.x += Utils.randomRange(-camera.shake, camera.shake);
             camera.y += Utils.randomRange(-camera.shake, camera.shake);
             camera.shake *= 0.9;
         }
 
-        // Update UI
         if (DOM.hp) DOM.hp.textContent = Math.max(0, Math.floor(me.hp));
         if (DOM.hpBar) DOM.hpBar.style.width = `${Utils.clamp(me.hp, 0, 100)}%`;
         if (DOM.armor) DOM.armor.textContent = Math.floor(me.armor || 0);
@@ -1196,7 +1172,6 @@ const Game = {
 
         this.handleInput();
 
-        // Update AI
         if (window.aiManager) {
             window.aiManager.update(dt, gameState, gameState.players);
         }
@@ -1205,20 +1180,12 @@ const Game = {
     render: function() {
         if (!ctx) return;
 
-        // Clear
         ctx.fillStyle = '#0a1a0a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw map.png
         if (gameState.mapImage?.complete && gameState.mapImage.naturalWidth > 0) {
-            ctx.drawImage(
-                gameState.mapImage,
-                -camera.x, -camera.y,
-                gameState.mapData.width,
-                gameState.mapData.height
-            );
+            ctx.drawImage(gameState.mapImage, -camera.x, -camera.y, gameState.mapData.width, gameState.mapData.height);
         } else {
-            // Fallback: draw tiles
             if (mapTiles.length > 0) {
                 const startX = Math.floor(camera.x / CONFIG.TILE_SIZE) - 1;
                 const startY = Math.floor(camera.y / CONFIG.TILE_SIZE) - 1;
@@ -1232,10 +1199,8 @@ const Game = {
                         if (tileIndex >= 0 && tileIndex < mapTiles.length) {
                             const tile = mapTiles[tileIndex];
                             if (!tile) continue;
-
                             const drawX = tile.x - camera.x;
                             const drawY = tile.y - camera.y;
-
                             if (tile.collision) ctx.fillStyle = '#444';
                             else if (tile.swimmable) ctx.fillStyle = '#0088ff';
                             else ctx.fillStyle = '#2a2a2a';
@@ -1243,26 +1208,9 @@ const Game = {
                         }
                     }
                 }
-            } else {
-                // Fallback grid
-                ctx.strokeStyle = '#1a3a1a';
-                ctx.lineWidth = 1;
-                for (let x = 0; x < canvas.width; x += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(x - (camera.x % 50), 0);
-                    ctx.lineTo(x - (camera.x % 50), canvas.height);
-                    ctx.stroke();
-                }
-                for (let y = 0; y < canvas.height; y += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, y - (camera.y % 50));
-                    ctx.lineTo(canvas.width, y - (camera.y % 50));
-                    ctx.stroke();
-                }
             }
         }
 
-        // Draw zone
         if (gameState.zone) {
             ctx.strokeStyle = '#0088ff';
             ctx.lineWidth = 3;
@@ -1271,35 +1219,20 @@ const Game = {
             ctx.arc(gameState.zone.x - camera.x, gameState.zone.y - camera.y, gameState.zone.radius, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([]);
-
-            ctx.strokeStyle = '#00ff00';
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.arc(gameState.zone.x - camera.x, gameState.zone.y - camera.y, gameState.zone.targetRadius, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
         }
 
-        // Draw loot
         gameState.loot.forEach(loot => {
             const screenX = loot.x - camera.x;
             const screenY = loot.y - camera.y;
             if (screenX < -50 || screenX > canvas.width + 50 || screenY < -50 || screenY > canvas.height + 50) return;
-
             ctx.fillStyle = '#ffff00';
             ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
-            ctx.fillStyle = '#000';
-            ctx.font = '10px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(loot.type.split('_')[1] || 'ITEM', screenX, screenY + 3);
         });
 
-        // Draw vehicles
         gameState.vehicles.forEach(vehicle => {
             const screenX = vehicle.x - camera.x;
             const screenY = vehicle.y - camera.y;
             if (screenX < -50 || screenX > canvas.width + 50 || screenY < -50 || screenY > canvas.height + 50) return;
-
             ctx.save();
             ctx.translate(screenX, screenY);
             ctx.rotate(vehicle.angle || 0);
@@ -1308,19 +1241,16 @@ const Game = {
             ctx.restore();
         });
 
-        // Draw bullets
         gameState.bullets.forEach(bullet => {
             const screenX = bullet.x - camera.x;
             const screenY = bullet.y - camera.y;
             if (screenX < -10 || screenX > canvas.width + 10 || screenY < -10 || screenY > canvas.height + 10) return;
-
             ctx.fillStyle = '#ffff00';
             ctx.beginPath();
             ctx.arc(screenX, screenY, 3, 0, Math.PI * 2);
             ctx.fill();
         });
 
-        // Draw players - ANIMATED SPRITES
         Object.values(gameState.players).forEach(p => {
             if (p.hp <= 0) return;
             const x = p.x - camera.x;
@@ -1336,7 +1266,6 @@ const Game = {
             if (p.isMoving) {
                 const angle = p.angle || 0;
                 const deg = (angle * 180 / Math.PI + 360) % 360;
-
                 if (deg >= 315 || deg < 45) {
                     animName = `${skinType}_walk_right`;
                     flipX = true;
@@ -1355,16 +1284,10 @@ const Game = {
 
             if (spriteImage?.complete && spriteKey && spriteData.tiles[spriteKey]) {
                 const sprite = spriteData.tiles[spriteKey];
-
                 ctx.save();
                 ctx.translate(x, y);
                 if (flipX) ctx.scale(-1, 1);
-
-                ctx.drawImage(
-                    spriteImage,
-                    sprite.x, sprite.y, sprite.w, sprite.h,
-                    -32, -48, 64, 64
-                );
+                ctx.drawImage(spriteImage, sprite.x, sprite.y, sprite.w, sprite.h, -32, -48, 64, 64);
                 ctx.restore();
             } else {
                 ctx.fillStyle = isMe? gameState.player.skin.color : '#ff4444';
@@ -1415,13 +1338,6 @@ const Game = {
             minimapCtx.beginPath();
             minimapCtx.arc(gameState.zone.x * scale, gameState.zone.y * scale, gameState.zone.radius * scale, 0, Math.PI * 2);
             minimapCtx.stroke();
-
-            minimapCtx.strokeStyle = '#00ff00';
-            minimapCtx.setLineDash([5, 5]);
-            minimapCtx.beginPath();
-            minimapCtx.arc(gameState.zone.x * scale, gameState.zone.y * scale, gameState.zone.targetRadius * scale, 0, Math.PI * 2);
-            minimapCtx.stroke();
-            minimapCtx.setLineDash([]);
         }
 
         Object.values(gameState.players).forEach(p => {
@@ -2068,530 +1984,7 @@ const Game = {
         }
     }
 
-     // ============================================
-    // 23. GAME CORE - COMPLETE
-    // ============================================
-    const Game = {
-        init: async () => {
-            canvas = DOM.game;
-            ctx = canvas.getContext('2d');
-            minimapCanvas = DOM.minimap;
-            minimapCtx = minimapCanvas?.getContext('2d');
 
-            Game.resizeCanvas();
-            window.addEventListener('resize', Game.resizeCanvas);
-
-            if (isMobile) {
-                Game.setupMobileControls();
-            } else {
-                Game.setupDesktopControls();
-            }
-
-            Audio.init();
-
-            // Load assets alohan'ny hanombohana
-            const loaded = await Game.loadAssets();
-            if (!loaded) {
-                Notify.show('Failed to load game assets', true);
-                return;
-            }
-
-            lastFrameTime = performance.now();
-            requestAnimationFrame(Game.loop);
-        },
-
-        resizeCanvas: () => {
-            if (!canvas) return;
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        },
-
-        loop: (currentTime) => {
-            if (!gameState.isGameRunning) return;
-
-            const deltaTime = Math.min((currentTime - lastFrameTime) / 1000, 0.1);
-            lastFrameTime = currentTime;
-
-            // FPS counter
-            frameCount++;
-            fpsTime += deltaTime;
-            if (fpsTime >= 1.0) {
-                gameState.stats.fps = frameCount;
-                frameCount = 0;
-                fpsTime = 0;
-            }
-
-            Game.update(deltaTime);
-            Game.render();
-            Particles.update(deltaTime);
-
-            requestAnimationFrame(Game.loop);
-        },
-
-        update: (dt) => {
-            const me = gameState.players[myId];
-            if (!me) return;
-
-            // Smooth camera follow
-            camera.x = Utils.lerp(camera.x, me.x - canvas.width / 2, 0.1);
-            camera.y = Utils.lerp(camera.y, me.y - canvas.height / 2, 0.1);
-
-            // Camera shake
-            if (camera.shake > 0) {
-                camera.x += Utils.randomRange(-camera.shake, camera.shake);
-                camera.y += Utils.randomRange(-camera.shake, camera.shake);
-                camera.shake *= 0.9;
-            }
-
-            // Update UI
-            if (DOM.hp) DOM.hp.textContent = Math.max(0, Math.floor(me.hp));
-            if (DOM.hpBar) DOM.hpBar.style.width = `${Utils.clamp(me.hp, 0, 100)}%`;
-            if (DOM.armor) DOM.armor.textContent = Math.floor(me.armor || 0);
-            if (DOM.armorBar) DOM.armorBar.style.width = `${Utils.clamp(me.armor || 0, 0, 100)}%`;
-            if (DOM.weapon) DOM.weapon.textContent = me.weapon || 'Fist';
-            if (DOM.ammo) DOM.ammo.textContent = me.ammo === Infinity? '∞' : me.ammo || 0;
-            if (DOM.grenades) DOM.grenades.textContent = me.grenades || 0;
-            if (DOM.kills) DOM.kills.textContent = me.kills || 0;
-            if (DOM.level) DOM.level.textContent = me.level || 1;
-            if (DOM.xp) DOM.xp.textContent = `${me.xp || 0}/${(me.level || 1) * 100}`;
-
-            Game.handleInput();
-
-            // Update AI
-            if (window.aiManager) {
-                window.aiManager.update(dt, gameState, gameState.players);
-            }
-        },
-
-        render: () => {
-            if (!ctx) return;
-
-            // Clear
-            ctx.fillStyle = '#0a1a0a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw map.png - FIX CRITIQUE
-            if (gameState.mapImage?.complete && gameState.mapImage.naturalWidth > 0) {
-                ctx.drawImage(
-                    gameState.mapImage,
-                    -camera.x, -camera.y,
-                    gameState.mapData.width,
-                    gameState.mapData.height
-                );
-            } else {
-                // Fallback: draw tiles
-                if (mapTiles.length > 0) {
-                    const startX = Math.floor(camera.x / CONFIG.TILE_SIZE) - 1;
-                    const startY = Math.floor(camera.y / CONFIG.TILE_SIZE) - 1;
-                    const endX = Math.ceil((camera.x + canvas.width) / CONFIG.TILE_SIZE) + 1;
-                    const endY = Math.ceil((camera.y + canvas.height) / CONFIG.TILE_SIZE) + 1;
-                    const mapCols = gameState.mapData.width / CONFIG.TILE_SIZE;
-
-                    for (let y = Math.max(0, startY); y < Math.min(endY, gameState.mapData.height / CONFIG.TILE_SIZE); y++) {
-                        for (let x = Math.max(0, startX); x < Math.min(endX, mapCols); x++) {
-                            const tileIndex = y * mapCols + x;
-                            if (tileIndex >= 0 && tileIndex < mapTiles.length) {
-                                const tile = mapTiles[tileIndex];
-                                if (!tile) continue;
-
-                                const drawX = tile.x - camera.x;
-                                const drawY = tile.y - camera.y;
-
-                                if (tile.collision) ctx.fillStyle = '#444';
-                                else if (tile.swimmable) ctx.fillStyle = '#0088ff';
-                                else ctx.fillStyle = '#2a2a2a';
-                                ctx.fillRect(drawX, drawY, tile.s, tile.s);
-                            }
-                        }
-                    }
-                } else {
-                    // Fallback grid
-                    ctx.strokeStyle = '#1a3a1a';
-                    ctx.lineWidth = 1;
-                    for (let x = 0; x < canvas.width; x += 50) {
-                        ctx.beginPath();
-                        ctx.moveTo(x - (camera.x % 50), 0);
-                        ctx.lineTo(x - (camera.x % 50), canvas.height);
-                        ctx.stroke();
-                    }
-                    for (let y = 0; y < canvas.height; y += 50) {
-                        ctx.beginPath();
-                        ctx.moveTo(0, y - (camera.y % 50));
-                        ctx.lineTo(canvas.width, y - (camera.y % 50));
-                        ctx.stroke();
-                    }
-                }
-            }
-
-            // Draw zone
-            if (gameState.zone) {
-                ctx.strokeStyle = '#0088ff';
-                ctx.lineWidth = 3;
-                ctx.setLineDash([10, 5]);
-                ctx.beginPath();
-                ctx.arc(gameState.zone.x - camera.x, gameState.zone.y - camera.y, gameState.zone.radius, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // Safe zone
-                ctx.strokeStyle = '#00ff00';
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.arc(gameState.zone.x - camera.x, gameState.zone.y - camera.y, gameState.zone.targetRadius, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-
-            // Draw loot
-            gameState.loot.forEach(loot => {
-                const screenX = loot.x - camera.x;
-                const screenY = loot.y - camera.y;
-                if (screenX < -50 || screenX > canvas.width + 50 || screenY < -50 || screenY > canvas.height + 50) return;
-
-                ctx.fillStyle = '#ffff00';
-                ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
-                ctx.fillStyle = '#000';
-                ctx.font = '10px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(loot.type.split('_')[1] || 'ITEM', screenX, screenY + 3);
-            });
-
-            // Draw vehicles
-            gameState.vehicles.forEach(vehicle => {
-                const screenX = vehicle.x - camera.x;
-                const screenY = vehicle.y - camera.y;
-                if (screenX < -50 || screenX > canvas.width + 50 || screenY < -50 || screenY > canvas.height + 50) return;
-
-                ctx.save();
-                ctx.translate(screenX, screenY);
-                ctx.rotate(vehicle.angle || 0);
-                ctx.fillStyle = vehicle.driver? '#ff8800' : '#888888';
-                ctx.fillRect(-30, -20, 60, 40);
-                ctx.restore();
-            });
-
-            // Draw bullets
-            gameState.bullets.forEach(bullet => {
-                const screenX = bullet.x - camera.x;
-                const screenY = bullet.y - camera.y;
-                if (screenX < -10 || screenX > canvas.width + 10 || screenY < -10 || screenY > canvas.height + 10) return;
-
-                ctx.fillStyle = '#ffff00';
-                ctx.beginPath();
-                ctx.arc(screenX, screenY, 3, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // Draw players
-            Object.values(gameState.players).forEach(p => {
-                if (p.hp <= 0) return;
-                const x = p.x - camera.x;
-                const y = p.y - camera.y;
-                if (x < -50 || x > canvas.width + 50 || y < -50 || y > canvas.height + 50) return;
-
-                const isMe = p.id === myId;
-
-                // Shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.beginPath();
-                ctx.ellipse(x, y + 15, 15, 8, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Body
-                ctx.fillStyle = isMe? gameState.player.skin.color : '#ff4444';
-                ctx.fillRect(x - 12, y - 12, 24);
-
-                // Hat
-                if (p.skin?.hat && p.skin.hat!== 'none') {
-                    ctx.font = '20px Arial';
-                    const hatEmoji = { crown: '👑', helmet: '🪖', cap: '🧢', viking: '🪖', wizard: '🧙' }[p.skin.hat];
-                    if (hatEmoji) ctx.fillText(hatEmoji, x - 10, y - 15);
-                }
-
-                // Name & HP
-                ctx.fillStyle = '#fff';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(Utils.sanitizeHTML(p.username), x, y - 25);
-
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                ctx.fillRect(x - 20, y - 20, 40, 4);
-                ctx.fillStyle = p.hp > 50? '#00ff00' : p.hp > 25? '#ffff00' : '#ff0000';
-                ctx.fillRect(x - 20, y - 20, 40 * (p.hp / 100), 4);
-
-                // Armor bar
-                if (p.armor > 0) {
-                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                    ctx.fillRect(x - 20, y - 26, 40, 3);
-                    ctx.fillStyle = '#00aaff';
-                    ctx.fillRect(x - 20, y - 26, 40 * (p.armor / 100), 3);
-                }
-
-                // Weapon direction
-                if (p.angle!== undefined) {
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x + Math.cos(p.angle) * 20, y + Math.sin(p.angle) * 20);
-                    ctx.stroke();
-                }
-            });
-
-            // Draw particles
-            Particles.render(ctx);
-
-            // Draw minimap
-            Game.renderMinimap();
-
-            // Draw FPS/Ping
-            if (DOM.fps) DOM.fps.textContent = gameState.stats.fps;
-            if (DOM.ping) DOM.ping.textContent = gameState.stats.ping;
-        },
-
-        renderMinimap: () => {
-            if (!minimapCtx ||!minimapCanvas) return;
-            minimapCtx.fillStyle = '#000';
-            minimapCtx.fillRect(0, 0, 180, 180);
-
-            const scale = 180 / gameState.mapData.width;
-
-            // Draw zone
-            if (gameState.zone) {
-                minimapCtx.strokeStyle = '#0088ff';
-                minimapCtx.lineWidth = 2;
-                minimapCtx.beginPath();
-                minimapCtx.arc(gameState.zone.x * scale, gameState.zone.y * scale, gameState.zone.radius * scale, 0, Math.PI * 2);
-                minimapCtx.stroke();
-
-                minimapCtx.strokeStyle = '#00ff00';
-                minimapCtx.setLineDash([5, 5]);
-                minimapCtx.beginPath();
-                minimapCtx.arc(gameState.zone.x * scale, gameState.zone.y * scale, gameState.zone.targetRadius * scale, 0, Math.PI * 2);
-                minimapCtx.stroke();
-                minimapCtx.setLineDash([]);
-            }
-
-            // Draw players
-            Object.values(gameState.players).forEach(p => {
-                if (p.hp <= 0) return;
-                minimapCtx.fillStyle = p.id === myId? '#00ff00' : '#ff0000';
-                minimapCtx.beginPath();
-                minimapCtx.arc(p.x * scale, p.y * scale, p.id === myId? 4 : 3, 0, Math.PI * 2);
-                minimapCtx.fill();
-            });
-
-            // Draw loot
-            gameState.loot.forEach(loot => {
-                minimapCtx.fillStyle = '#ffff00';
-                minimapCtx.fillRect(loot.x * scale - 1, loot.y * scale - 1, 2, 2);
-            });
-        },
-
-        handleInput: () => {
-            if (!gameState.isGameRunning) return;
-
-            let moveX = 0, moveY = 0;
-
-            if (isMobile && joystickActive) {
-                moveX = joystickPos.x;
-                moveY = joystickPos.y;
-            } else {
-                if (keys['w'] || keys['z'] || keys['arrowup']) moveY = -1;
-                if (keys['s'] || keys['arrowdown']) moveY = 1;
-                if (keys['a'] || keys['q'] || keys['arrowleft']) moveX = -1;
-                if (keys['d'] || keys['arrowright']) moveX = 1;
-            }
-
-            // Normalize diagonal movement
-            if (moveX!== 0 && moveY!== 0) {
-                moveX *= 0.707;
-                moveY *= 0.707;
-            }
-
-            const now = Date.now();
-            if (now - lastMoveEmit > MOVE_THROTTLE) {
-                socket.emit('move', {
-                    x: moveX,
-                    y: moveY,
-                    angle: mouseAngle,
-                    sprint: keys['shift'] || false
-                });
-                lastMoveEmit = now;
-            }
-        },
-
-        setupDesktopControls: () => {
-            window.addEventListener('keydown', (e) => {
-                keys[e.key.toLowerCase()] = true;
-                if (e.key === 'Tab') {
-                    e.preventDefault();
-                    DOM.scoreboard?.classList.toggle('hidden');
-                }
-                if (e.key === 'm' || e.key === 'M') DOM.skinMenu?.classList.toggle('hidden');
-                if (e.key === 'b' || e.key === 'B') BattlePass.open();
-                if (e.key === 'i' || e.key === 'I') DOM.inventoryMenu?.classList.toggle('hidden');
-                if (e.key === 'p' || e.key === 'P') DOM.shopMenu?.classList.toggle('hidden');
-                if (e.key === 'r' || e.key === 'R') socket.emit('reload');
-                if (e.key === 'g' || e.key === 'G') socket.emit('grenade', { angle: mouseAngle });
-                if (e.key === 'f' || e.key === 'F') socket.emit('interact');
-                if (e.key === 'e' || e.key === 'E') socket.emit('enterVehicle');
-                if (e.key === 'q' || e.key === 'Q') {
-                    const me = gameState.players[myId];
-                    if (me) {
-                        const weapons = ['fist', 'pistol', 'shotgun', 'smg', 'rifle', 'sniper'];
-                        const idx = weapons.indexOf(me.weapon);
-                        const nextWeapon = weapons[(idx + 1) % weapons.length];
-                        socket.emit('switchWeapon', nextWeapon);
-                    }
-                }
-                if (e.key >= '1' && e.key <= '6') {
-                    const weapons = ['fist', 'pistol', 'shotgun', 'smg', 'rifle', 'sniper'];
-                    socket.emit('switchWeapon', weapons[parseInt(e.key) - 1]);
-                }
-            });
-
-            window.addEventListener('keyup', (e) => {
-                keys[e.key.toLowerCase()] = false;
-            });
-
-            canvas?.addEventListener('mousemove', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const me = gameState.players[myId];
-                if (!me) return;
-                const dx = e.clientX - rect.left - canvas.width / 2;
-                const dy = e.clientY - rect.top - canvas.height / 2;
-                mouseAngle = Math.atan2(dy, dx);
-            });
-
-            canvas?.addEventListener('mousedown', (e) => {
-                if (e.button === 0) socket.emit('shoot', { angle: mouseAngle });
-                if (e.button === 2) socket.emit('scope', true);
-            });
-
-            canvas?.addEventListener('mouseup', (e) => {
-                if (e.button === 2) socket.emit('scope', false);
-            });
-
-            canvas?.addEventListener('contextmenu', (e) => e.preventDefault());
-
-            canvas?.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const me = gameState.players[myId];
-                if (!me) return;
-                const weapons = ['fist', 'pistol', 'shotgun', 'smg', 'rifle', 'sniper'];
-                const idx = weapons.indexOf(me.weapon);
-                const nextIdx = e.deltaY > 0? (idx + 1) % weapons.length : (idx - 1 + weapons.length) % weapons.length;
-                socket.emit('switchWeapon', weapons[nextIdx]);
-            });
-        },
-
-        setupMobileControls: () => {
-            DOM.mobileControls?.classList.remove('hidden');
-
-            DOM.joystick?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                joystickActive = true;
-            });
-
-            DOM.joystick?.addEventListener('touchmove', (e) => {
-                if (!joystickActive) return;
-                e.preventDefault();
-                const touch = e.touches[0];
-                const rect = DOM.joystick.getBoundingClientRect();
-                const cx = rect.left + rect.width / 2;
-                const cy = rect.top + rect.height / 2;
-                let dx = touch.clientX - cx;
-                let dy = touch.clientY - cy;
-                const dist = Math.min(Utils.getDistance(0, 0, dx, dy), 40);
-                const angle = Math.atan2(dy, dx);
-                dx = Math.cos(angle) * dist;
-                dy = Math.sin(angle) * dist;
-                joystickPos = { x: dx / 40, y: dy / 40 };
-                if (DOM.joystickKnob) DOM.joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-            });
-
-            DOM.joystick?.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                joystickActive = false;
-                joystickPos = { x: 0, y: 0 };
-                if (DOM.joystickKnob) DOM.joystickKnob.style.transform = 'translate(-50%, -50%)';
-            });
-
-            DOM.shootBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (touchShootInterval) clearInterval(touchShootInterval);
-                socket.emit('shoot', { angle: mouseAngle });
-                touchShootInterval = setInterval(() => socket.emit('shoot', { angle: mouseAngle }), 100);
-            });
-
-            DOM.shootBtn?.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                if (touchShootInterval) {
-                    clearInterval(touchShootInterval);
-                    touchShootInterval = null;
-                }
-            });
-
-            DOM.scopeBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('scope', true);
-            });
-
-            DOM.scopeBtn?.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                socket.emit('scope', false);
-            });
-
-            DOM.lootBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('interact');
-            });
-
-            DOM.sprintBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys['shift'] = true;
-            });
-
-            DOM.sprintBtn?.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys['shift'] = false;
-            });
-
-            DOM.grenadeBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('grenade', { angle: mouseAngle });
-            });
-
-            DOM.vehicleBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('enterVehicle');
-            });
-
-            DOM.reloadBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('reload');
-            });
-        },
-
-        levelUpCheck: () => {
-            if (!gameState.player) return;
-            const xpNeeded = gameState.player.level * 100;
-            while (gameState.player.xp >= xpNeeded) {
-                gameState.player.xp -= xpNeeded;
-                gameState.player.level++;
-                Notify.show(`LEVEL UP! You are now level ${gameState.player.level}`);
-                Audio.play('victory');
-            }
-            gameState.player.bpXP += 10;
-            if (gameState.player.bpXP >= 100) {
-                gameState.player.bpXP = 0;
-                gameState.player.bpLevel++;
-                Notify.show(`Battle Pass Level ${gameState.player.bpLevel} unlocked!`);
-            }
-            UI.updateLobby();
-        }
-    };
 
     // ============================================
     // 24. AI SYSTEM - COMPLETE
