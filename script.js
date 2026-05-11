@@ -768,37 +768,7 @@
         }
     };
 
-    // ============================================
-    // 17. FRIENDS SYSTEM
-    // ============================================
-    const Friends = {
-        add: () => {
-            const input = DOM.addFriendInput;
-            if (input?.value.trim()) {
-                socket.emit("addFriend", Utils.sanitizeHTML(input.value.trim()));
-                Notify.toast(`Friend request sent to ${input.value}`, 'success');
-                input.value = '';
-            }
-        },
-
-        load: () => {
-            if (!DOM.friendsList ||!gameState.player?.friends) return;
-            DOM.friendsList.innerHTML = '';
-            gameState.player.friends.forEach(f => {
-                const div = document.createElement('div');
-                div.className = 'friend-item' + (f.online? ' online' : '');
-                div.innerHTML = `
-                    <div class="friend-avatar">${f.username[0].toUpperCase()}</div>
-                    <div class="friend-info">
-                        <div class="friend-name">${Utils.sanitizeHTML(f.username)}</div>
-                        <div class="friend-status">${f.online? 'Online' : 'Offline'}</div>
-                    </div>
-                `;
-                DOM.friendsList.appendChild(div);
-            });
-        }
-    };
-
+    
     // ============================================
     // 18. BATTLE PASS SYSTEM
     // ============================================
