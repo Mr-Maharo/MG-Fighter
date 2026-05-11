@@ -18,6 +18,75 @@ const io = new Server(server, {
     pingInterval: 25000
 });
 
+
+// ============================================
+// ADMIN AUTHENTICATION - SECURE
+// ============================================
+const ADMIN_USERS = ['AdminMG', 'tony']; // Username admin
+const ADMIN_IPS = []; // Option: IP whitelist
+const ADMIN_TOKENS = new Map(); // Session tokens
+
+// Rehefa mangataka admin access
+socket.on('requestAdminAccess', (data) => {
+    const player = players[socket.id];
+    if (!player) {
+        socket.emit('adminAccessResult', { granted: false });
+        return;
+    }
+
+    // CHECK 1: Username ao amin'ny list admin
+    const isAdminUser = ADMIN_USERS.includes(player.username);
+
+    // CHECK 2: Option - IP whitelist
+    const clientIP = socket.handshake.address;
+    const isAdminIP = ADMIN_IPS.length === 0 || ADMIN_IPS.includes(clientIP);
+
+    // CHECK 3: Option - Manana token ve
+    const hasValidToken = ADMIN_TOKENS.has(socket.id);
+
+    if (isAdminUser && isAdminIP) {
+        // MANOME ACCESS
+        ADMIN_TOKENS.set(socket.id, Date.now());
+        socket.emit('adminAccessResult', { granted: true });
+        console.log(`👑 ADMIN GRANTED: ${player.username} (${clientIP})`);
+    } else {
+        // TSY MAHAZO
+        socket.emit('adminAccessResult', { granted: false });
+        console.log(`❌ ADMIN DENIED: ${player.username} (${clientIP})`);
+    }
+});
+
+// Verify isaky ny admin action
+socket.on('adminAction', (data) => {
+    const player = players[socket.id];
+    if (!player) return;
+
+    // CHECK raha admin marina
+    const isAdmin = ADMIN_USERS.includes(player.username) && ADMIN_TOKENS.has(socket.id);
+    if (!isAdmin) {
+        console.log(`❌ ${player.username} tried admin without permission`);
+        socket.emit('adminError', { message: 'Access denied' });
+        return;
+    }
+
+    // CHECK raha mbola valid ny token (24h)
+    const tokenTime = ADMIN_TOKENS.get(socket.id);
+    if (Date.now() - tokenTime > 24 * 60 * 60 * 1000) {
+        ADMIN_TOKENS.delete(socket.id);
+        socket.emit('adminError', { message: 'Session expired' });
+        return;
+    }
+
+    console.log(`👑 ADMIN: ${player.username} → ${data.command}`);
+    
+    //... admin commands eto
+});
+
+// Rehefa disconnect dia esory ny token
+socket.on('disconnect', () => {
+    ADMIN_TOKENS.delete(socket.id);
+});
+
 // =====================================
 // 0. ANTI-CHEAT CONFIG - FIX 1-3
 // =====================================
