@@ -2412,3 +2412,63 @@ handleInput: () => {
         lastMoveEmit = now;
     }
 }
+// ============================================
+// 24. ADMIN LOGIN - SECURE (TSY MISY PASSWORD)
+// ============================================
+const AdminLogin = {
+    show: function() {
+        const sidebar = document.getElementById('adminLoginSidebar');
+        if (sidebar) {
+            sidebar.style.display = 'block';
+            setTimeout(() => sidebar.style.right = '0px', 10);
+        }
+    },
+
+    hide: function() {
+        const sidebar = document.getElementById('adminLoginSidebar');
+        if (sidebar) {
+            sidebar.style.right = '-350px';
+            setTimeout(() => sidebar.style.display = 'none', 300);
+        }
+    },
+
+    // MANDALO AMIN'NY SERVER NY CHECK - TSY MISY PASSWORD ETO
+    requestAccess: function() {
+        const username = gameState.player?.username || '';
+        const msg = document.getElementById('adminLoginMsg');
+
+        msg.style.color = '#ffaa00';
+        msg.textContent = '⏳ Verifying...';
+
+        // ALEFA AMIN'NY SERVER NY REQUEST
+        socket.emit('requestAdminAccess', { username: username });
+
+        // MIANDRY VALINY AVY AMIN'NY SERVER
+        socket.once('adminAccessResult', (data) => {
+            if (data.granted) {
+                msg.style.color = '#00ff00';
+                msg.textContent = '✓ Access Granted';
+                gameState.isAdmin = true;
+                AdminPage.show();
+                setTimeout(() => {
+                    this.hide();
+                    msg.textContent = '';
+                    Notify.toast('👑 ADMIN ACCESS GRANTED', 'success');
+                }, 1000);
+            } else {
+                msg.style.color = '#ff6666';
+                msg.textContent = '✗ Access Denied';
+                setTimeout(() => msg.textContent = '', 2000);
+            }
+        });
+    }
+};
+
+window.closeAdminLogin = () => AdminLogin.hide();
+window.requestAdminAccess = () => AdminLogin.requestAccess();
+
+window.acceptTerms = function() {
+    document.getElementById('termsModal')?.classList.add('hidden');
+    AdminLogin.show();
+};
+
