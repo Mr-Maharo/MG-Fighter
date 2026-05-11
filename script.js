@@ -252,6 +252,10 @@ window.changeAvatar = function() { showToast('Avatar change coming soon!', 'info
         mapData: { width: 4000, height: 4000, walls: [] }
     };
 
+    // Eo ambanin'ny let gameState
+    let aiManager = new AIManager();
+    window.aiManager = aiManager;
+
     let roomState = {
         id: null,
         players: [],
@@ -447,39 +451,66 @@ window.changeAvatar = function() { showToast('Avatar change coming soon!', 'info
         roomMap: document.getElementById('roomMap')
     };
 
-    // =====================================
-    // 3. ASSET LOADING
-    // =====================================
-    async function loadAssets() {
-        try {
-            const mapResponse = await fetch('./map.json');
-            if (mapResponse.ok) {
-                const data = await mapResponse.json();
-                mapTiles = data.tiles || [];
-                gameState.mapData = data;
-                console.log('✅ Map loaded:', mapTiles.length, 'tiles');
-            }
+// =====================================
+// 2. ASSET LOADING - FIXED
+// =====================================
+let mapTiles = [];
+let mapLoaded = false;
+let spriteImage = null;
+let spriteData = null;
 
-            const spriteResponse = await fetch('./sprites.json');
-            if (spriteResponse.ok) {
-                spriteData = await spriteResponse.json();
-                console.log('✅ Sprite data loaded');
-            }
+async function loadAssets() {
+    try {
+        console.log('🔄 Loading assets...');
 
-            spriteImage = new Image();
-            spriteImage.src = './sprites.png';
-            await new Promise((resolve) => {
-                spriteImage.onload = () => { console.log('✅ sprites.png loaded'); resolve(); };
-                spriteImage.onerror = () => { console.warn('⚠️ sprites.png failed, using fallback'); resolve(); };
-            });
-
+        // 1. LOAD MAP.JSON
+        const mapResponse = await fetch('map.json');
+        if (mapResponse.ok) {
+            const mapData = await mapResponse.json();
+            gameState.mapData = mapData;
+            mapTiles = mapData.tiles || [];
             mapLoaded = true;
-            spritesLoaded = true;
-        } catch (err) {
-            console.error('❌ Asset loading error:', err);
+            console.log('✅ Map.json loaded:', mapTiles.length, 'tiles');
+        } else {
+            console.warn('⚠️ map.json not found');
         }
-    }
 
+        // 2. LOAD SPRITE.JSON
+        const spriteResponse = await fetch('sprite.json');
+        if (spriteResponse.ok) {
+            spriteData = await spriteResponse.json();
+            console.log('✅ sprite.json loaded');
+        } else {
+            console.warn('⚠️ sprite.json not found');
+        }
+
+        // 3. LOAD MAP.PNG - AMPIRINAO IZAO
+        const mapImg = new Image();
+        mapImg.src = 'map.png';
+        mapImg.onload = () => {
+            console.log('✅ map.png loaded:', mapImg.width, 'x', mapImg.height);
+            gameState.mapImage = mapImg;
+        };
+        mapImg.onerror = () => {
+            console.warn('⚠️ map.png not found - using tiles only');
+        };
+
+        // 4. LOAD SPRITES.PNG - AMPIRINAO IZAO
+        spriteImage = new Image();
+        spriteImage.src = 'sprites.png';
+        spriteImage.onload = () => {
+            console.log('✅ sprites.png loaded:', spriteImage.width, 'x', spriteImage.height);
+        };
+        spriteImage.onerror = () => {
+            console.warn('⚠️ sprites.png not found - using colored rectangles');
+        };
+
+        console.log('✅ Assets loading complete');
+
+    } catch (error) {
+        console.error('❌ Error loading assets:', error);
+    }
+}
     // =====================================
     // 4. UTILITY FUNCTIONS
     // =====================================
@@ -1158,6 +1189,14 @@ window.changeAvatar = function() { showToast('Avatar change coming soon!', 'info
         DOM.level.textContent = me.level || 1;
         DOM.xp.textContent = `${me.xp || 0}/${(me.level || 1) * 100}`;
 
+
+        if (aiManager && isGameRunning) {
+        aiManager.update(dt, gameState, gameState.players);
+        const aiBots = aiManager.getAllBots();
+        aiBots.forEach(bot => {
+            gameState.players[bot.id] = bot;
+        });
+    }
         handleInput();
     }
 
@@ -1170,39 +1209,40 @@ window.changeAvatar = function() { showToast('Avatar change coming soon!', 'info
 
         // Draw tiles from map.json
         if (mapLoaded && mapTiles.length > 0) {
-            const startX = Math.floor(camera.x / TILE_SIZE) - 1;
-            const startY = Math.floor(camera.y / TILE_SIZE) - 1;
-            const endX = Math.ceil((camera.x + canvas.width) / TILE_SIZE) + 1;
-            const endY = Math.ceil((camera.y + canvas.height) / TILE_SIZE) + 1;
+        const startX = Math.floor(camera.x / TILE_SIZE) - 1;
+        const startY = Math.floor(camera.y / TILE_SIZE) - 1;
+        const endX = Math.ceil((camera.x + canvas.width) / TILE_SIZE) + 1;
+        const endY = Math.ceil((camera.y + canvas.height) / TILE_SIZE) + 1;
 
-            for (let y = startY; y < endY; y++) {
-                for (let x = startX; x < endX; x++) {
-                    const tileIndex = y * (gameState.mapData.width / TILE_SIZE) + x;
-                    if (tileIndex >= 0 && tileIndex < mapTiles.length) {
-                        const tile = mapTiles[tileIndex];
-                        if (!tile) continue;
+        for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
+                const tileIndex = y * (gameState.mapData.width / TILE_SIZE) + x;
+                if (tileIndex >= 0 && tileIndex < mapTiles.length) {
+                    const tile = mapTiles[tileIndex];
+                    if (!tile) continue;
 
-                        const drawX = tile.x - camera.x;
-                        const drawY = tile.y - camera.y;
+                    const drawX = tile.x - camera.x;
+                    const drawY = tile.y - camera.y;
 
-                        if (tile.spriteId && spriteData.tiles && spriteData.tiles[tile.spriteId] && spriteImage) {
-                            const sprite = spriteData.tiles[tile.spriteId];
-                            ctx.drawImage(
-                                spriteImage,
-                                sprite.x, sprite.y, sprite.w, sprite.h,
-                                drawX, drawY, tile.s, tile.s
-                            );
-                        } else {
-                            if (tile.collision) ctx.fillStyle = '#444';
-                            else if (tile.swimmable) ctx.fillStyle = '#0088ff';
-                            else ctx.fillStyle = '#2a';
-                            ctx.fillRect(drawX, drawY, tile.s, tile.s);
-                        }
+                    // DRAW SPRITE IF AVAILABLE
+                    if (tile.spriteId && spriteData?.tiles?.[tile.spriteId] && spriteImage?.complete) {
+                        const sprite = spriteData.tiles[tile.spriteId];
+                        ctx.drawImage(
+                            spriteImage,
+                            sprite.x, sprite.y, sprite.w, sprite.h,
+                            drawX, drawY, tile.s, tile.s
+                        );
+                    } else {
+                        // FALLBACK COLOR
+                        if (tile.collision) ctx.fillStyle = '#444';
+                        else if (tile.swimmable) ctx.fillStyle = '#0088ff';
+                        else ctx.fillStyle = '#2a';
+                        ctx.fillRect(drawX, drawY, tile.s, tile.s);
                     }
                 }
             }
         }
-
+    }
         // Draw zone
         if (gameState.zone) {
             ctx.strokeStyle = '#0088ff';
@@ -1661,3 +1701,298 @@ window.changeAvatar = function() { showToast('Avatar change coming soon!', 'info
     console.log('🎮 Controls: WASD/Arrows = Move, Mouse = Aim, Click = Shoot, R = Reload, G = Grenade, F = Interact, 1-6 = Weapons');
 
 })();
+
+/* ============================================
+   AI ADVERSARY - DYNAMIC DIFFICULTY
+   Manaraka ny niveau an'ilay player
+   ============================================ */
+
+class AIPlayer {
+    constructor(id, spawnX, spawnY, targetPlayerLevel = 1) {
+        this.id = id;
+        this.name = this.generateBotName();
+        this.x = spawnX;
+        this.y = spawnY;
+        this.hp = 100;
+        this.armor = 0;
+        this.weapon = 'fist';
+        this.ammo = 0;
+        this.grenades = 0;
+        this.kills = 0;
+        this.level = Math.max(1, targetPlayerLevel + Math.floor(Math.random() * 5) - 2); // ±2 levels
+        this.angle = 0;
+        this.targetAngle = 0;
+
+        // DYNAMIC DIFFICULTY MANARAKA PLAYER LEVEL
+        this.playerLevel = targetPlayerLevel;
+        this.difficulty = this.calculateDifficulty();
+        this.reactionTime = this.getReactionTime();
+        this.accuracy = this.getAccuracy();
+        this.aggressiveness = this.getAggressiveness();
+        this.lootPriority = 0.7;
+        this.survivalInstinct = 0.8;
+
+        // State Machine
+        this.state = 'looting';
+        this.stateTimer = 0;
+        this.target = null;
+        this.lastSeenEnemy = null;
+        this.lastSeenTime = 0;
+        this.memory = [];
+
+        // Movement
+        this.velocityX = 0;
+        this.velocityY = 0;
+        this.moveTarget = null;
+        this.stuckTimer = 0;
+        this.lastPosition = { x: spawnX, y: spawnY };
+
+        // Combat
+        this.lastShotTime = 0;
+        this.fireRate = this.getFireRate();
+        this.reloadTime = 0;
+        this.isReloading = false;
+        this.lastDamageTime = 0;
+        this.dodgeDirection = 0;
+
+        // Strategy
+        this.preferredRange = this.getPreferredRange();
+        this.zoneAwareness = 0.9;
+        this.teamwork = false;
+
+        // Personality traits - mihamafy rehefa miakatra level
+        this.personality = this.generatePersonality();
+        this.skin = {
+            color: this.getRandomColor(),
+            hat: this.getRandomHat()
+        };
+    }
+
+    calculateDifficulty() {
+        // Level 1-5: easy, 6-15: medium, 16-30: hard, 31+: pro
+        if (this.playerLevel <= 5) return 'easy';
+        if (this.playerLevel <= 15) return 'medium';
+        if (this.playerLevel <= 30) return 'hard';
+        return 'pro';
+    }
+
+    generateBotName() {
+        const names = [
+            'ShadowHunter', 'ProSniper', 'EliteWarrior', 'NightStalker', 'ThunderBolt',
+            'CrimsonViper', 'IronFist', 'GhostRider', 'PhoenixRising', 'WolfPack',
+            'StormBreaker', 'DarkKnight', 'SilentAssassin', 'FireDragon', 'IceQueen',
+            'BloodEagle', 'SteelTitan', 'RapidFire', 'DeathDealer', 'KingSlayer'
+        ];
+        const suffix = this.playerLevel > 20 ? 'Elite' : this.playerLevel > 10 ? 'Pro' : '';
+        return names[Math.floor(Math.random() * names.length)] + suffix + Math.floor(Math.random() * 99);
+    }
+
+    getReactionTime() {
+        // Mihafaingana rehefa miakatra level
+        const base = { easy: 500, medium: 300, hard: 200, pro: 100 };
+        const bonus = Math.max(0, 50 - this.playerLevel * 2); // -2ms per level
+        return Math.max(50, base[this.difficulty] - bonus);
+    }
+
+    getAccuracy() {
+        // Mihamarina rehefa miakatra level
+        const base = { easy: 0.4, medium: 0.65, hard: 0.8, pro: 0.95 };
+        const bonus = Math.min(0.2, this.playerLevel * 0.01); // +1% per level, max 20%
+        return Math.min(0.98, base[this.difficulty] + bonus);
+    }
+
+    getAggressiveness() {
+        // Mihamafy rehefa miakatra level
+        const base = { easy: 0.3, medium: 0.6, hard: 0.8, pro: 0.95 };
+        const bonus = Math.min(0.15, this.playerLevel * 0.005); // +0.5% per level
+        return Math.min(0.98, base[this.difficulty] + bonus);
+    }
+
+    getFireRate() {
+        const rates = {
+            'pistol': 400, 'shotgun': 800, 'smg': 100,
+            'rifle': 150, 'sniper': 1200, 'fist': 600
+        };
+        let rate = rates[this.weapon] || 400;
+        // Mihafaingana ny fire rate rehefa miakatra level
+        rate = Math.max(50, rate - this.playerLevel * 3);
+        return rate;
+    }
+
+    getPreferredRange() {
+        const ranges = {
+            'shotgun': 80, 'smg': 150, 'pistol': 200,
+            'rifle': 300, 'sniper': 500, 'fist': 30
+        };
+        return ranges[this.weapon] || 200;
+    }
+
+    getRandomColor() {
+        // Mihamafy ny loko rehefa miakatra level
+        if (this.playerLevel > 30) {
+            const proColors = ['#ff0000', '#ff00ff', '#00ffff', '#ffd700', '#ff6600'];
+            return proColors[Math.floor(Math.random() * proColors.length)];
+        }
+        const colors = ['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff', '#44ffff', '#ff8800'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    getRandomHat() {
+        // Hats tsara kokoa rehefa miakatra level
+        if (this.playerLevel > 25) {
+            const proHats = ['crown', 'viking', 'wizard'];
+            return proHats[Math.floor(Math.random() * proHats.length)];
+        }
+        if (this.playerLevel > 10) {
+            const midHats = ['helmet', 'cowboy', 'tophat'];
+            return midHats[Math.floor(Math.random() * midHats.length)];
+        }
+        const hats = ['none', 'cap', 'helmet'];
+        return hats[Math.floor(Math.random() * hats.length)];
+    }
+
+    generatePersonality() {
+        // Miova ny personality rehefa miakatra level
+        const levelFactor = Math.min(1, this.playerLevel / 50);
+        return {
+            camper: Math.random() < (0.3 - levelFactor * 0.1), // Mihena
+            rusher: Math.random() < (0.2 + levelFactor * 0.3), // Mitombo
+            sniper: Math.random() < (0.15 + levelFactor * 0.2), // Mitombo
+            looter: Math.random() < (0.5 - levelFactor * 0.2), // Mihena
+            cautious: Math.random() < (0.4 - levelFactor * 0.2) // Mihena
+        };
+    }
+
+    // ... TOHINY NY METHODS HAFA (tsy miova) ...
+
+    calculatePower() {
+        let power = 0;
+        power += this.hp / 100 * 0.4;
+        power += this.armor / 100 * 0.3;
+        power += this.accuracy * 0.2;
+        power += (this.weapon !== 'fist') ? 0.3 : 0;
+        power += this.kills * 0.05;
+        power += this.level * 0.02; // BONUS LEVEL
+        return Math.min(1, power);
+    }
+
+    shouldEngage(enemy) {
+        if (!enemy) return false;
+
+        const myPower = this.calculatePower();
+        const enemyPower = this.calculateThreat(enemy.entity);
+        const dist = enemy.distance;
+
+        // Mihamafy ny confidence rehefa miakatra level
+        const confidenceBoost = this.level * 0.01;
+        
+        if (myPower + confidenceBoost < 0.3) return false;
+        if (enemyPower > myPower * 1.5) return false;
+        if (this.aggressiveness > 0.7) return true;
+        if (dist < this.preferredRange * 1.2 && dist > this.preferredRange * 0.5) return true;
+
+        return myPower > enemyPower;
+    }
+
+    // ... TOHINY NY METHODS HAFA REHETRA ...
+}
+
+/* ============================================
+   AI MANAGER - DYNAMIC SPAWN
+   ============================================ */
+class AIManager {
+    constructor() {
+        this.bots = new Map();
+        this.maxBots = 20;
+        this.spawnTimer = 0;
+        this.spawnInterval = 5;
+    }
+
+    update(dt, gameState, players) {
+        this.spawnTimer += dt;
+        if (this.spawnTimer > this.spawnInterval) {
+            this.trySpawnBot(gameState, players);
+            this.spawnTimer = 0;
+        }
+
+        this.bots.forEach(bot => {
+            if (bot.hp > 0) {
+                bot.update(dt, gameState, players);
+            } else {
+                this.bots.delete(bot.id);
+            }
+        });
+    }
+
+    trySpawnBot(gameState, players) {
+        // Tadiavo ny level an'ilay real player
+        const realPlayers = Object.values(players).filter(p => !p.isBot);
+        if (realPlayers.length === 0) return;
+
+        const avgLevel = realPlayers.reduce((sum, p) => sum + (p.level || 1), 0) / realPlayers.length;
+        const targetLevel = Math.floor(avgLevel);
+
+        const realPlayerCount = realPlayers.length;
+        const targetBotCount = Math.max(0, 50 - realPlayerCount);
+
+        if (this.bots.size >= targetBotCount || this.bots.size >= this.maxBots) {
+            return;
+        }
+
+        const spawn = this.findSpawnLocation(gameState, players);
+        if (!spawn) return;
+
+        // SPAWN AI MANARAKA NY LEVEL
+        const botId = 'bot_' + Date.now() + '_' + Math.random();
+        const bot = new AIPlayer(botId, spawn.x, spawn.y, targetLevel);
+        this.bots.set(botId, bot);
+
+        console.log(`🤖 Spawned Level ${bot.level} bot: ${bot.name} (${bot.difficulty})`);
+    }
+
+    findSpawnLocation(gameState, players) {
+        const attempts = 20;
+        const minDistFromPlayers = 300;
+        const mapWidth = gameState.mapData.width;
+        const mapHeight = gameState.mapData.height;
+
+        for (let i = 0; i < attempts; i++) {
+            const x = Math.random() * (mapWidth - 200) + 100;
+            const y = Math.random() * (mapHeight - 200) + 100;
+
+            let tooClose = false;
+            Object.values(players).forEach(player => {
+                const dist = Math.hypot(x - player.x, y - player.y);
+                if (dist < minDistFromPlayers) tooClose = true;
+            });
+
+            if (!tooClose) {
+                const zoneDist = Math.hypot(x - gameState.zone.x, y - gameState.zone.y);
+                if (zoneDist < gameState.zone.radius * 0.8) {
+                    return { x, y };
+                }
+            }
+        }
+
+        return { x: gameState.zone.x, y: gameState.zone.y };
+    }
+
+    getAllBots() {
+        return Array.from(this.bots.values()).map(bot => bot.serialize());
+    }
+
+    getBot(id) {
+        return this.bots.get(id);
+    }
+
+    removeBot(id) {
+        this.bots.delete(id);
+    }
+}
+
+// Export
+window.AIPlayer = AIPlayer;
+window.AIManager = AIManager;
+
+console.log('🤖 AI Adversary System Loaded - Dynamic Difficulty Enabled');
+
