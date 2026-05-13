@@ -42,6 +42,8 @@
         timeout: 10000,
         pingTimeout: 60000, // BUG #40 FIX
         pingInterval: 25000 // BUG #77 FIX
+        window.socket = socket; 
+        window.myId = null;
     });
 
     // ============================================
@@ -444,10 +446,19 @@
     // 13. SOCKET HANDLERS - BUG #31, #33, #34, #63, #74 FIXED
     // ============================================
     socket.on("connect", () => {
-        myId = socket.id;
-        console.log("✅ Connected:", myId);
-        Notify.toast('Connected to server!', 'success');
+    myId = socket.id;
+    window.myId = socket.id; // ← Ampio ity
+    console.log("✅ Connected:", myId);
+    Notify.toast('Connected to server!', 'success');
+    
+    // Alefa automatique ny joinGame
+    socket.emit("joinGame", {
+        username: "Player" + Math.floor(Math.random() * 9999),
+        uid: socket.id,
+        skin: { color: '#00ff00', hat: 'none' },
+        level: 1
     });
+});
 
     socket.on("disconnect", () => {
         console.log('❌ Disconnected from server');
