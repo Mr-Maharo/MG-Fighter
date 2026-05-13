@@ -1035,9 +1035,8 @@
             }
 
             // BUG #14 FIX: Smooth camera lerp
-            camera.x = Utils.lerp(camera.x, me.x - canvas.width / 2, 0.1);
-            camera.y = Utils.lerp(camera.y, me.y - canvas.height / 2, 0.1);
-
+            camera.x = Utils.lerp(camera.x, me.x - 1254/2, 0.1); // 1254 fa tsy canvas.width
+            camera.y = Utils.lerp(camera.y, me.y - 1254/2, 0.1);
             if (camera.shake > 0) {
                 camera.x += Utils.randomRange(-camera.shake, camera.shake);
                 camera.y += Utils.randomRange(-camera.shake, camera.shake);
@@ -1080,16 +1079,19 @@
             ctx.fillStyle = '#0a1a0a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 2. DRAW MAP.PNG - BUG #13 FIX: IRAY IHANY!
-            if (gameState.mapImage?.complete && gameState.mapImage.naturalWidth > 0) {
-                ctx.drawImage(
-                    gameState.mapImage,
-                    -camera.x,
-                    -camera.y,
-                    gameState.mapData.width,
-                    gameState.mapData.height
-                );
-            }
+            // 2. DRAW MAP.PNG - FORCE VERSION
+if (gameState.mapImage && gameState.mapImage.complete) {
+    console.log('DRAWING MAP:', camera.x, camera.y, gameState.mapData.width);
+    ctx.drawImage(
+        gameState.mapImage,
+        -camera.x,
+        -camera.y,
+        4000, // FORCE 4000 fa tsy gameState.mapData.width
+        4000  // satria mapData.width = 0 ao amin'ny map.json-nao
+    );
+} else {
+    console.error('MAP IMAGE NOT READY:', gameState.mapImage);
+}
             // 3. FALLBACK GRID - BUG #19 FIX
             else {
                 ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
