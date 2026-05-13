@@ -1072,41 +1072,24 @@
             }
         },
 
-        render: function() {
+                render: function() {
             if (!ctx) return;
 
             // 1. CLEAR CANVAS - BUG #19 FIX
             ctx.fillStyle = '#0a1a0a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                        // 2. DRAW MAP.PNG - FIXED
+            // 2. DRAW MAP.PNG - FIXED
             if (gameState.mapImage && gameState.mapImage.complete && gameState.mapImage.naturalWidth > 0) {
                 ctx.drawImage(
                     gameState.mapImage,
                     -camera.x,
                     -camera.y,
-                    4000,  // FORCE 4000 satria 1254x1254 ny sary-nao fa 4000x4000 ny map
+                    4000,
                     4000
                 );
             }
-            // 3. FALLBACK GRID
-            else {
-                ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
-                ctx.lineWidth = 1;
-                for (let x = -camera.x % 50; x < canvas.width; x += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, canvas.height);
-                    ctx.stroke();
-                }
-                for (let y = -camera.y % 50; y < canvas.height; y += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(canvas.width, y);
-                    ctx.stroke();
-                }
-            }
-            // 3. FALLBACK GRID - BUG #19 FIX
+            // 3. FALLBACK GRID - TOKANA IHANY!
             else {
                 ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
                 ctx.lineWidth = 1;
@@ -1151,7 +1134,6 @@
                     }
                 }
             }
-
             // 5. DRAW ZONE
             if (gameState.zone) {
                 ctx.strokeStyle = '#0088ff';
