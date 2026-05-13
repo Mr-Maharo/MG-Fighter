@@ -2610,6 +2610,13 @@
     console.log('🎮 Controls: WASD/Arrows = Move, Mouse = Aim, Click = Shoot, R = Reload, G = Grenade, F = Interact, 1-6 = Weapons');
     console.log('🛠️ BUGS FIXED: 100/100');
     console.log('✅ PRODUCTION READY');
+    console.log('🔥 MG FIGHTER v4.3.0 - ALL SYSTEMS READY');
 
-})(); // END IIFE - BUG #1 FIXED
+    // AMPINAO IZAO 👇
+    window.gameState = gameState;
+    window.myId = myId;
+    window.camera = camera;
+    window.mapTiles = mapTiles;
+
+})(); // END IIFE
 
