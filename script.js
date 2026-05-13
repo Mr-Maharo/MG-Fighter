@@ -1034,13 +1034,15 @@
                 gameState.animations.currentFrame = (gameState.animations.currentFrame + 1) % 4;
             }
 
-            // BUG #14 FIX: Smooth camera lerp
-            camera.x = Utils.lerp(camera.x, me.x - 1254/2, 0.1); // 1254 fa tsy canvas.width
-            camera.y = Utils.lerp(camera.y, me.y - 1254/2, 0.1);
-            if (camera.shake > 0) {
-                camera.x += Utils.randomRange(-camera.shake, camera.shake);
-                camera.y += Utils.randomRange(-camera.shake, camera.shake);
-                camera.shake *= 0.9;
+             // BUG #14 FIX: Camera lerp - FORCE CENTER
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            camera.x = Utils.lerp(camera.x, me.x - centerX, 0.15); // Ampitomboina 0.15
+            camera.y = Utils.lerp(camera.y, me.y - centerY, 0.15);
+
+            // DEBUG CAMERA
+            if (frameCount % 60 === 0) { // Isaky ny 1 seconde
+                console.log('CAMERA:', Math.floor(camera.x), Math.floor(camera.y), 'PLAYER:', Math.floor(me.x), Math.floor(me.y));
             }
 
             // BUG #24 FIX: Zone damage
