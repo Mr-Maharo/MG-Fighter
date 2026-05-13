@@ -42,9 +42,10 @@
         timeout: 10000,
         pingTimeout: 60000, // BUG #40 FIX
         pingInterval: 25000 // BUG #77 FIX
+        
+    });
         window.socket = socket; 
         window.myId = null;
-    });
 
     // ============================================
     // 2. GLOBAL GAME STATE - BUG #7, #8 FIXED
