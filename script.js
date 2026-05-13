@@ -1,6 +1,8 @@
 (() => {
     'use strict';
 
+    // Ampio eo ambony indrindra, aloha ny code rehetra
+window.DEBUG = {}; 
     // ============================================
     // 0. CONFIG & VERSION
     // ============================================
@@ -1057,7 +1059,16 @@ const Game = {
             console.error('❌ Error loading assets:', error);
             return false;
         }
+         window.DEBUG.mapImage = gameState.mapImage;
+    window.DEBUG.mapData = gameState.mapData;
+    window.DEBUG.camera = camera;
+    window.DEBUG.canvas = canvas;
+    window.DEBUG.ctx = ctx;
+    console.log('🔧 DEBUG READY - typeo: window.DEBUG');
+}
     },
+
+    
 
     init: async function() {
         canvas = DOM.game;
