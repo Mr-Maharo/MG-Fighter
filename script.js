@@ -1232,9 +1232,10 @@
                     ctx.drawImage(spriteImage, sprite.x, sprite.y, sprite.w, sprite.h, -32, -48, 64, 64);
                     ctx.restore();
                 } else {
-                    ctx.fillStyle = isMe? gameState.player.skin.color : '#ff4444';
-                    ctx.fillRect(x - 12, y - 12, 24, 24);
-                }
+    // BUG FIX: Mampiasa p.skin fa tsy gameState.player
+    ctx.fillStyle = isMe? (p.skin?.color || '#00ff00') : '#ff4444';
+    ctx.fillRect(x - 12, y - 12, 24, 24);
+}
 
                 if (p.skin?.hat && p.skin.hat!== 'none') {
                     ctx.font = '20px Arial';
