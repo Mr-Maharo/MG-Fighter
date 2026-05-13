@@ -1079,19 +1079,33 @@
             ctx.fillStyle = '#0a1a0a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 2. DRAW MAP.PNG - FORCE VERSION
-if (gameState.mapImage && gameState.mapImage.complete) {
-    console.log('DRAWING MAP:', camera.x, camera.y, gameState.mapData.width);
-    ctx.drawImage(
-        gameState.mapImage,
-        -camera.x,
-        -camera.y,
-        4000, // FORCE 4000 fa tsy gameState.mapData.width
-        4000  // satria mapData.width = 0 ao amin'ny map.json-nao
-    );
-} else {
-    console.error('MAP IMAGE NOT READY:', gameState.mapImage);
-}
+                        // 2. DRAW MAP.PNG - FIXED
+            if (gameState.mapImage && gameState.mapImage.complete && gameState.mapImage.naturalWidth > 0) {
+                ctx.drawImage(
+                    gameState.mapImage,
+                    -camera.x,
+                    -camera.y,
+                    4000,  // FORCE 4000 satria 1254x1254 ny sary-nao fa 4000x4000 ny map
+                    4000
+                );
+            }
+            // 3. FALLBACK GRID
+            else {
+                ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
+                ctx.lineWidth = 1;
+                for (let x = -camera.x % 50; x < canvas.width; x += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = -camera.y % 50; y < canvas.height; y += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            }
             // 3. FALLBACK GRID - BUG #19 FIX
             else {
                 ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
