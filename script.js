@@ -1147,39 +1147,71 @@ const Game = {
         }
     },
 
-    render: function() {
-        if (!ctx) return;
+   render: function() {
+    if (!ctx) return;
 
-        ctx.fillStyle = '#0a1a0a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 1. CLEAR CANVAS
+    ctx.fillStyle = '#0a1a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        if (gameState.mapImage?.complete && gameState.mapImage.naturalWidth > 0) {
-            ctx.drawImage(gameState.mapImage, -camera.x, -camera.y, gameState.mapData.width, gameState.mapData.height);
-        } else {
-            if (mapTiles.length > 0) {
-                const startX = Math.floor(camera.x / CONFIG.TILE_SIZE) - 1;
-                const startY = Math.floor(camera.y / CONFIG.TILE_SIZE) - 1;
-                const endX = Math.ceil((camera.x + canvas.width) / CONFIG.TILE_SIZE) + 1;
-                const endY = Math.ceil((camera.y + canvas.height) / CONFIG.TILE_SIZE) + 1;
-                const mapCols = gameState.mapData.width / CONFIG.TILE_SIZE;
+    // 2. DRAW MAP.PNG BACKGROUND - IRAY IHANY!
+    if (gameState.mapImage?.complete && gameState.mapImage.naturalWidth > 0) {
+        ctx.drawImage(
+            gameState.mapImage, // sary
+            -camera.x, // x destination
+            -camera.y, // y destination
+            gameState.mapData.width, // width - 4000
+            gameState.mapData.height // height - 4000
+        );
+    }
+    // 3. FALLBACK GRID RAHA TSY MISY MAP.PNG
+    else {
+        ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
+        ctx.lineWidth = 1;
+        for (let x = -camera.x % 50; x < canvas.width; x += 50) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+        for (let y = -camera.y % 50; y < canvas.height; y += 50) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+    }
 
-                for (let y = Math.max(0, startY); y < Math.min(endY, gameState.mapData.height / CONFIG.TILE_SIZE); y++) {
-                    for (let x = Math.max(0, startX); x < Math.min(endX, mapCols); x++) {
-                        const tileIndex = y * mapCols + x;
-                        if (tileIndex >= 0 && tileIndex < mapTiles.length) {
-                            const tile = mapTiles[tileIndex];
-                            if (!tile) continue;
-                            const drawX = tile.x - camera.x;
-                            const drawY = tile.y - camera.y;
-                            if (tile.collision) ctx.fillStyle = '#444';
-                            else if (tile.swimmable) ctx.fillStyle = '#0088ff';
-                            else ctx.fillStyle = '#2a2a2a';
-                            ctx.fillRect(drawX, drawY, tile.s, tile.s);
-                        }
-                    }
+    // 4. DRAW TILES RAHA MISY - SAFE
+    if (mapTiles.length > 0) {
+        const startX = Math.floor(camera.x / CONFIG.TILE_SIZE) - 1;
+        const startY = Math.floor(camera.y / CONFIG.TILE_SIZE) - 1;
+        const endX = Math.ceil((camera.x + canvas.width) / CONFIG.TILE_SIZE) + 1;
+        const endY = Math.ceil((camera.y + canvas.height) / CONFIG.TILE_SIZE) + 1;
+        const mapCols = gameState.mapData.width / CONFIG.TILE_SIZE;
+
+        for (let y = Math.max(0, startY); y < Math.min(endY, gameState.mapData.height / CONFIG.TILE_SIZE); y++) {
+            for (let x = Math.max(0, startX); x < Math.min(endX, mapCols); x++) {
+                const tileIndex = y * mapCols + x;
+                if (tileIndex >= 0 && tileIndex < mapTiles.length) {
+                    const tile = mapTiles[tileIndex];
+                    if (!tile) continue;
+
+                    const drawX = tile.x - camera.x;
+                    const drawY = tile.y - camera.y;
+
+                    // SAFE COLOR
+                    if (tile.collision) ctx.fillStyle = '#444';
+                    else if (tile.swimmable) ctx.fillStyle = '#0088ff';
+                    else ctx.fillStyle = '#2a2a2a';
+
+                    ctx.fillRect(drawX, drawY, tile.s || CONFIG.TILE_SIZE, tile.s || CONFIG.TILE_SIZE);
                 }
             }
         }
+    }
+
+    //... reste du code (zone, players, loot)
 
         if (gameState.zone) {
             ctx.strokeStyle = '#0088ff';
