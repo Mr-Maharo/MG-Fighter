@@ -3,977 +3,1241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="description" content="MG FIGHTER v4.0 - Lalao Battle Royale">
-    <meta name="theme-color" content="#00d4ff">
-    <title>MG FIGHTER v4.0 - BATTLE ROYALE AURA</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+    <meta name="theme-color" content="#ff006e">
+    <title>MG FIGHTER v4.0.0</title>
     
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Socket.io -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- LOADING SCREEN -->
+    <div id="loadingScreen" class="screen">
+        <div class="loading-container">
+            <div class="loading-logo">
+                <div class="game-logo">MG FIGHTER</div>
+                <div class="logo-glow"></div>
+            </div>
+            <div class="loading-spinner-wrapper">
+                <div class="loading-spinner"></div>
+                <div class="loading-spinner-inner"></div>
+            </div>
+            <div class="loading-text" id="loadingText">Manomana...</div>
+            <div class="loading-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="loadingProgress"></div>
+                </div>
+                <div class="progress-percent" id="loadingPercent">0%</div>
+            </div>
+            <div class="loading-tips">
+                <div class="tip">💡 Tip: Ampiasao ny headset ho an'ny traikefa tsara kokoa</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTH SCREEN -->
+    <div id="authScreen" class="screen hidden">
+        <div class="auth-background">
+            <video class="auth-video" autoplay muted loop>
+                <source src="assets/bg-auth.mp4" type="video/mp4">
+            </video>
+            <div class="auth-overlay"></div>
+        </div>
+        <div class="auth-container">
+            <div class="auth-box">
+                <div class="auth-header">
+                    <div class="auth-title">MG FIGHTER</div>
+                    <div class="auth-subtitle">BATTLE ROYALE</div>
+                    <div class="auth-version">v4.0.0</div>
+                </div>
+                
+                <div class="auth-buttons">
+                    <button class="auth-btn google-btn" onclick="hiditraGoogle()">
+                        <span class="btn-icon">🔵</span>
+                        <span class="btn-text">Hiditra amin Google</span>
+                    </button>
+                    <button class="auth-btn facebook-btn" onclick="hiditraFacebook()">
+                        <span class="btn-icon">🔷</span>
+                        <span class="btn-text">Hiditra amin Facebook</span>
+                    </button>
+                    <button class="auth-btn guest-btn" onclick="hiditraAnonyme()">
+                        <span class="btn-icon">👤</span>
+                        <span class="btn-text">Milalao Vahiny</span>
+                    </button>
+                </div>
+
+                <div class="auth-divider">
+                    <span>na</span>
+                </div>
+
+                <div class="auth-form">
+                    <input type="text" id="usernameInput" class="auth-input" placeholder="Anarana mpilalao" maxlength="20">
+                    <input type="email" id="emailInput" class="auth-input" placeholder="Email">
+                    <input type="password" id="passwordInput" class="auth-input" placeholder="Teny miafina">
+                    <button class="auth-btn login-btn" onclick="hiditraEmail()">Hiditra</button>
+                    <button class="auth-btn register-btn" onclick="hisoratraEmail()">Hisoratra anarana</button>
+                </div>
+
+                <div class="auth-features">
+                    <div class="feature-item">
+                        <span class="feature-icon">⚡</span>
+                        <span>Lalao haingana 100 mpilalao</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <span>Fitaovam-piadiana maro</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">👥</span>
+                        <span>Milalao miaraka amin namana</span>
+                    </div>
+                </div>
+
+                <div id="authError" class="auth-error"></div>
+
+                <div class="auth-footer">
+                    <a href="#" onclick="manokatraTerms(); return false;">Fepetra fampiasana</a>
+                    <span class="separator">•</span>
+                    <a href="#" onclick="manokatraPrivacy(); return false;">Tsiambaratelo</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer"></div>
+
+    <!-- NOTIFICATION CONTAINER -->
+    <div id="notificationContainer"></div>
+
+     <!-- MAIN MENU -->
+    <div id="mainMenu" class="screen hidden">
+        <div class="menu-background">
+            <img src="assets/bg-menu.jpg" class="menu-bg-image" alt="Background">
+            <div class="menu-bg-overlay"></div>
+        </div>
+
+        <div class="menu-header">
+            <div class="player-profile-mini" onclick="manokatraProfile()">
+                <div class="avatar-mini"></div>
+                <div class="profile-info-mini">
+                    <div class="player-name-mini" id="playerNameMini">Mpilalao</div>
+                    <div class="player-level-mini" id="playerLevelMini">Lv.1</div>
+                </div>
+            </div>
+
+            <div class="header-resources">
+                <div class="resource-item">
+                    <span class="resource-icon">💰</span>
+                    <span class="resource-value" id="headerCoins">0</span>
+                </div>
+                <div class="resource-item">
+                    <span class="resource-icon">💎</span>
+                    <span class="resource-value" id="headerDiamonds">0</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <button class="header-btn" onclick="manokatraMail()" title="Mail">
+                    🔔
+                    <span class="badge" id="mailBadge" style="display:none;">0</span>
+                </button>
+                <button class="header-btn" onclick="manokatraFriends()" title="Namana">👥</button>
+                <button class="header-btn" onclick="manokatraSettings()" title="Settings">⚙️</button>
+            </div>
+        </div>
+
+        <div class="menu-content">
+            <div class="game-logo-container">
+                <div class="game-title">MG FIGHTER</div>
+                <div class="game-subtitle">BATTLE ROYALE</div>
+            </div>
+
+            <div class="menu-buttons-container">
+                <button class="menu-btn play-btn-large" onclick="manombokaLalaoVaovao('battle_royale')">
+                    <span class="btn-icon-large">🎮</span>
+                    <span class="btn-text-large">MILALAO</span>
+                    <span class="btn-subtext">Battle Royale 100</span>
+                </button>
+
+                <div class="menu-buttons-row">
+                    <button class="menu-btn" onclick="makaLobbyListe()">
+                        <span class="btn-icon">🏠</span>
+                        <span class="btn-text">LOBBY</span>
+                    </button>
+                    <button class="menu-btn" onclick="manokatraInventory()">
+                        <span class="btn-icon">🎒</span>
+                        <span class="btn-text">INVENTORY</span>
+                    </button>
+                </div>
+
+                <div class="menu-buttons-row">
+                    <button class="menu-btn" onclick="manokatraShop()">
+                        <span class="btn-icon">🛒</span>
+                        <span class="btn-text">SHOP</span>
+                    </button>
+                    <button class="menu-btn" onclick="manokatraBattlePass()">
+                        <span class="btn-icon">🎫</span>
+                        <span class="btn-text">BATTLE PASS</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="menu-bottom-info">
+                <div class="online-counter">
+                    <span class="online-dot"></span>
+                    <span id="onlineCount">0</span> Mpilalao mifandray
+                </div>
+                <div class="server-region">
+                    <span class="region-flag">🇲🇬</span>
+                    <span>Madagascar</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-sidebar">
+            <button class="sidebar-btn" onclick="manokatraLeaderboard()">
+                <span class="sidebar-icon">🏆</span>
+                <span class="sidebar-text">TOP</span>
+            </button>
+            <button class="sidebar-btn" onclick="manokatraClan()">
+                <span class="sidebar-icon">⚔️</span>
+                <span class="sidebar-text">CLAN</span>
+            </button>
+            <button class="sidebar-btn" onclick="makaDailyReward()">
+                <span class="sidebar-icon">🎁</span>
+                <span class="sidebar-text">VALISOA</span>
+            </button>
+            <button class="sidebar-btn" onclick="hivoaka()">
+                <span class="sidebar-icon">🚪</span>
+                <span class="sidebar-text">MIVOAKA</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- LOBBY SCREEN -->
+    <div id="lobbyScreen" class="screen hidden">
+        <img src="assets/bg-lobby.jpg" class="lobby-bg" alt="Lobby">
+        <div class="lobby-overlay"></div>
+        
+        <div class="lobby-header-bar">
+            <button class="back-btn" onclick="mialaAminLobby()">← Miverina</button>
+            <div class="lobby-mode-display">
+                <span class="mode-badge" id="lobbyModeDisplay">BATTLE ROYALE</span>
+            </div>
+            <div class="lobby-room-id" id="lobbyRoomId" onclick="mandikaClipboard(lobby.id)">ID: ------</div>
+        </div>
+
+        <div class="lobby-content">
+            <div class="lobby-title-section">
+                <h1 class="lobby-title">LOBBY</h1>
+                <div class="lobby-subtitle">Miandry mpilalao hafa...</div>
+            </div>
+
+            <div class="lobby-info-box">
+                <div class="lobby-info-row">
+                    <span class="info-label">Mpilalao:</span>
+                    <span class="info-value">
+                        <span class="count-number" id="lobbyPlayerCount">1</span>
+                        <span class="count-separator">/</span>
+                        <span class="count-max" id="lobbyPlayerMax">100</span>
+                    </span>
+                </div>
+                <div class="lobby-countdown-container">
+                    <div class="lobby-countdown" id="lobbyCountdown">1:00</div>
+                    <div class="countdown-bar">
+                        <div class="countdown-fill" id="countdownFill"></div>
+                    </div>
+                </div>
+                <div class="lobby-hint">
+                    <span class="hint-icon">💡</span>
+                    <span class="hint-text">Manomboka rehefa feno na tapitra ny fotoana</span>
+                </div>
+            </div>
+
+            <div class="mode-select-box host-only">
+                <div class="box-header">
+                    <h3 class="box-title">MODE LALAO</h3>
+                    <span class="box-badge">TOMPONA IHANY</span>
+                </div>
+                <div class="mode-grid">
+                    <button class="mode-select-btn selected" data-mode="battle_royale" onclick="manovaModeLobby('battle_royale')">
+                        <div class="mode-card-header">
+                            <span class="mode-icon">🎯</span>
+                            <span class="mode-badge-new">POPULAR</span>
+                        </div>
+                        <div class="mode-name">BATTLE ROYALE</div>
+                        <div class="mode-desc">100 mpilalao, 1 mandresy</div>
+                        <div class="mode-stats">
+                            <span class="stat-item">⏱ 15-20 min</span>
+                            <span class="stat-item">👥 100 max</span>
+                        </div>
+                    </button>
+                    <button class="mode-select-btn" data-mode="team_deathmatch" onclick="manovaModeLobby('team_deathmatch')">
+                        <div class="mode-card-header">
+                            <span class="mode-icon">⚔️</span>
+                        </div>
+                        <div class="mode-name">TEAM DEATHMATCH</div>
+                        <div class="mode-desc">Ekipa 2 mifaninana</div>
+                        <div class="mode-stats">
+                            <span class="stat-item">⏱ 10 min</span>
+                            <span class="stat-item">👥 20 max</span>
+                        </div>
+                    </button>
+                </div>
+                <div class="selected-mode-text">Mode: <span id="selectedModeName">BATTLE ROYALE</span></div>
+            </div>
+
+            <div class="weapon-select-box">
+                <div class="box-header">
+                    <h3 class="box-title">FITAOVAM-PIADIANA</h3>
+                </div>
+                <div class="weapon-grid">
+                    <button class="weapon-select-btn selected" data-weapon="ak47" onclick="manovaFitaovanaLobby('ak47')">
+                        <div class="weapon-icon">🔫</div>
+                        <div class="weapon-name">AK-47</div>
+                        <div class="weapon-stats">
+                            <span class="stat">DMG: 35</span>
+                            <span class="stat">FIR: 600</span>
+                        </div>
+                    </button>
+                    <button class="weapon-select-btn" data-weapon="m4a1" onclick="manovaFitaovanaLobby('m4a1')">
+                        <div class="weapon-icon">🔫</div>
+                        <div class="weapon-name">M4A1</div>
+                        <div class="weapon-stats">
+                            <span class="stat">DMG: 30</span>
+                            <span class="stat">FIR: 700</span>
+                        </div>
+                    </button>
+                    <button class="weapon-select-btn" data-weapon="awm" onclick="manovaFitaovanaLobby('awm')">
+                        <div class="weapon-icon">🎯</div>
+                        <div class="weapon-name">AWM</div>
+                        <div class="weapon-stats">
+                            <span class="stat">DMG: 100</span>
+                            <span class="stat">FIR: 40</span>
+                        </div>
+                    </button>
+                </div>
+                <div class="selected-weapon-text">Fitaovana: <span id="selectedWeaponName">AK-47</span></div>
+            </div>
+
+            <div class="lobby-players-container">
+                <div class="players-header">
+                    <span class="players-title">MPILALAO AO</span>
+                    <span class="players-count" id="lobbyPlayerCountHeader">1/100</span>
+                </div>
+                <div class="lobby-players-list" id="lobbyPlayersList"></div>
+            </div>
+
+            <div class="lobby-chat-container">
+                <div class="chat-header">
+                    <span class="chat-title">💬 CHAT</span>
+                </div>
+                <div class="lobby-chat-messages" id="lobbyChatMessages"></div>
+                <div class="lobby-chat-input">
+                    <input type="text" id="lobbyChatInput" placeholder="Soraty ny hafatra..." maxlength="200">
+                    <button id="lobbyChatSend">Alefa</button>
+                </div>
+            </div>
+
+            <button class="ready-btn" id="readyButton" onclick="manovaVonona()">VONONA</button>
+            <button class="start-btn host-only" onclick="manombokaMatch()" style="display:none;">MANOMBOKA</button>
+        </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="gameScreen" class="screen hidden">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- MINIMAP -->
+        <div id="minimap" class="hud-element">
+            <div class="minimap-header">
+                <span class="minimap-title">SARINTANY</span>
+                <button class="minimap-expand">⛶</button>
+            </div>
+            <canvas id="minimapCanvas"></canvas>
+            <div class="minimap-label">ZONA</div>
+            <div class="minimap-compass">
+                <span class="compass-n">N</span>
+                <span class="compass-e">E</span>
+                <span class="compass-s">S</span>
+                <span class="compass-w">W</span>
+            </div>
+        </div>
+
+        <!-- MATCH INFO -->
+        <div id="matchInfo" class="hud-element">
+            <div class="match-info-header">
+                <span class="info-title">INFO</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Mpilalao:</span>
+                <span class="info-value" id="aliveCount">100</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Vono:</span>
+                <span class="info-value" id="killsCount">0</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Faritra:</span>
+                <span class="info-value zone-time" id="zoneTimer">5:00</span>
+            </div>
+        </div>
+
+        <!-- SETTINGS BUTTON -->
+        <button id="settingsBtn" class="hud-element">⚙️</button>
+
+        <!-- COMBAT BUTTONS -->
+        <button id="healBtn" class="hud-element">
+            <span class="btn-icon">💊</span>
+            <span class="btn-badge" id="healCount">3</span>
+        </button>
+
+        <button id="grenadeBtn" class="hud-element">
+            <span class="btn-icon">💣</span>
+            <span class="btn-badge" id="grenadeCount">2</span>
+        </button>
+
+        <button id="reloadBtn" class="hud-element">
+            <span class="btn-icon">🔄</span>
+        </button>
+
+        <button id="jumpBtn" class="hud-element">
+            <span class="btn-icon">⬆️</span>
+        </button>
+
+        <button id="crouchBtn" class="hud-element">
+            <span class="btn-icon">⬇️</span>
+        </button>
+
+        <!-- FIRE CONTROLS -->
+        <div id="fireControls" class="hud-element">
+            <div class="fire-pad">
+                <button class="fire-dir fire-up" onmousedown="alefaTifitra()">↑</button>
+                <button class="fire-dir fire-right" onmousedown="alefaTifitra()">→</button>
+                <button class="fire-dir fire-down" onmousedown="alefaTifitra()">↓</button>
+                <button class="fire-dir fire-left" onmousedown="alefaTifitra()">←</button>
+                <button id="fireCenterBtn" onmousedown="alefaTifitra()">🔥</button>
+            </div>
+        </div>
+
+        <!-- MOVEMENT JOYSTICK -->
+        <div id="movementJoystick" class="hud-element">
+            <div class="joystick-base">
+                <div class="joystick-knob"></div>
+            </div>
+        </div>
+
+        <!-- MOBILE HUD -->
+        <div id="mobileHUD" class="hud-element">
+            <div class="hud-bars">
+                <div class="hud-bar hp-bar">
+                    <span class="bar-icon">❤️</span>
+                    <div class="bar-bg">
+                        <div class="bar-fill hp-fill" id="healthFill"></div>
+                    </div>
+                    <span class="bar-text" id="healthValue">100</span>
+                </div>
+                <div class="hud-bar armor-bar">
+                    <span class="bar-icon">🛡️</span>
+                    <div class="bar-bg">
+                        <div class="bar-fill armor-fill" id="armorFill"></div>
+                    </div>
+                    <span class="bar-text" id="armorValue">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- WEAPON HUD -->
+        <div id="weaponHUD" class="hud-element">
+            <div class="weapon-info">
+                <div class="weapon-name" id="currentWeaponName">AK-47</div>
+                <div class="weapon-ammo">
+                    <span class="ammo-current" id="ammoCount">30</span>
+                    <span class="ammo-separator">/</span>
+                    <span class="ammo-total" id="ammoMax">30</span>
+                </div>
+                <div class="weapon-fire-mode" id="fireMode">AUTO</div>
+            </div>
+        </div>
+
+        <!-- WEAPON SELECTOR -->
+        <div id="weaponSelector" class="hud-element">
+            <button class="weapon-slot active" data-slot="1">
+                <span class="slot-number">1</span>
+                <span class="slot-icon">🔫</span>
+            </button>
+            <button class="weapon-slot" data-slot="2">
+                <span class="slot-number">2</span>
+                <span class="slot-icon">🔫</span>
+            </button>
+            <button class="weapon-slot" data-slot="3">
+                <span class="slot-number">3</span>
+                <span class="slot-icon">🔪</span>
+            </button>
+        </div>
+
+        <!-- KILL FEED -->
+        <div id="killFeed" class="hud-element"></div>
+
+        <!-- DAMAGE NUMBERS -->
+        <div id="damageNumbers" class="hud-element"></div>
+
+        <!-- ZONE WARNING -->
+        <div id="zoneWarning" class="hud-element hidden">
+            <div class="warning-icon">⚠️</div>
+            <div class="warning-text">MIDITRA AO ANATIN NY FARITRA!</div>
+            <div class="warning-subtext">Mihazakazaha haingana!</div>
+        </div>
+
+        <!-- SCOPE -->
+        <div id="scope" class="hud-element hidden">
+            <div class="scope-overlay">
+                <div class="scope-crosshair"></div>
+                <div class="scope-lines"></div>
+            </div>
+        </div>
+
+        <!-- HITMARKER -->
+        <div id="hitmarker" class="hud-element"></div>
+
+        <!-- LEADERBOARD -->
+        <div id="leaderboard" class="hud-element">
+            <div class="leaderboard-header">
+                <span class="leaderboard-title">TOP MPILALAO</span>
+                <button class="leaderboard-toggle" onclick="document.getElementById('leaderboard').classList.toggle('expanded')">▼</button>
+            </div>
+            <ul class="leaderboard-list" id="leaderboardList"></ul>
+            <div class="leaderboard-footer">
+                <span class="alive-text">Mbola velona:</span>
+                <span class="alive-count" id="aliveCountLeaderboard">100</span>
+            </div>
+        </div>
+
+        <!-- SCOREBOARD -->
+        <div id="scoreboard" class="hud-element hidden">
+            <div class="panel-header">
+                <h2>LALAO AMIN'NY ISA</h2>
+                <button class="panel-close" onclick="document.getElementById('scoreboard').classList.add('hidden')">✕</button>
+            </div>
+            <div class="panel-body">
+                <table class="scoreboard-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Mpilalao</th>
+                            <th>Level</th>
+                            <th>Vono</th>
+                            <th>Fandresena</th>
+                            <th>Lalao</th>
+                            <th>K/D</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scoreboardBody">
+                        <tr><td colspan="7" class="loading-cell">Mameno...</td></tr>
+                    </tbody>
+                </table>
+                <div class="scoreboard-hint">Tsindrio TAB hanakatona</div>
+            </div>
+        </div>
+
+        <!-- SPECTATE UI -->
+        <div id="spectateUI" class="hud-element hidden">
+            <div class="spectate-header">
+                <div class="spectate-title">MIJERY</div>
+                <div class="spectate-player" id="spectatePlayerName">Mpilalao</div>
+            </div>
+            <div class="spectate-controls">
+                <button class="spectate-btn" onclick="spectateMpilalao(-1)">← Teo aloha</button>
+                <button class="spectate-btn" onclick="spectateMpilalao(1)">Manaraka →</button>
+                <button class="spectate-btn danger" onclick="mialaSpectate()">Miala</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHOP MENU -->
+    <div id="shopMenu" class="panel hidden">
+        <div class="panel-header">
+            <h2>🛒 SHOP</h2>
+            <button class="panel-close" onclick="afenoPanel('shopMenu')">✕</button>
+        </div>
+        <div class="panel-body">
+            <div class="shop-tabs">
+                <button class="tab-btn active" data-tab="daily" onclick="manovaTabilaoShop('daily')">Isan'andro</button>
+                <button class="tab-btn" data-tab="skins" onclick="manovaTabilaoShop('skins')">Hoditra</button>
+                <button class="tab-btn" data-tab="weapons" onclick="manovaTabilaoShop('weapons')">Fitaovam-piadiana</button>
+                <button class="tab-btn" data-tab="bundles" onclick="manovaTabilaoShop('bundles')">Bundle</button>
+            </div>
+
+            <div class="shop-tab-content" id="shopTabDaily">
+                <div class="shop-banner">
+                    <h3>VALISOA ISAN'ANDRO</h3>
+                    <div class="shop-timer" id="shopTimer">00:00:00</div>
+                </div>
+                <div class="shop-grid" id="shopGrid"></div>
+            </div>
+
+            <div class="shop-tab-content hidden" id="shopTabSkins">
+                <div class="shop-filters">
+                    <button class="filter-btn active" data-filter="rehetra" onclick="manovaSokajyShop('rehetra')">Rehetra</button>
+                    <button class="filter-btn" data-filter="rare" onclick="manovaSokajyShop('rare')">Rare</button>
+                    <button class="filter-btn" data-filter="epic" onclick="manovaSokajyShop('epic')">Epic</button>
+                    <button class="filter-btn" data-filter="legendary" onclick="manovaSokajyShop('legendary')">Legendary</button>
+                </div>
+                <div class="shop-grid" id="shopSkinsGrid"></div>
+            </div>
+
+            <div class="shop-tab-content hidden" id="shopTabWeapons">
+                <div class="shop-grid" id="shopWeaponsGrid"></div>
+            </div>
+
+            <div class="shop-tab-content hidden" id="shopTabBundles">
+                <div class="shop-grid" id="shopBundlesGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INVENTORY MENU -->
+    <div id="inventoryMenu" class="panel hidden">
+        <div class="panel-header">
+            <h2>🎒 INVENTORY</h2>
+            <button class="panel-close" onclick="afenoPanel('inventoryMenu')">✕</button>
+        </div>
+        <div class="panel-body">
+            <div class="inventory-tabs">
+                <button class="inv-tab active" data-tab="rehetra" onclick="manovaTabilaoInventory('rehetra')">Rehetra</button>
+                <button class="inv-tab" data-tab="hoditra" onclick="manovaTabilaoInventory('hoditra')">Hoditra</button>
+                <button class="inv-tab" data-tab="fitaovana" onclick="manovaTabilaoInventory('fitaovana')">Fitaovam-piadiana</button>
+                <button class="inv-tab" data-tab="emote" onclick="manovaTabilaoInventory('emote')">Emote</button>
+            </div>
+            <div class="inventory-grid" id="inventoryGrid"></div>
+            <div class="item-info" id="itemInfo">
+                <h3>Safidio ny zavatra</h3>
+                <p>Tsindrio ny zavatra iray hijerena antsipiriany</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- BATTLE PASS MENU -->
+    <div id="battlePassMenu" class="panel hidden">
+        <div class="panel-header">
+            <h2>🎫 BATTLE PASS</h2>
+            <button class="panel-close" onclick="afenoPanel('battlePassMenu')">✕</button>
+        </div>
+        <div class="panel-body">
+            <div class="bp-header">
+                <div class="bp-level-display">
+                    <div class="bp-level-circle">
+                        <span class="bp-level-number" id="bpLevelNumber">1</span>
+                        <span class="bp-level-text">LEVEL</span>
+                    </div>
+                </div>
+                <div class="bp-progress-container">
+                    <div class="bp-progress-bar">
+                        <div class="bp-progress-fill" id="bpProgressFill"></div>
+                    </div>
+                    <div class="bp-progress-text" id="bpProgressText">0 / 1000 XP</div>
+                </div>
+            </div>
+
+            <div class="bp-premium-section" id="bpPremiumSection">
+                <div class="premium-badge">PREMIUM</div>
+                <h3>BATTLE PASS PREMIUM</h3>
+                <p>Sokafy ny valisoa rehetra sy mahazo tombony manokana</p>
+                <div class="premium-benefits">
+                    <div class="benefit-item">✨ +50% XP isan'andro</div>
+                    <div class="benefit-item">🎁 Valisoa premium 50</div>
+                    <div class="benefit-item">💎 500 Diamondra avy hatrany</div>
+                </div>
+                <button class="premium-buy-btn" onclick="mividyBattlePassPremium()">
+                    <span>VIDIO PREMIUM</span>
+                    <span>500 💎</span>
+                </button>
+            </div>
+
+            <div class="bp-rewards-container">
+                <div class="bp-rewards-track" id="bpRewardsTrack"></div>
+            </div>
+
+            <div class="bp-footer">
+                <button class="bp-btn" onclick="makaValisoaBPRehetra()">Alaina Daholo</button>
+                <button class="bp-btn" onclick="mividyBPLevel()">Vidio Level (100 💎)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROFILE MENU -->
+    <div id="profileMenu" class="panel hidden">
+        <div class="panel-header">
+            <h2>👤 PROFILE</h2>
+            <button class="panel-close" onclick="afenoPanel('profileMenu')">✕</button>
+        </div>
+        <div class="panel-body">
+            <div class="profile-content">
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar-large"></div>
+                    <div class="profile-info-section">
+                        <div class="info-row">
+                            <label>Anarana:</label>
+                            <input type="text" id="profileUsername" class="text-input" maxlength="20">
+                            <button class="btn-small" onclick="manovaAnarana()">Ovaina</button>
+                        </div>
+                        <div class="info-row">
+                            <label>Level:</label>
+                            <span class="info-value" id="profileLevel">1</span>
+                            <div class="xp-bar">
+                                <div class="xp-fill" id="profileXpFill"></div>
+                            </div>
+                        </div>
+                        <div class="info-row">
+                            <label>Rank:</label>
+                            <span class="rank-badge" id="profileRank">BRONZE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-stats-section">
+                    <h3>STATISTIKA</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">🏆</div>
+                            <div class="stat-value" id="profileWins">0</div>
+                            <div class="stat-label">Fandresena</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">💀</div>
+                            <div class="stat-value" id="profileKills">0</div>
+                            <div class="stat-label">Vono</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🎮</div>
+                            <div class="stat-value" id="profileMatches">0</div>
+                            <div class="stat-label">Lalao</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-value" id="profileKD">0.00</div>
+                            <div class="stat-label">K/D</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📈</div>
+                            <div class="stat-value" id="profileWinrate">0%</div>
+                            <div class="stat-label">Winrate</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🎯</div>
+                            <div class="stat-value" id="profileHeadshots">0</div>
+                            <div class="stat-label">Headshot</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">⏱️</div>
+                            <div class="stat-value" id="profilePlaytime">0h</div>
+                            <div class="stat-label">Fotoana</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🔥</div>
+                            <div class="stat-value" id="profileStreak">0</div>
+                            <div class="stat-label">Streak</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-achievements">
+                    <h3>ZAVA-BITA</h3>
+                    <div class="achievements-filter">
+                        <button class="filter-btn active" data-filter="rehetra">Rehetra</button>
+                        <button class="filter-btn" data-filter="vita">Vita</button>
+                        <button class="filter-btn" data-filter="tsy-vita">Tsy vita</button>
+                    </div>
+                    <div class="achievements-grid" id="achievementsGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIL MENU -->
+    <div id="mailPanel" class="panel hidden">
+        <div class="panel-header">
+            <h2>📧 MAIL</h2>
+            <button class="panel-close" onclick="afenoPanel('mailPanel')">✕</button>
+        </div>
+        <div class="panel-body">
+            <div class="mail-tabs">
+                <button class="mail-tab active" data-tab="rehetra" onclick="manovaTabilaoMail('rehetra')">
+                    Rehetra <span class="tab-badge" id="mailBadgeAll">0</span>
+                </button>
+                <button class="mail-tab" data-tab="tsyVakiana" onclick="manovaTabilaoMail('tsyVakiana')">
+                    Tsy vakiana <span class="tab-badge" id="mailBadgeUnread">0</span>
+                </button>
+                <button class="mail-tab" data-tab="valisoa" onclick="manovaTabilaoMail('valisoa')">
+                    Valisoa <span class="tab-badge" id="mailBadgeReward">0</span>
+                </button>
+            </div>
+            <div class="mail-list" id="mailList">
+                <div class="mail-empty">Tsy misy hafatra</div>
+            </div>
+            <div class="mail-actions">
+                <button class="mail-btn" onclick="mamakyMailDaholo()">Vakio daholo</button>
+                <button class="mail-btn" onclick="mamafaMailVakiana()">Fafao ny efa vakiana</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIL DETAIL MODAL -->
+    <div id="mailDetailModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Hafatra</h2>
+                <button class="modal-close" onclick="document.getElementById('mailDetailModal').classList.add('hidden')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="mail-detail-info">
+                    <div class="detail-row">
+                        <span class="detail-label">Avy amin:</span>
+                        <span class="detail-value" id="mailDetailSender">System</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Lohateny:</span>
+                        <span class="detail-value" id="mailDetailSubject">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Fotoana:</span>
+                        <span class="detail-value" id="mailDetailTime">-</span>
+                    </div>
+                </div>
+                <div class="mail-detail-body" id="mailDetailBody"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn primary" id="mailClaimBtn" onclick="makaValisoaMail()" style="display:none;">
+                    Alao ny valisoa
+                </button>
+                <button class="modal-btn" onclick="document.getElementById('mailDetailModal').classList.add('hidden')">Akatona</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL LEADERBOARD -->
+    <div id="fullLeaderboard" class="panel hidden">
+        <div class="panel-header">
+            <h2>🏆 LEADERBOARD</h2>
+            <button class="panel-close" onclick="afenoPanel('fullLeaderboard')">✕</button>
+        </div>
+        <div class="panel-body">
+            <div class="leaderboard-filters">
+                <button class="leaderboard-filter active" data-sort="vono" onclick="manovaSokajyLeaderboard('vono')">Vono</button>
+                <button class="leaderboard-filter" data-sort="fandresena" onclick="manovaSokajyLeaderboard('fandresena')">Fandresena</button>
+                <button class="leaderboard-filter" data-sort="kd" onclick="manovaSokajyLeaderboard('kd')">K/D</button>
+                <button class="leaderboard-filter" data-sort="level" onclick="manovaSokajyLeaderboard('level')">Level</button>
+            </div>
+            <div class="leaderboard-search">
+                <input type="text" id="leaderboardSearch" placeholder="Mitady mpilalao..." oninput="mitadyMpilalaoLeaderboard()">
+            </div>
+            <div class="leaderboard-table-wrapper">
+                <table class="leaderboard-table" id="leaderboardFullTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Mpilalao</th>
+                            <th>Level</th>
+                            <th>Vono</th>
+                            <th>Fandresena</th>
+                            <th>Lalao</th>
+                            <th>K/D</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="7" class="loading-cell">Mameno...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="leaderboard-pagination">
+                <button class="page-btn" onclick="pejyLeaderboard(-1)">← Teo aloha</button>
+                <span class="page-info">Pejy <span id="leaderboardPage">1</span></span>
+                <button class="page-btn" onclick="pejyLeaderboard(1)">Manaraka →</button>
+            </div>
+            <div class="my-rank-display">
+                <span class="my-rank-label">Ny toeranao:</span>
+                <span class="my-rank-value" id="myRankValue">#0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS PANEL -->
+    <div id="settingsPanel" class="panel hidden">
+        <div class="panel-header">
+            <h2>⚙️ SETTINGS</h2>
+            <button class="panel-close" onclick="afenoPanel('settingsPanel')">✕</button>
+        </div>
+        <div class="panel-body">
+            <div class="settings-tabs">
+                <button class="settings-tab active" data-tab="graphics">Graphics</button>
+                <button class="settings-tab" data-tab="audio">Feo</button>
+                <button class="settings-tab" data-tab="controls">Fanaraha-maso</button>
+                <button class="settings-tab" data-tab="gameplay">Lalao</button>
+            </div>
+
+            <div class="settings-tab-content" id="settingsTabGraphics">
+                <div class="settings-section">
+                    <h3>Graphics</h3>
+                    <div class="setting-row">
+                        <label>Qualité: <span id="graphicsValue">Medium</span></label>
+                        <select id="graphicsSelect" class="select-input">
+                            <option value="low">Ambany</option>
+                            <option value="medium" selected>Antonony</option>
+                            <option value="high">Ambony</option>
+                            <option value="ultra">Ultra</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>FPS Limit: <span id="fpsValue">60</span></label>
+                        <select id="fpsSelect" class="select-input">
+                            <option value="30">30 FPS</option>
+                            <option value="60" selected>60 FPS</option>
+                            <option value="120">120 FPS</option>
+                            <option value="0">Tsy voafetra</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>
+                            <input type="checkbox" id="showFPSCheck">
+                            Asehoy FPS
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <label>
+                            <input type="checkbox" id="showPingCheck" checked>
+                            Asehoy Ping
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-tab-content hidden" id="settingsTabAudio">
+                <div class="settings-section">
+                    <h3>Feo</h3>
+                    <div class="setting-row">
+                        <label>Master Volume: <span id="masterVolumeValue">100%</span></label>
+                        <input type="range" id="masterVolumeSlider" class="slider" min="0" max="100" value="100" oninput="manovaFeo()">
+                    </div>
+                    <div class="setting-row">
+                        <label>Mozika: <span id="musicVolumeValue">50%</span></label>
+                        <input type="range" id="musicVolumeSlider" class="slider" min="0" max="100" value="50" oninput="manovaFeo()">
+                    </div>
+                    <div class="setting-row">
+                        <label>SFX: <span id="sfxVolumeValue">100%</span></label>
+                        <input type="range" id="sfxVolumeSlider" class="slider" min="0" max="100" value="100" oninput="manovaFeo()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-tab-content hidden" id="settingsTabControls">
+                <div class="settings-section">
+                    <h3>Sensitivity</h3>
+                    <div class="setting-row">
+                        <label>Sensitivity: <span id="sensitivityValue">1.0</span></label>
+                        <input type="range" id="sensitivitySlider" class="slider" min="0.1" max="3.0" step="0.1" value="1.0" oninput="manovaSensitivity()">
+                    </div>
+                    <div class="setting-row">
+                        <label>Aim Sensitivity: <span id="aimSensitivityValue">1.0</span></label>
+                        <input type="range" id="aimSensitivitySlider" class="slider" min="0.1" max="3.0" step="0.1" value="1.0" oninput="manovaSensitivity()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-tab-content hidden" id="settingsTabGameplay">
+                <div class="settings-section">
+                    <h3>Lalao</h3>
+                    <div class="setting-row">
+                        <label>
+                            <input type="checkbox" id="autoSprintCheck">
+                            Auto Sprint
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <label>
+                            <input type="checkbox" id="aimAssistCheck" checked>
+                            Aim Assist
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-footer">
+                <button class="btn-primary" onclick="mitahirySettingsRehetra()">Tehirizo</button>
+                <button class="btn-secondary" onclick="mamerinaSettings()">Avereno Default</button>
+            </div>
+        </div>
+
+        <!-- DAILY REWARD MODAL -->
+<div id="dailyRewardModal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🎁 VALISOA ISAN'ANDRO</h2>
+            <button class="modal-close" onclick="afenoDailyReward()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="daily-reward-info">
+                <div class="daily-day" id="dailyDay">Andro 1</div>
+                <div class="daily-reward-item" id="dailyRewardItem">🎁</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn primary" id="dailyClaimBtn" onclick="makaDailyAnkehitriny()">Alaina</button>
+            <button class="modal-btn" onclick="afenoDailyReward()">Akatona</button>
+        </div>
+    </div>
+</div>
+
+<!-- FRIENDS PANEL -->
+<div id="friendsPanel" class="panel hidden">
+    <div class="panel-header">
+        <h2>👥 NAMANA</h2>
+        <button class="panel-close" onclick="afenoPanel('friendsPanel')">✕</button>
+    </div>
+    <div class="panel-body">
+        <div class="friends-search">
+            <input type="text" id="friendSearchInput" placeholder="Mitady namana..." class="text-input">
+            <button class="btn-small" onclick="mitadyNamana()">Mitady</button>
+        </div>
+        <div id="friendSearchResults"></div>
+
+        <h3>Fangatahana</h3>
+        <div id="friendRequests"></div>
+
+        <h3>Namana</h3>
+        <div id="friendsList"></div>
+
+        <h3>Soso-kevitra</h3>
+        <div id="friendSuggestions"></div>
+    </div>
+</div>
+
+<!-- CLAN PANEL -->
+<div id="clanPanel" class="panel hidden">
+    <div class="panel-header">
+        <h2>⚔️ CLAN</h2>
+        <button class="panel-close" onclick="afenoPanel('clanPanel')">✕</button>
+    </div>
+    <div class="panel-body">
+        <div id="clanNoClan" style="display:none;">
+            <p>Tsy manana clan ianao</p>
+            <button class="btn-primary" onclick="mamoronaClan()">Mamorona Clan (5000 💰)</button>
+        </div>
+        <div id="clanHasClan" style="display:none;">
+            <h3 id="clanName">-</h3>
+            <p id="clanLevel">Level 1</p>
+            <div id="clanMembers"></div>
+            <button class="btn-secondary" onclick="mialaClan()">Miala Clan</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADMIN PAGE -->
+<div id="adminPage" class="screen hidden">
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>🔧 ADMIN PANEL</h1>
+            <button class="admin-logout-btn" onclick="mialaAdmin()">Miala</button>
+        </div>
+
+        <div class="admin-stats-grid">
+            <div class="admin-stat-card">
+                <div class="stat-label">Mpilalao Total</div>
+                <div class="stat-value" id="adminTotalPlayers">0</div>
+                <div class="stat-icon">👥</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label">Mifandray</div>
+                <div class="stat-value" id="adminOnlinePlayers">0</div>
+                <div class="stat-icon">🟢</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label">Lalao Total</div>
+                <div class="stat-value" id="adminTotalMatches">0</div>
+                <div class="stat-icon">🎮</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label">Lobby Mavitrika</div>
+                <div class="stat-value" id="adminActiveLobbies">0</div>
+                <div class="stat-icon">🏠</div>
+            </div>
+        </div>
+
+        <div class="admin-content">
+            <div class="admin-panel">
+                <h3 class="panel-title">MPILALAO</h3>
+                <div class="admin-search">
+                    <input type="text" id="adminPlayerSearch" placeholder="Mitady mpilalao...">
+                    <button onclick="makaAdminData()">🔍</button>
+                </div>
+                <div class="admin-player-list" id="adminPlayersList"></div>
+            </div>
+
+            <div class="admin-panel">
+                <h3 class="panel-title">FANARAHANA</h3>
+                <div class="admin-controls-grid">
+                    <button class="admin-btn" onclick="adminAlefaHafatra()">Alefa Hafatra</button>
+                    <button class="admin-btn danger" onclick="adminAtsahatraServer()">Atsahatra Server</button>
+                </div>
+                <div class="admin-console">
+                    <div class="console-header">CONSOLE</div>
+                    <div class="console-output" id="adminConsoleOutput"></div>
+                    <div class="console-input">
+                        <input type="text" id="adminConsoleInput" placeholder="Command...">
+                        <button onclick="adminAlefaCommand()">Alefa</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div id="confirmDialog" class="modal hidden">
+    <div class="modal-content confirm-dialog">
+        <div class="confirm-icon">⚠️</div>
+        <h3 id="confirmTitle">Hamarino</h3>
+        <p id="confirmMessage">Tena azo antoka ve ianao?</p>
+        <div class="confirm-actions">
+            <button class="confirm-btn yes" id="confirmOkBtn">Eny</button>
+            <button class="confirm-btn no" id="confirmCancelBtn">Tsia</button>
+        </div>
+    </div>
+</div>
+
+<!-- VICTORY SCREEN -->
+<div id="victoryScreen" class="screen hidden">
+    <div class="victory-background">
+        <div class="victory-particles"></div>
+    </div>
+    <div class="victory-content">
+        <div class="victory-header">
+            <div class="victory-title">FANDRESENA!</div>
+            <div class="victory-subtitle">VICTORY ROYALE</div>
+        </div>
+        <div class="victory-stats">
+            <div class="stat-row">
+                <span class="stat-label">Laharana:</span>
+                <span class="stat-value">#1</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Vono:</span>
+                <span class="stat-value" id="victoryKills">0</span>
+            </div>
+            <div class="stat-row highlight">
+                <span class="stat-label">XP Azony:</span>
+                <span class="stat-value">+500</span>
+            </div>
+        </div>
+        <div class="victory-actions">
+            <button class="victory-btn primary" onclick="miverinaLobby()">Miverina Lobby</button>
+            <button class="victory-btn" onclick="miverinaMenu()">Menu</button>
+        </div>
+    </div>
+</div>
+
+<!-- DEATH SCREEN -->
+<div id="deathScreen" class="screen hidden">
+    <div class="death-background"></div>
+    <div class="death-content">
+        <div class="death-header">
+            <div class="death-title">MATY</div>
+            <div class="death-subtitle">Miezaha indray</div>
+        </div>
+        <div class="death-stats">
+            <div class="stat-row">
+                <span class="stat-label">Laharana:</span>
+                <span class="stat-value" id="deathRank">#0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Vono:</span>
+                <span class="stat-value" id="deathKills">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">XP Azony:</span>
+                <span class="stat-value">+50</span>
+            </div>
+        </div>
+        <div class="death-actions">
+            <button class="death-btn primary" onclick="miverinaLobby()">Miverina Lobby</button>
+            <button class="death-btn" onclick="miverinaMenu()">Menu</button>
+        </div>
+    </div>
+</div>
+
+<!-- TERMS & PRIVACY MODALS -->
+<div id="termsModal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Fepetra Fampiasana</h2>
+            <button class="modal-close" onclick="document.getElementById('termsModal').classList.add('hidden')">✕</button>
+        </div>
+        <div class="modal-body terms-content">
+            <h3>1. Fepetra Ankapobeny</h3>
+            <p>Amin'ny fampiasana MG Fighter dia manaiky ianao ny fepetra rehetra.</p>
+            <h3>2. Kaonty</h3>
+            <p>Tompon'andraikitra amin'ny fiarovana ny kaontinao ianao.</p>
+            <h3>3. Fitondran-tena</h3>
+            <p>Voarara ny fampiasana cheat, hack, na fitondran-tena ratsy.</p>
+        </div>
+    </div>
+</div>
+
+<div id="privacyModal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Tsiambaratelo</h2>
+            <button class="modal-close" onclick="document.getElementById('privacyModal').classList.add('hidden')">✕</button>
+        </div>
+        <div class="modal-body privacy-content">
+            <h3>1. Angon-drakitra</h3>
+            <p>Mangon-drakitra izahay hanatsarana ny lalao.</p>
+            <h3>2. Fampiasana</h3>
+            <p>Tsy amidy ny angon-drakitrao.</p>
+            <h3>3. Cookies</h3>
+            <p>Mampiasa cookies izahay ho an'ny traikefa tsara kokoa.</p>
+        </div>
+    </div>
+</div>
+
+<!-- CREDITS SCREEN -->
+<div id="creditsScreen" class="screen hidden">
+    <div class="credits-background"></div>
+    <div class="credits-content">
+        <div class="credits-header">
+            <h1>MG FIGHTER</h1>
+            <h2>CREDITS</h2>
+        </div>
+        <div class="credits-scroller">
+            <div class="credits-section">
+                <h3>DEVELOPER</h3>
+                <p>MG Fighter Team</p>
+            </div>
+            <div class="credits-section">
+                <h3>DESIGN</h3>
+                <p>Neo Rose Violet Aura</p>
+            </div>
+            <div class="credits-section">
+                <h3>TECHNOLOGY</h3>
+                <p>Firebase</p>
+                <p>Socket.io</p>
+                <p>Canvas API</p>
+            </div>
+            <div class="credits-section">
+                <h3>MISAOTRA</h3>
+                <p>Misaotra anao nilalao!</p>
+            </div>
+        </div>
+        <button class="credits-btn" onclick="miverinaMenu()">MIVERINA</button>
+    </div>
+</div>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-</head>
-<body>
-
-<!-- ============================================ -->
-<!-- EKRAN FANDRAISANA -->
-<!-- ============================================ -->
-<div id="loadingScreen" class="screen">
-    <div class="loading-container">
-        <div class="loading-logo">
-            <h1 class="game-logo">MG FIGHTER</h1>
-            <div class="logo-glow"></div>
-        </div>
-        <div class="loading-spinner-wrapper">
-            <div class="loading-spinner"></div>
-            <div class="loading-spinner-inner"></div>
-        </div>
-        <p id="loadingText" class="loading-text">Manomana ny lalao...</p>
-        <div class="loading-progress">
-            <div class="progress-bar">
-                <div class="progress-fill" id="loadingProgress"></div>
-            </div>
-            <div class="progress-percent" id="loadingPercent">0%</div>
-        </div>
-        <div class="loading-tips">
-            <p class="tip">💡 Toro-hevitra: Mampiasà écouteur mba hahazo traikefa tsara kokoa</p>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- EKRAN FISORATANA ANARANA -->
-<!-- ============================================ -->
-<div id="authScreen" class="screen hidden">
-    <div class="auth-background">
-        <video autoplay muted loop class="auth-video">
-            <source src="assets/intro.mp4" type="video/mp4">
-        </video>
-        <div class="auth-overlay"></div>
-    </div>
-    <div class="auth-container">
-        <div class="auth-box">
-            <div class="auth-header">
-                <h1 class="auth-title">MG FIGHTER</h1>
-                <p class="auth-subtitle">BATTLE ROYALE AURA</p>
-                <p class="auth-version">Dika 4.0.0</p>
-            </div>
-            
-            <div class="auth-buttons">
-                <button onclick="hiditraGoogle()" class="auth-btn google-btn">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="btn-icon">
-                    <span class="btn-text">Hiditra amin Google</span>
-                </button>
-                
-                <button onclick="hiditraFacebook()" class="auth-btn facebook-btn">
-                    <span class="btn-icon">f</span>
-                    <span class="btn-text">Hiditra amin Facebook</span>
-                </button>
-                
-                <button onclick="hiditraAnonyme()" class="auth-btn guest-btn">
-                    <span class="btn-icon">🎮</span>
-                    <span class="btn-text">MILALAO VAHINY</span>
-                </button>
-            </div>
-
-            <div class="auth-divider">
-                <span>NA</span>
-            </div>
-
-            <div class="auth-form">
-                <input type="email" id="emailInput" placeholder="Mailaka" class="auth-input">
-                <input type="password" id="passwordInput" placeholder="Teny miafina" class="auth-input">
-                <button onclick="hiditraEmail()" class="auth-btn login-btn">HIDITRA</button>
-                <button onclick="hisoratraEmail()" class="auth-btn register-btn">HISORATRA</button>
-            </div>
-
-            <div class="auth-features">
-                <div class="feature-item">
-                    <span class="feature-icon">🔥</span>
-                    <span class="feature-text">Mpilalao 30 Battle Royale</span>
-                </div>
-                <div class="feature-item">
-                    <span class="feature-icon">⚡</span>
-                    <span class="feature-text">Mivantana amin'ny fotoana tena izy</span>
-                </div>
-                <div class="feature-item">
-                    <span class="feature-icon">🎯</span>
-                    <span class="feature-text">Mifandray araka ny fahaizana</span>
-                </div>
-                <div class="feature-item">
-                    <span class="feature-icon">🎁</span>
-                    <span class="feature-text">Valisoa isan'andro</span>
-                </div>
-            </div>
-
-            <p id="authError" class="auth-error"></p>
-            
-            <div class="auth-footer">
-                <a href="#" onclick="asehoTerms()">Fepetra fampiasana</a>
-                <span class="separator">•</span>
-                <a href="#" onclick="asehoPrivacy()">Tsiambaratelo</a>
-                <span class="separator">•</span>
-                <a href="#" onclick="asehoCredits()">Mpanorina</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- MENU FOTRA -->
-<!-- ============================================ -->
-<div id="mainMenu" class="screen hidden">
-    <div class="menu-background">
-        <img src="assets/menu-bg.jpg" alt="Lafika Menu" class="menu-bg-image">
-        <div class="menu-bg-overlay"></div>
-    </div>
-    
-    <div class="menu-header">
-        <div class="player-profile-mini" onclick="sokafyProfile()">
-            <div class="avatar-mini" id="playerAvatarMini"></div>
-            <div class="profile-info-mini">
-                <div class="player-name-mini" id="playerNameMini">Mpilalao</div>
-                <div class="player-level-mini">Lv <span id="playerLevelMini">1</span></div>
-            </div>
-        </div>
-        
-        <div class="header-resources">
-            <div class="resource-item">
-                <span class="resource-icon">💰</span>
-                <span class="resource-value" id="playerCoins">100</span>
-            </div>
-            <div class="resource-item">
-                <span class="resource-icon">💎</span>
-                <span class="resource-value" id="playerDiamonds">0</span>
-            </div>
-        </div>
-        
-        <div class="header-actions">
-            <button class="header-btn" onclick="sokafySettings()" title="Fikirana">⚙️</button>
-            <button class="header-btn" onclick="sokafyShop()" title="Fivarotana">🛒</button>
-            <button class="header-btn" onclick="sokafyInventory()" title="Kitapo">🎒</button>
-            <button class="header-btn" onclick="sokafyMail()" title="Hafatra">
-                📧 <span id="mailBadge" class="badge hidden">0</span>
-            </button>
-        </div>
-    </div>
-    
-    <div class="menu-content">
-        <div class="game-logo-container">
-            <h1 class="game-title">MG FIGHTER</h1>
-            <div class="game-subtitle">BATTLE ROYALE AURA</div>
-        </div>
-        
-        <div class="menu-buttons-container">
-            <button class="menu-btn play-btn-large" id="btnSolo">
-                <span class="btn-icon-large">🎮</span>
-                <span class="btn-text-large">MANOMBOKA LALAO</span>
-                <span class="btn-subtext">IRERY • MPILALAO 30</span>
-            </button>
-            
-            <div class="menu-buttons-row">
-                <button class="menu-btn" id="btnSquad">
-                    <span class="btn-icon">👥</span>
-                    <span class="btn-text">EKIPA</span>
-                </button>
-                <button class="menu-btn" onclick="sokafyBattlePass()">
-                    <span class="btn-icon">🎫</span>
-                    <span class="btn-text">PASS</span>
-                </button>
-                <button class="menu-btn" onclick="sokafyLeaderboard()">
-                    <span class="btn-icon">🏆</span>
-                    <span class="btn-text">LAHARANA</span>
-                </button>
-            </div>
-        </div>
-        
-        <div class="menu-bottom-info">
-            <div class="online-counter">
-                <span class="online-dot"></span>
-                <span id="onlineCount">0</span> MPILALAO AN-TSERASERA
-            </div>
-            <div class="server-region">
-                <span class="region-flag">🇲🇬</span>
-                <span class="region-name">Madagasikara</span>
-            </div>
-        </div>
-    </div>
-    
-    <div class="menu-sidebar">
-        <button class="sidebar-btn" onclick="sokafyEvents()">
-            <span class="sidebar-icon">🎉</span>
-            <span class="sidebar-text">HEVITRA</span>
-        </button>
-        <button class="sidebar-btn" onclick="sokafyFriends()">
-            <span class="sidebar-icon">👥</span>
-            <span class="sidebar-text">NAMANA</span>
-        </button>
-        <button class="sidebar-btn" onclick="sokafyClan()">
-            <span class="sidebar-icon">🛡️</span>
-            <span class="sidebar-text">FOKO</span>
-        </button>
-        <button class="sidebar-btn" onclick="sokafyMissions()">
-            <span class="sidebar-icon">🎯</span>
-            <span class="sidebar-text">ASA</span>
-        </button>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- EKRAN LOBBY -->
-<!-- ============================================ -->
-<div id="lobbyScreen" class="screen hidden">
-    <img src="assets/lobby.jpg" class="lobby-bg">
-    <div class="lobby-overlay"></div>
-    
-    <div class="lobby-header-bar">
-        <button class="back-btn" onclick="mialaLobby()">← HIVERINA</button>
-        <div class="lobby-mode-display">
-            <span class="mode-badge" id="lobbyModeDisplay">BATTLE ROYALE</span>
-        </div>
-        <div class="lobby-room-id">
-            Efitrano: <span id="lobbyRoomId">------</span>
-        </div>
-    </div>
-    
-    <div class="lobby-content">
-        <div class="lobby-title-section">
-            <h1 class="lobby-title">MG FIGHTER</h1>
-            <div class="lobby-subtitle">EFITRANO FIANDRASANA</div>
-        </div>
-        
-        <div class="lobby-info-box">
-            <div class="lobby-info-row">
-                <div class="info-label">MPILALAO</div>
-                <div class="info-value">
-                    <span id="lobbyCount" class="count-number">0</span>
-                    <span class="count-separator">/</span>
-                    <span class="count-max">30</span>
-                </div>
-            </div>
-            
-            <div class="lobby-countdown-container">
-                <div class="lobby-countdown" id="lobbyCountdown">
-                    Miandry mpilalao... (2 farafahakeliny)
-                </div>
-                <div class="countdown-bar">
-                    <div class="countdown-fill" id="countdownFill"></div>
-                </div>
-            </div>
-            
-            <div class="lobby-hint">
-                <span class="hint-icon">ℹ️</span>
-                <span class="hint-text">Ho fenoina bots ho azy ho 30 rehefa manomboka</span>
-            </div>
-        </div>
-
-        <div class="mode-select-box">
-            <div class="box-header">
-                <h3 class="box-title">FIDIO NY MODE</h3>
-                <div class="box-badge">MODE</div>
-            </div>
-            <div class="mode-grid">
-                <button class="mode-select-btn selected" data-mode="BR">
-                    <div class="mode-card-header">
-                        <div class="mode-icon">🏆</div>
-                        <div class="mode-badge-new">MALAZA</div>
-                    </div>
-                    <div class="mode-name">BATTLE ROYALE</div>
-                    <div class="mode-desc">10 min • Faritra 2900→500</div>
-                    <div class="mode-stats">
-                        <span class="stat-item">👥 Mpilalao 30</span>
-                        <span class="stat-item">⏱️ 10 min</span>
-                    </div>
-                </button>
-                <button class="mode-select-btn" data-mode="CS">
-                    <div class="mode-card-header">
-                        <div class="mode-icon">⚡</div>
-                        <div class="mode-badge-new">MAINGANA</div>
-                    </div>
-                    <div class="mode-name">CLASH SQUAD</div>
-                    <div class="mode-desc">5 min • Faritra 2400→800</div>
-                    <div class="mode-stats">
-                        <span class="stat-item">👥 Ekipa 4v4</span>
-                        <span class="stat-item">⏱️ 5 min</span>
-                    </div>
-                </button>
-            </div>
-            <div class="selected-mode-text">
-                Voafidy: <span id="selectedMode">BATTLE ROYALE</span>
-            </div>
-        </div>
-
-        <div class="weapon-select-box">
-            <div class="box-header">
-                <h3 class="box-title">FIDIO NY FIADIANA</h3>
-                <div class="box-badge">FIADIANA</div>
-            </div>
-            <div class="weapon-grid">
-                <button class="weapon-select-btn selected" data-weapon="pistol">
-                    <div class="weapon-icon">🔫</div>
-                    <div class="weapon-name">Basibasy</div>
-                    <div class="weapon-stats">
-                        <span class="stat">Fahavoazana: 25</span>
-                        <span class="stat">Lavitra: 400</span>
-                    </div>
-                </button>
-                <button class="weapon-select-btn" data-weapon="shotgun">
-                    <div class="weapon-icon">💥</div>
-                    <div class="weapon-name">Fongotra</div>
-                    <div class="weapon-stats">
-                        <span class="stat">Fahavoazana: 80</span>
-                        <span class="stat">Lavitra: 150</span>
-                    </div>
-                </button>
-                <button class="weapon-select-btn" data-weapon="smg">
-                    <div class="weapon-icon">🔫</div>
-                    <div class="weapon-name">SMG</div>
-                    <div class="weapon-stats">
-                        <span class="stat">Fahavoazana: 18</span>
-                        <span class="stat">Lavitra: 300</span>
-                    </div>
-                </button>
-                <button class="weapon-select-btn" data-weapon="rifle">
-                    <div class="weapon-icon">🎯</div>
-                    <div class="weapon-name">Basim-borona</div>
-                    <div class="weapon-stats">
-                        <span class="stat">Fahavoazana: 35</span>
-                        <span class="stat">Lavitra: 600</span>
-                    </div>
-                </button>
-                <button class="weapon-select-btn" data-weapon="sniper">
-                    <div class="weapon-icon">🔭</div>
-                    <div class="weapon-name">Mpitan-tsipika</div>
-                    <div class="weapon-stats">
-                        <span class="stat">Fahavoazana: 90</span>
-                        <span class="stat">Lavitra: 1000</span>
-                    </div>
-                </button>
-                <button class="weapon-select-btn" data-weapon="fist">
-                    <div class="weapon-icon">👊</div>
-                    <div class="weapon-name">Toto-lehana</div>
-                    <div class="weapon-stats">
-                        <span class="stat">Fahavoazana: 15</span>
-                        <span class="stat">Lavitra: 50</span>
-                    </div>
-                </button>
-            </div>
-            <div class="selected-weapon-text">
-                Voafidy: <span id="selectedWeapon">Basibasy</span>
-            </div>
-        </div>
-
-        <div class="lobby-players-container">
-            <div class="players-header">
-                <span class="players-title">MPILALAO AO AMIN'NY LOBBY</span>
-                <span class="players-count" id="lobbyPlayersCount">0/30</span>
-            </div>
-            <div id="lobbyPlayersList" class="lobby-players-list"></div>
-        </div>
-        
-        <div class="lobby-chat-container">
-            <div class="chat-header">
-                <span class="chat-title">💬 RESAKA LOBBY</span>
-            </div>
-            <div id="lobbyChatMessages" class="lobby-chat-messages"></div>
-            <div class="lobby-chat-input">
-                <input type="text" id="lobbyChatInput" placeholder="Soraty ny hafatra..." maxlength="200">
-                <button onclick="alefaChatLobby()">ALEFA</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- EKRAN FITADIAVANA LALAO -->
-<!-- ============================================ -->
-<div id="matchmakingScreen" class="screen hidden">
-    <div class="matchmaking-background">
-        <div class="matchmaking-particles"></div>
-    </div>
-    <div class="matchmaking-content">
-        <div class="matchmaking-header">
-            <h1>MITADY LALAO</h1>
-            <p class="matchmaking-mode" id="matchmakingMode">IRERY</p>
-        </div>
-        <div class="matchmaking-animation">
-            <div class="radar-sweep"></div>
-            <div class="radar-dot"></div>
-            <div class="radar-dot"></div>
-            <div class="radar-dot"></div>
-        </div>
-        <div class="matchmaking-status">
-            <p id="matchmakingStatus">Mitady mpilalao...</p>
-            <div class="matchmaking-dots">
-                <span></span><span></span><span></span>
-            </div>
-        </div>
-        <div class="matchmaking-info">
-            <div class="info-item">
-                <span class="info-label">Mpilalao hita:</span>
-                <span class="info-value"><span id="playersFound">0</span>/30</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Fotoana tombanana:</span>
-                <span class="info-value" id="estimatedTime">0:30</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Faritra:</span>
-                <span class="info-value">🇲🇬 Madagasikara</span>
-            </div>
-        </div>
-        <button onclick="ajanonaMatchmaking()" class="cancel-btn">AJANONA NY FITADIAVANA</button>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- KANEVA LALAO -->
-<!-- ============================================ -->
-<canvas id="gameCanvas" class="hidden"></canvas>
-
-<!-- ============================================ -->
-<!-- UI LALAO -->
-<!-- ============================================ -->
-<div id="minimap" class="hud-element">
-    <div class="minimap-header">
-        <span class="minimap-title">SARINTANY</span>
-        <button class="minimap-expand" onclick="hamelatraMinimap()">⛶</button>
-    </div>
-    <canvas id="minimapCanvas" width="200" height="200"></canvas>
-    <div class="minimap-label">FARITRA</div>
-    <div class="minimap-compass">
-        <span class="compass-n">A</span>
-        <span class="compass-e">AT</span>
-        <span class="compass-s">S</span>
-        <span class="compass-w">AV</span>
-    </div>
-</div>
-
-<div id="matchInfo" class="hud-element">
-    <div class="match-info-header">
-        <span class="info-title">FAMPAHAFANTARANA LALAO</span>
-    </div>
-    <div class="info-row">
-        <span class="info-label">Mpilalao:</span>
-        <span class="info-value"><span id="playerCount">0</span>/30</span>
-    </div>
-    <div class="info-row">
-        <span class="info-label">Mode:</span>
-        <span class="info-value" id="gameMode">-</span>
-    </div>
-    <div class="info-row">
-        <span class="info-label">Faritra:</span>
-        <span class="info-value zone-time" id="zoneTime">--:--</span>
-    </div>
-    <div class="info-row">
-        <span class="info-label">Famonoana:</span>
-        <span class="info-value" id="playerKills">0</span>
-    </div>
-</div>
-
-<button id="settingsBtn" class="hud-element" title="Fikirana">
-    <span class="btn-icon">⚙️</span>
-</button>
-
-<div id="settingsPanel" class="panel">
-    <div class="panel-header">
-        <h2>FIKIRANA</h2>
-        <button class="panel-close" onclick="document.getElementById('settingsPanel').style.display='none'">✕</button>
-    </div>
-    <div class="panel-body">
-        <div class="settings-tabs">
-            <button class="tab-btn active" onclick="asehoTabilaoFikirana('controls')">Fanaraha-maso</button>
-            <button class="tab-btn" onclick="asehoTabilaoFikirana('graphics')">Sary</button>
-            <button class="tab-btn" onclick="asehoTabilaoFikirana('audio')">Feo</button>
-        </div>
-        
-        <div id="settingsControlsTab" class="settings-tab-content">
-            <div class="setting-row">
-                <label>Fahatsapana: <span id="sensVal">50</span></label>
-                <input type="range" id="sensitivity" min="10" max="100" value="50" class="slider">
-            </div>
-            <div class="setting-row">
-                <label>Fahatsapana Tifitra: <span id="aimSensVal">50</span></label>
-                <input type="range" id="aimSensitivity" min="10" max="100" value="50" class="slider">
-            </div>
-            <div class="setting-row">
-                <label><input type="checkbox" id="autoShoot"> Tifitra ho azy</label>
-            </div>
-            <div class="setting-row">
-                <label><input type="checkbox" id="autoPickup"> Fanangonana ho azy</label>
-            </div>
-            <div class="setting-row">
-                <label><input type="checkbox" id="leftHanded"> Mode kavia</label>
-            </div>
-        </div>
-        
-        <div id="settingsGraphicsTab" class="settings-tab-content hidden">
-            <div class="setting-row">
-                <label>Kalitaon'ny sary</label>
-                <select id="graphicsQuality" class="select-input"> <option value="low">Ambany</option> <option value="medium" selected>Antonony</option> <option value="high">Ambony</option> <option value="ultra">Ultra</option> </select> </div> <div class="setting-row"> <label>Ferana FPS</label> <select id="fpsLimit" class="select-input"> <option value="30">30 FPS</option> <option value="60" selected>60 FPS</option> <option value="120">120 FPS</option> </select> </div> <div class="setting-row"> <label><input type="checkbox" id="showFPS"> Asehoy FPS</label> </div> </div>
-    <div id="settingsAudioTab" class="settings-tab-content hidden">
-        <div class="setting-row">
-            <label>Feo fototra: <span id="masterVolVal">100</span></label>
-            <input type="range" id="masterVolume" min="0" max="100" value="100" class="slider">
-        </div>
-        <div class="setting-row">
-            <label>Feon-kira: <span id="musicVolVal">50</span></label>
-            <input type="range" id="musicVolume" min="0" max="100" value="50" class="slider">
-        </div>
-        <div class="setting-row">
-            <label>Feon-kira manokana: <span id="sfxVolVal">100</span></label>
-            <input type="range" id="sfxVolume" min="0" max="100" value="100" class="slider">
-        </div>
-        <div class="setting-row">
-            <label><input type="checkbox" id="voiceChat"> Resaka feo</label>
-        </div>
-    </div>
-    
-    <button class="btn-primary" onclick="tehirizoSettings()">TEHIRIZO NY FIKIRANA</button>
-</div>
-</div> <!-- ============================================ --> <!-- MENU PROFIL --> <!-- ============================================ --> <div id="profileMenu" class="panel hidden"> <div class="panel-header"> <h2>👤 PROFIL</h2> <button class="panel-close" onclick="akatonaProfile()">✕</button> </div>
-<div class="panel-body">
-    <div class="profile-content">
-        <div class="profile-avatar-section">
-            <div class="profile-avatar-large" id="profileAvatarLarge"></div>
-            <button class="btn-secondary" onclick="ovayAvatar()">OVA AVATAR</button>
-            <button class="btn-secondary" onclick="ovayLokoAvatar()">OVA LOKO</button>
-        </div>
-
-        <div class="profile-info-section">
-            <div class="info-row">
-                <label>Anarana:</label>
-                <input type="text" id="profileUsername" maxlength="20" class="text-input">
-                <button class="btn-small" onclick="tehirizoAnarana()">TEHIRIZO</button>
-            </div>
-            <div class="info-row">
-                <label>Ambaratonga:</label>
-                <span class="info-value" id="profileLevel">1</span>
-                <div class="xp-bar">
-                    <div class="xp-fill" id="profileXPBar"></div>
-                </div>
-            </div>
-            <div class="info-row">
-                <label>Laharana:</label>
-                <span class="info-value rank-badge" id="profileRank">Bronze III</span>
-            </div>
-            <div class="info-row">
-                <label>K/D Taham-pamonoana:</label>
-                <span class="info-value" id="profileKDR">0.00</span>
-            </div>
-            <div class="info-row">
-                <label>Taham-pandresena:</label>
-                <span class="info-value" id="profileWinRate">0%</span>
-            </div>
-            <div class="info-row">
-                <label>Mpikambana hatramin'ny:</label>
-                <span class="info-value" id="profileJoinDate">-</span>
-            </div>
-        </div>
-
-        <div class="profile-stats-section">
-            <h3>📊 ANTONTAN'ISA</h3>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">🏆</div>
-                    <div class="stat-value" id="statWins">0</div>
-                    <div class="stat-label">Fandresena</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">💀</div>
-                    <div class="stat-value" id="statKills">0</div>
-                    <div class="stat-label">Famonoana</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">☠️</div>
-                    <div class="stat-value" id="statDeaths">0</div>
-                    <div class="stat-label">Fahafatesana</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🎮</div>
-                    <div class="stat-value" id="statMatches">0</div>
-                    <div class="stat-label">Lalao</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">💥</div>
-                    <div class="stat-value" id="statDamage">0</div>
-                    <div class="stat-label">Fahavoazana</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⏱️</div>
-                    <div class="stat-value" id="statTime">0h</div>
-                    <div class="stat-label">Fotoana nilalao</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🎯</div>
-                    <div class="stat-value" id="statHeadshots">0</div>
-                    <div class="stat-label">Tifitra loha</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🔥</div>
-                    <div class="stat-value" id="statStreak">0</div>
-                    <div class="stat-label">Andiany tsara indrindra</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🏅</div>
-                    <div class="stat-value" id="statTop10">0</div>
-                    <div class="stat-label">Top 10</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🎖️</div>
-                    <div class="stat-value" id="statRevives">0</div>
-                    <div class="stat-label">Famerenana aina</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📦</div>
-                    <div class="stat-value" id="statLooted">0</div>
-                    <div class="stat-label">Zavatra nalaina</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🚗</div>
-                    <div class="stat-value" id="statVehicles">0</div>
-                    <div class="stat-label">Fiara nampiasaina</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="profile-achievements">
-            <h3>🏆 ZAVA-BITA</h3>
-            <div class="achievements-filter">
-                <button class="filter-btn active" onclick="sivanaZavaBita('all')">Rehetra</button>
-                <button class="filter-btn" onclick="sivanaZavaBita('unlocked')">Voaavoaka</button>
-                <button class="filter-btn" onclick="sivanaZavaBita('locked')">Mihidy</button>
-            </div>
-            <div class="achievements-grid" id="achievementsGrid">
-                <div class="achievement-item unlocked">
-                    <div class="achievement-icon">🎮</div>
-                    <div class="achievement-info">
-                        <div class="achievement-name">Ra Voalohany</div>
-                        <div class="achievement-desc">Mahazo famonoana voalohany</div>
-                    </div>
-                    <div class="achievement-reward">+50 XP</div>
-                </div>
-                <div class="achievement-item unlocked">
-                    <div class="achievement-icon">🏆</div>
-                    <div class="achievement-info">
-                        <div class="achievement-name">Mpandresy</div>
-                        <div class="achievement-desc">Mandresy lalao voalohany</div>
-                    </div>
-                    <div class="achievement-reward">+200 XP</div>
-                </div>
-                <div class="achievement-item locked">
-                    <div class="achievement-icon">💀</div>
-                    <div class="achievement-info">
-                        <div class="achievement-name">Milina Famonoana</div>
-                        <div class="achievement-desc">Mahazo famonoana 100</div>
-                    </div>
-                    <div class="achievement-reward">+500 XP</div>
-                </div>
-                <div class="achievement-item locked">
-                    <div class="achievement-icon">🔥</div>
-                    <div class="achievement-info">
-                        <div class="achievement-name">Andiany Mafana</div>
-                        <div class="achievement-desc">Mandresy lalao 5 misesy</div>
-                    </div>
-                    <div class="achievement-reward">+1000 XP</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-</div> <!-- ============================================ --> <!-- MENU HAFATRA --> <!-- ============================================ --> <div id="mailMenu" class="panel hidden"> <div class="panel-header"> <h2>📧 HAFATRA</h2> <button class="panel-close" onclick="akatonaMail()">✕</button> </div>
-<div class="mail-tabs">
-    <button class="mail-tab active" onclick="asehoTabilaoMail('inbox')">
-        Vata fidirana <span class="tab-badge" id="inboxBadge">0</span>
-    </button>
-    <button class="mail-tab" onclick="asehoTabilaoMail('sent')">Nalefa</button>
-    <button class="mail-tab" onclick="asehoTabilaoMail('rewards')">
-        Valisoa <span class="tab-badge" id="rewardsBadge">0</span>
-    </button>
-</div>
-
-<div id="mailInboxTab" class="mail-tab-content">
-    <div class="mail-list" id="mailInboxList">
-        <div class="mail-empty">Tsy misy hafatra</div>
-    </div>
-</div>
-
-<div id="mailSentTab" class="mail-tab-content hidden">
-    <div class="mail-list" id="mailSentList">
-        <div class="mail-empty">Tsy misy hafatra nalefa</div>
-    </div>
-</div>
-
-<div id="mailRewardsTab" class="mail-tab-content hidden">
-    <div class="mail-list" id="mailRewardsList">
-        <div class="mail-empty">Tsy misy valisoa azo alaina</div>
-    </div>
-</div>
-
-<div class="mail-actions">
-    <button class="mail-btn" onclick="alaivoValisoaMailRehetra()">ALAO REHETRA</button>
-    <button class="mail-btn" onclick="fafaoMailVakiana()">FAO IREO VAKIANA</button>
-    <button class="mail-btn" onclick="soratyMail()">SORATY</button>
-</div>
-</div> <!-- ============================================ --> <!-- LAHARANA FENO --> <!-- ============================================ --> <div id="fullLeaderboard" class="panel hidden"> <div class="panel-header"> <h2>🏆 LAHARANA MANERANTANY</h2> <button class="panel-close" onclick="akatonaFullLeaderboard()">✕</button> </div>
-<div class="leaderboard-filters">
-    <button class="filter-btn active" onclick="sivanaLeaderboard('global')">Manerantany</button>
-    <button class="filter-btn" onclick="sivanaLeaderboard('friends')">Namana</button>
-    <button class="filter-btn" onclick="sivanaLeaderboard('region')">Faritra</button>
-    <button class="filter-btn" onclick="sivanaLeaderboard('season')">Vanim-potoana</button>
-</div>
-
-<div class="leaderboard-search">
-    <input type="text" id="leaderboardSearch" placeholder="Tadiavo mpilalao..." oninput="tadiavoLeaderboard()">
-</div>
-
-<div class="leaderboard-table-wrapper">
-    <table class="leaderboard-table">
-        <thead>
-            <tr>
-                <th>Laharana</th>
-                <th>Mpilalao</th>
-                <th>Ambaratonga</th>
-                <th>Fandresena</th>
-                <th>Famonoana</th>
-                <th>K/D</th>
-                <th>Isa</th>
-            </tr>
-        </thead>
-        <tbody id="fullLeaderboardBody">
-            <tr>
-                <td colspan="7" class="loading-cell">Eo am-pandrosoana...</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<div class="leaderboard-pagination">
-    <button class="page-btn" onclick="tealohaPejyLeaderboard()">← TEO ALOHA</button>
-    <span class="page-info" id="leaderboardPage">Pejy 1 amin'ny 1</span>
-    <button class="page-btn" onclick="manarakaPejyLeaderboard()">MANARAKA →</button>
-</div>
-
-<div class="my-rank-display">
-    <span class="my-rank-label">Ny Laharanao:</span>
-    <span class="my-rank-value" id="myRankValue">#-</span>
-</div>
-</div> <!-- ============================================ --> <!-- MODAL FEPETRA --> <!-- ============================================ --> <div id="termsModal" class="modal hidden"> <div class="modal-content"> <div class="modal-header"> <h2>Fepetra Fampiasana</h2> <button class="modal-close" onclick="akatonaTerms()">✕</button> </div> <div class="modal-body"> <div class="terms-content"> <h3>1. Fanekena ny Fepetra</h3> <p>Amin'ny filalaovana MG FIGHTER, manaiky ireo fepetra sy fitsipika ireo ianao. Raha tsy manaiky ianao dia aza milalao ny lalao.</p>
-            <h3>2. Fitondran-tena</h3>
-            <p>Tsy azo atao ny mangalatra, manao hack, manararaotra bug, na mampiasa rindrambaiko an'ny antoko fahatelo tsy nahazoana alalana. Hajao ny mpilalao hafa.</p>
-            
-            <h3>3. Fiarovana Kaonty</h3>
-            <p>Tompon'andraikitra amin'ny fiarovana ny kaontinao ianao. Aza zaraina ny teny miafinao.</p>
-            
-            <h3>4. Tsiambaratelo</h3>
-            <p>Manangona angona lalao, antontan'isa, ary fampahalalana fitaovana izahay hanatsarana ny serivisy sy hisorohana ny hosoka.</p>
-            
-            <h3>5. Zavatra Virtoaly</h3>
-            <p>Tsy misy sandany tena izy ny zavatra virtoaly. Farany ny fividianana ary tsy azo averina.</p>
-            
-            <h3>6. Fampiatoana</h3>
-            <p>Manan-jo handroaka mpandika lalàna sy hampiato kaonty tsy misy fampandrenesana izahay.</p>
-            
-            <h3>7. Fanovana Fepetra</h3>
-            <p>Azontsika atao ny manavao ireo fepetra ireo amin'ny fotoana rehetra. Ny fitohizan'ny fampiasana dia midika fanekena ny fiovana.</p>
-        </div>
-    </div>
-    <div class="modal-footer">
-        <button onclick="akatonaTerms()" class="btn-secondary">Foano</button>
-        <button onclick="ekeoTerms()" class="btn-primary">ENY - Ekeo</button>
-    </div>
-</div>
-</div> <!-- ============================================ --> <!-- MODAL TSIAMBARATELO --> <!-- ============================================ --> <div id="privacyModal" class="modal hidden"> <div class="modal-content"> <div class="modal-header"> <h2>Politika Tsiambaratelo</h2> <button class="modal-close" onclick="akatonaPrivacy()">✕</button> </div> <div class="modal-body"> <div class="privacy-content"> <h3>1. Fampahalalana Angoninay</h3> <p>Manangona anarana, mailaka, antontan'isa lalao, fampahalalana fitaovana, adiresy IP, ary angona fampisehoana lalao izahay.</p>
-            <h3>2. Ahoana Fampiasana ny Fampahalalana</h3>
-            <p>Ampiasaina ny angona hanomezana serivisy lalao, hanatsarana traikefa lalao, hisorohana hosoka, ary hanomezana fanohanana mpanjifa.</p>
-            
-            <h3>3. Fiarovana Angona</h3>
-            <p>Mampihatra fepetra fiarovana manara-penitra indostria izahay hiarovana ny fampahalalana manokana amin'ny fidirana tsy nahazoana alalana.</p>
-            
-            <h3>4. Antoko Fahatelo</h3>
-            <p>Tsy mivarotra na mizara ny angona manokana amin'ny antoko fahatelo ho an'ny varotra izahay. Afaka mizara angona amin'ny mpanome tolotra izahay.</p>
-            
-            <h3>5. Ny Zonao</h3>
-            <p>Afaka mangataka fidirana, fanitsiana, na famafana ny kaontinao sy angona mifandraika amin'ny fotoana rehetra amin'ny alàlan'ny fifandraisana amin'ny fanohanana.</p>
-            
-            <h3>6. Cookies</h3>
-            <p>Mampiasa cookies sy teknolojia mitovy amin'izany izahay hanatsarana ny traikefanao sy hamakafaka ny fampisehoana lalao.</p>
-            
-            <h3>7. Tsiambaratelon'ny Ankizy</h3>
-            <p>Tsy natao ho an'ny ankizy latsaky ny 13 taona ny lalaonay. Tsy manangona angona avy amin'ny ankizy izahay.</p>
-        </div>
-    </div>
-    <div class="modal-footer">
-        <button onclick="akatonaPrivacy()" class="btn-primary">ENY</button>
-    </div>
-</div>
-</div> <!-- ============================================ --> <!-- EKRAN MPANORINA --> <!-- ============================================ --> <div id="creditsScreen" class="screen hidden"> <div class="credits-background"></div> <div class="credits-content"> <div class="credits-header"> <h1>MG FIGHTER</h1> <h2>Dika 4.0.0</h2> </div>
-    <div class="credits-scroller">
-        <div class="credits-section">
-            <h3>Ekipa Fampandrosoana</h3>
-            <p>Mpitarika Fampandrosoana: MG Studios</p>
-            <p>Famolavolana Lalao: Battle Team</p>
-            <p>Kanto sy Sarimiaina: Creative Squad</p>
-            <p>Famolavolana Feo: Audio Forge</p>
-            <p>Fitsapana QA: Test Warriors</p>
-        </div>
-
-        <div class="credits-section">
-            <h3>Fisaorana Manokana</h3>
-            <p>Ho an'ny mpitsapa beta rehetra</p>
-            <p>Mpanome tolotra vondrom-piarahamonina</p>
-            <p>Firebase & Socket.io</p>
-            <p>Ny mpilalao mahafinaritra anay</p>
-        </div>
-
-        <div class="credits-section">
-            <h3>Teknolojia</h3>
-            <p>HTML5 Canvas</p>
-            <p>Node.js & Express</p>
-            <p>Firebase & Firestore</p>
-            <p>Socket.io</p>
-            <p>WebGL</p>
-        </div>
-
-        <div class="credits-section">
-            <h3>Mozika sy Feo</h3>
-            <p>Mozika ambadika: Epic Orchestra</p>
-            <p>SFX: Game Audio Studio</p>
-        </div>
-
-        <div class="credits-section">
-            <h3>Zon'ny mpamorona</h3>
-            <p>© 2024 MG Studios</p>
-            <p>Zo rehetra voatokana</p>
-        </div>
-    </div>
-
-    <button class="credits-btn" onclick="akatonaCredits()">HIVERINA MENU</button>
-</div>
-</div> <!-- ============================================ --> <!-- PEJY ADMIN - MIAFINA --> <!-- ============================================ --> <div id="adminPage" class="screen hidden"> <div class="admin-container"> <div class="admin-header"> <h1>👑 FOIBE FAMPIANARANA ADMIN</h1> <button class="admin-logout-btn" onclick="AdminPage.hiala()">HIALA</button> </div>
-    <div class="admin-stats-grid">
-        <div class="admin-stat-card">
-            <div class="stat-label">Mpilalao an-tserasera</div>
-            <div class="stat-value" id="adminOnlineCount">0</div>
-            <div class="stat-icon">👥</div>
-        </div>
-        <div class="admin-stat-card">
-            <div class="stat-label">Voarara rehetra</div>
-            <div class="stat-value" id="adminBanCount">0</div>
-            <div class="stat-icon">🚫</div>
-        </div>
-        <div class="admin-stat-card">
-            <div class="stat-label">Lalao mavitrika</div>
-            <div class="stat-value" id="adminGameCount">0</div>
-            <div class="stat-icon">🎮</div>
-        </div>
-        <div class="admin-stat-card">
-            <div class="stat-label">Fotoana mandeha Server</div>
-            <div class="stat-value" id="adminUptime">0h</div>
-            <div class="stat-icon">⏱️</div>
-        </div>
-    </div>
-
-    <div class="admin-content">
-        <div class="admin-panel">
-            <div class="panel-title">👤 FAMPIANARANA MPILALAO</div>
-            
-            <div class="admin-search">
-                <input id="adminPlayerSearch" type="text" placeholder="Tadiavo anarana..." oninput="AdminPage.tadiavoMpilalao()">
-                <button onclick="AdminPage.havaozyLisitryMpilalao()">🔄</button>
-            </div>
-
-            <div id="adminPlayerList" class="admin-player-list"></div>
-
-            <div class="admin-controls-grid">
-                <button class="admin-btn" onclick="AdminPage.omeoDiamondra(1000)">💎 +1K</button>
-                <button class="admin-btn" onclick="AdminPage.omeoDiamondra(10000)">💎 +10K</button>
-                <button class="admin-btn" onclick="AdminPage.omeoVola(5000)">💰 +5K</button>
-                <button class="admin-btn" onclick="AdminPage.omeoVola(50000)">💰 +50K</button>
-                <button class="admin-btn" onclick="AdminPage.omeoAmbaratonga(10)">⭐ +10 LVL</button>
-                <button class="admin-btn" onclick="AdminPage.omeoBP()">🎫 BP MAX</button>
-                <button class="admin-btn" onclick="AdminPage.tsaboyMpilalao()">❤️ TSABOY</button>
-                <button class="admin-btn danger" onclick="AdminPage.vonoyMpilalao()">💀 VONOY</button>
-                <button class="admin-btn danger" onclick="AdminPage.rarayMpilalao()">🚫 RARAY</button>
-                <button class="admin-btn" onclick="AdminPage.esorinaRarana()">✅ ESORY RARANA</button>
-                <button class="admin-btn" onclick="AdminPage.manginaMpilalao()">🔇 MANGINA</button>
-                <button class="admin-btn" onclick="AdminPage.averinaMpilalao()">🔄 AVERINA</button>
-            </div>
-        </div>
-
-        <div class="admin-panel">
-            <div class="panel-title">🌍 FAMPIANARANA SERVER</div>
-            
-            <div class="admin-broadcast">
-                <textarea id="adminBroadcast" placeholder="Hafatra fampielezana ho an'ny mpilalao rehetra..."></textarea>
-                <button class="admin-btn primary" onclick="AdminPage.ampielezo()">📢 ALEFAO FAMPIELEZANA</button>
-            </div>
-
-            <div class="admin-controls-grid">
-                <button class="admin-btn" onclick="AdminPage.apetrahoHarena()">🎁 APETRAHO HARENA</button>
-                <button class="admin-btn" onclick="AdminPage.apetrahoFiara()">🚗 APETRAHO FIARA</button>
-                <button class="admin-btn" onclick="AdminPage.terenoFaritra()">⭕ TERENO FARITRA</button>
-                <button class="admin-btn" onclick="AdminPage.apetrahoBots(10)">🤖 APETRAHO BOTS</button>
-                <button class="admin-btn" onclick="AdminPage.fafaoHarena()">🗑️ FAFAO HARENA</button>
-                <button class="admin-btn danger" onclick="AdminPage.roahyRehetra()">👢 ROAHY REHETRA</button>
-                <button class="admin-btn danger" onclick="AdminPage.averinaServer()">🔄 AVERINA</button>
-                <button class="admin-btn danger" onclick="AdminPage.atsahatraServer()">⚠️ ATSAHATRA</button>
-            </div>
-
-            <div class="admin-console">
-                <div class="console-header">KONSOLY SERVER</div>
-                <div id="adminConsole" class="console-output"></div>
-                <div class="console-input">
-                    <input type="text" id="consoleCommand" placeholder="Ampidiro baiko..." onkeypress="if(event.key==='Enter')AdminPage.tanterahoBaiko()">
-                    <button onclick="AdminPage.tanterahoBaiko()">TANTERAHO</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="admin-panel full-width">
-        <div class="panel-title">👑 OMEO FITAOVANA</div>
-        <div class="cosmetics-grid">
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('crown')">👑 Satroboninahitra</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('viking')">🪖 Viking</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('wizard')">🧙 Mpanao ody</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('ninja')">🥷 Ninja</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('samurai')">🗡️ Samurai</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('pirate')">🏴‍☠️ Pirate</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('angel')">👼 Anjely</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('demon')">😈 Devoly</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('gold_skin')">✨ Volamena</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('pink_skin')">💖 Mavokely</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('purple_skin')">💜 Volomparasy</button>
-            <button class="cosmetic-btn" onclick="AdminPage.omeoTohiny('rainbow_skin')">🌈 Avana</button>
-        </div>
-    </div>
-
-    <div class="admin-panel full-width">
-        <div class="panel-title">📊 ANTONTAN'ISA SERVER</div>
-        <div class="stats-detailed">
-            <div class="stat-row">
-                <span class="stat-name">Mpilalao voasoratra anarana rehetra:</span>
-                <span class="stat-value" id="statTotalPlayers">0</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-name">Lalao nilalao androany:</span>
-                <span class="stat-value" id="statMatchesToday">0</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-name">Mpilalao ambony indrindra androany:</span>
-                <span class="stat-value" id="statPeakPlayers">0</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-name">Famonoana rehetra:</span>
-                <span class="stat-value" id="statTotalKills">0</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-name">Vola androany:</span>
-                <span class="stat-value" id="statRevenue">$0.00</span>
-            </div>
-        </div>
-    </div>
-</div>
-</div> <!-- ============================================ --> <!-- RAFITRA FAMPANDRENESANA --> <!-- ============================================ --> <div id="notificationContainer"></div> <!-- ============================================ --> <!-- FAMPISEHOANA FANAMARINANA --> <!-- ============================================ --> <div id="confirmDialog" class="modal hidden"> <div class="modal-content confirm-dialog"> <div class="confirm-icon">⚠️</div> <h3 id="confirmTitle">Hamarino ny Asa</h3> <p id="confirmMessage">Tena marina ve ianao?</p> <div class="confirm-actions"> <button onclick="fanamafisanaEny()" class="confirm-btn yes">ENY</button> <button onclick="fanamafisanaTsia()" class="confirm-btn no">TSIA</button> </div> </div> </div> <!-- ============================================ --> <!-- HAFATRA TOAST --> <!-- ============================================ --> <div id="toastContainer"></div> <!-- ============================================ --> <!-- SCRIPTS --> <!-- ============================================ --> <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script> <script src="script.js"></script> </body> </html>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>   
+        <script src="script.js"></script>
