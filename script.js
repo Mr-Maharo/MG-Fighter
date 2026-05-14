@@ -2681,4 +2681,143 @@ socket.on('gameState', (state) => {
     window.mapTiles = mapTiles;
 
 })(); // END IIFE
+// ==================== SETTINGS ====================
+let gameSettings = {
+    sensitivity: 50,
+    volume: 50,
+    autoShoot: false,
+    selectedWeapon: 'pistol'
+};
 
+document.getElementById('settingsBtn').onclick = () => {
+    document.getElementById('settingsPanel').style.display = 'block';
+};
+
+document.getElementById('sensitivity').oninput = (e) => {
+    gameSettings.sensitivity = e.target.value;
+    document.getElementById('sensVal').textContent = e.target.value;
+};
+
+document.getElementById('volume').oninput = (e) => {
+    gameSettings.volume = e.target.value;
+    document.getElementById('volVal').textContent = e.target.value;
+};
+
+document.getElementById('autoShoot').onchange = (e) => {
+    gameSettings.autoShoot = e.target.checked;
+};
+
+// ==================== WEAPON SELECT LOBBY ====================
+document.querySelectorAll('.weaponSelectBtn').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.weaponSelectBtn').forEach(b => {
+            b.style.background = 'rgba(0,0,0,0.4)';
+            b.style.borderColor = '#666';
+        });
+        btn.style.background = 'rgba(0,255,0,0.3)';
+        btn.style.borderColor = '#00ff00';
+        gameSettings.selectedWeapon = btn.dataset.weapon;
+        document.getElementById('selectedWeapon').textContent = btn.textContent.trim();
+    };
+});
+
+// Ovay ny joinGame mba alefa ny weapon
+const originalJoinGame = window.joinGame || function(){};
+window.joinGame = function() {
+    socket.emit("joinGame", {
+        username: "Player" + Math.floor(Math.random() * 9999),
+        uid: socket.id,
+        skin: { color: '#00ff00', hat: 'none' },
+        level: 1,
+        startWeapon: gameSettings.selectedWeapon // ← Ampio ity
+    });
+};
+
+// ==================== MINIMAP ====================
+function drawMinimap() {
+    const canvas = document.getElementById('minimapCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const mapSize = 3000;
+    const scale = 200 / mapSize;
+    
+    ctx.clearRect(0, 0, 200, 200);
+    ctx.fillStyle = '#1a3a1a';
+    ctx.fillRect(0, 0, 200, 200);
+    
+    // Zone
+    if (gameState.zone && gameState.zone.isActive) {
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(
+            gameState.zone.x * scale,
+            gameState.zone.y * scale,
+            gameState.zone.radius * scale,
+            0, Math.PI * 2
+        );
+        ctx.stroke();
+    }
+    
+    // Players
+    Object.values(gameState.players).forEach(p => {
+        if (p.hp <= 0 || p.inLobby) return;
+        ctx.fillStyle = p.id === socket.id ? '#00ff00' : (p.isBot ? '#888' : '#ff0000');
+        ctx.beginPath();
+        ctx.arc(p.x * scale, p.y * scale, 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+// ==================== HEAL SYSTEM ====================
+let medkits = 0;
+document.getElementById('healBtn').onclick = () => {
+    if (medkits > 0 && gameState.players[socket.id]?.hp < 100) {
+        socket.emit('useMedkit');
+    }
+};
+
+socket.on('medkitUpdate', (data) => {
+    medkits = data.count;
+    document.getElementById('healCount').textContent = medkits;
+    document.getElementById('healBtn').style.display = medkits > 0 ? 'block' : 'none';
+});
+
+// ==================== FIRE 4 DIRECTIONS ====================
+document.querySelectorAll('.fireDirBtn').forEach(btn => {
+    btn.onclick = () => {
+        const angle = parseInt(btn.dataset.angle) * Math.PI / 180;
+        socket.emit('shoot', { angle: angle });
+    };
+});
+
+document.getElementById('fireCenterBtn').onclick = () => {
+    const player = gameState.players[socket.id];
+    if (player) {
+        socket.emit('shoot', { angle: player.angle });
+    }
+};
+
+// ==================== GAME STATE UPDATE ====================
+socket.on('matchLaunched', (data) => {
+    document.getElementById('lobbyScreen').style.display = 'none';
+    document.getElementById('fireControls').style.display = 'block';
+    document.getElementById('healBtn').style.display = 'block';
+    gameSettings.selectedWeapon = data.startWeapon || 'pistol';
+});
+
+socket.on('gameState', (state) => {
+    gameState = state;
+    drawMinimap();
+    const aliveCount = Object.values(state.players).filter(p => p.hp > 0 &&!p.inLobby).length;
+    document.getElementById('playerCount').textContent = aliveCount;
+});
+
+// Aseho ny medkits rehefa maka loot
+socket.on('lootPickup', (data) => {
+    if (data.type === 'medkit') {
+        medkits++;
+        document.getElementById('healCount').textContent = medkits;
+        document.getElementById('healBtn').style.display = 'block';
+    }
+});
