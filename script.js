@@ -1,2823 +1,3728 @@
-(() => {
-    'use strict';
+'use strict';
 
-    // ============================================
-    // 0. CONFIG & VERSION - BUG #1 FIXED: Version bump
-    // ============================================
-    const CONFIG = {
-        SERVER_URL: "https://mg-fighter-1.onrender.com",
-        VERSION: "4.3.0", // BUG #2: Updated
-        MAX_PLAYERS: 50,
-        TICK_RATE: 60,
-        MAP_WIDTH: 4000,
-        MAP_HEIGHT: 4000,
-        TILE_SIZE: 32,
-        PLAYER_SPEED: 200,
-        PLAYER_SPRINT_SPEED: 320,
-        PLAYER_SWIM_SPEED: 120,
-        PLAYER_HP: 100,
-        PLAYER_ARMOR_MAX: 100,
-        ZONE_SHRINK_INTERVAL: 45000,
-        ZONE_DAMAGE: 5,
-        WEAPONS: {
-            fist: { damage: 15, range: 50, fireRate: 500, ammo: Infinity, bulletSpeed: 0 },
-            pistol: { damage: 25, range: 400, fireRate: 300, ammo: 12, bulletSpeed: 600 },
-            shotgun: { damage: 16, range: 150, fireRate: 800, ammo: 8, pellets: 5, bulletSpeed: 400, spread: 0.3 },
-            smg: { damage: 18, range: 300, fireRate: 100, ammo: 30, bulletSpeed: 700 },
-            rifle: { damage: 35, range: 600, fireRate: 150, ammo: 30, bulletSpeed: 900 },
-            sniper: { damage: 90, range: 1000, fireRate: 1200, ammo: 5, bulletSpeed: 1200 }
-        },
-        GRENADE_DAMAGE: 75,
-        GRENADE_RADIUS: 100
-    };
+const CONFIG = {
+    version: '4.0.0',
+    mpilalaoMax: 100,
+    server: 'https://mg-fighter-1.onrender.com'
+};
 
-    // ============================================
-    // 1. SOCKET.IO INIT - BUG #32, #40 FIXED
-    // ============================================
-    const socket = io(CONFIG.SERVER_URL, {
-        autoConnect: false,
-        reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: 10,
-        timeout: 10000,
-        pingTimeout: 60000, // BUG #40 FIX
-        pingInterval: 25000 // BUG #77 FIX
-        
-    });
-        window.socket = socket; 
-        window.myId = null;
+let lalao = {
+    vonona: false,
+    efijery: 'loading',
+    mpampiasa: null,
+    socket: null,
+    firebase: null,
+    db: null,
+    auth: null
+};
 
-    // ============================================
-    // 2. GLOBAL GAME STATE - BUG #7, #8 FIXED
-    // ============================================
-    let gameState = {
-        players: {},
-        enemies: [],
-        bullets: [],
-        loot: [],
-        vehicles: [],
-        particles: [],
-        damageNumbers: [],
-        zone: { x: 2000, y: 2000, radius: 2000, targetRadius: 2000, timer: 0, phase: 0 },
-        aliveCount: 0,
-        matchMode: 'solo',
-        matchId: null,
-        mapData: { width: 4000, height: 4000, walls: [], water: [] }, // BUG #7 FIX
-        mapImage: null,
-        mapLoaded: false,
-        spriteImage: null,
-        spritesLoaded: false,
-        player: null,
-        isGameRunning: false,
-        isPaused: false,
-        isAdmin: false, // BUG #99 FIX: Admin flag
-        stats: { fps: 0, ping: 0 },
-        animations: {
-            frameTime: 0,
-            frameDuration: 150,
-            currentFrame: 0
-        }
-    };
+let mpilalao = {
+    uid: null,
+    anarana: '',
+    level: 1,
+    xp: 0,
+    volamena: 0,
+    diamondra: 0,
+    fandresena: 0,
+    vono: 0,
+    fahafatesana: 0,
+    lalao: 0,
+    hoditra: ['default'],
+    hoditraAnkehitriny: 'default'
+};
 
-    // ============================================
-    // 3. FIREBASE AUTH - BUG #10 FIXED
-    // ============================================
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    let myId = null;
-    let currentUser = null;
-    let currentUserId = null;
-
-    // ============================================
-    // 4. ROOM STATE
-    // ============================================
-    let roomState = {
-        id: null,
-        players: [],
-        isReady: false,
-        host: null
-    };
-
-    // ============================================
-    // 5. INPUT STATE - BUG #89 FIXED: AZERTY
-    // ============================================
-    let keys = {};
-    let mouseAngle = 0;
-    let isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    let joystickActive = false;
-    let joystickPos = { x: 0, y: 0 };
-    let touchShootInterval = null;
-    let lastMoveEmit = 0;
-    const MOVE_THROTTLE = 1000 / 20;
-
-    // ============================================
-    // 6. CANVAS & RENDERING - BUG #11, #35 FIXED
-    // ============================================
-    let canvas, ctx, minimapCanvas, minimapCtx;
-    let camera = { x: 0, y: 0, shake: 0 };
-    let lastFrameTime = 0;
-    let frameCount = 0;
-    let fpsTime = 0;
-
-    // ============================================
-    // 7. ASSET MANAGEMENT - BUG #8 FIXED
-    // ============================================
-    let mapTiles = [];
-    let spriteData = { tiles: {}, animations: {} }; // BUG #8 FIX
-    let spriteImage = null;
-    let audioContext = null;
-    let sounds = {};
-
-    // ============================================
-    // 8. UTILS - SECURITY + HELPERS - BUG #38 FIXED
-    // ============================================
-    const Utils = {
-        sanitizeHTML: (str) => {
-            if (typeof str!== 'string') return '';
-            const temp = document.createElement('div');
-            temp.textContent = str;
-            return temp.innerHTML;
-        },
-
-        sanitizeUsername: (username) => {
-            return Utils.sanitizeHTML(username).replace(/[^a-zA-Z0-9_]/g, '').substring(0, 20) || 'Player';
-        },
-
-        formatTime: (seconds) => {
-            seconds = Math.max(0, Math.floor(seconds));
-            const m = Math.floor(seconds / 60);
-            const s = seconds % 60;
-            return `${m}:${s.toString().padStart(2, '0')}`;
-        },
-
-        getDistance: (x1, y1, x2, y2) => {
-            const dx = x2 - x1;
-            const dy = y2 - y1;
-            return Math.sqrt(dx * dx + dy * dy);
-        },
-
-        clamp: (val, min, max) => Math.min(Math.max(val, min), max),
-
-        lerp: (a, b, t) => a + (b - a) * t,
-
-        randomRange: (min, max) => Math.random() * (max - min) + min,
-
-        randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-
-        degToRad: (deg) => deg * Math.PI / 180,
-
-        radToDeg: (rad) => rad * 180 / Math.PI,
-
-        angleDiff: (a, b) => {
-            let diff = b - a;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            return diff;
-        },
-
-        // BUG #30 FIX: Normalize diagonal movement
-        normalizeVector: (x, y) => {
-            const len = Math.sqrt(x * x + y * y);
-            if (len === 0) return { x: 0, y: 0 };
-            return { x: x / len, y: y / len };
-        },
-
-        // BUG #50 FIX: Clamp HP
-        clampHP: (hp) => Utils.clamp(hp, 0, CONFIG.PLAYER_HP),
-
-        // BUG #46 FIX: Clamp ammo
-        clampAmmo: (ammo) => ammo === Infinity? Infinity : Math.max(0, Math.floor(ammo))
-    };
-
-    // ============================================
-    // 9. DOM CACHE - PERFORMANCE
-    // ============================================
-    const DOM = {};
-    const DOM_IDS = [
-        'authScreen','lobbyScreen','matchmakingScreen','gameScreen','roomScreen','authError',
-        'playerName','playerLevel','playerCoins','playerWins','playerKills','playerRank','onlineCount',
-        'playerAvatar','bpXP','bpLevel','bpXPText','battlePassMenu','bpRewards','roomIdDisplay',
-        'roomCount','roomPlayers','readyBtn','startMatchBtn','roomCode','roomChatMessages',
-        'roomChatInput','friendsList','addFriendInput','lobbyChatMessages','lobbyChatInput',
-        'matchmakingMode','playersFound','estimatedTime','game','minimap','hp','hpBar','armor',
-        'armorBar','weapon','ammo','grenades','kills','level','xp','zoneTimer','playersAlive',
-        'killFeed','damageNumbers','zoneWarning','scope','hitmarker','lbList','aliveCount',
-        'aliveCountLB','scoreboard','scoreboardBody','victoryScreen','deathScreen','victoryKills',
-        'victoryDamage','victoryTime','victoryReward','finalRank','finalKills','finalDamage',
-        'finalTime','finalReward','mobileControls','joystick','joystickKnob','shootBtn','scopeBtn',
-        'lootBtn','sprintBtn','grenadeBtn','vehicleBtn','reloadBtn','skinMenu','shopMenu',
-        'inventoryMenu','settingsMenu','profileMenu','mailMenu','fullLeaderboard','fullLeaderboardBody',
-        'termsModal','privacyModal','creditsScreen','notificationContainer','confirmDialog','toastContainer',
-        'spectateUI','spectatePlayerName','mailBadge','loadingScreen','loadingText','skinColorTab',
-        'skinHatTab','skinOutfitTab','skinEmoteTab','shopSkinsTab','shopHatsTab','shopBundlesTab',
-        'shopCoinsTab','invSkinsTab','invHatsTab','invItemsTab','mailInboxTab','mailSystemTab',
-        'invSkinsGrid','shopSkinsGrid','profileUsername','profileLevel','statWins','statKills',
-        'statDeaths','statMatches','profileKDR','volumeSlider','volumeValue','sfxSlider','sfxValue',
-        'sensitivitySlider','sensitivityValue','qualitySelect','fpsSelect','fps','ping'
-    ];
-
-    window.addEventListener('DOMContentLoaded', () => {
-        DOM_IDS.forEach(id => DOM[id] = document.getElementById(id));
-        initEventListeners();
-    });
-
-    // ============================================
-    // 10. NOTIFICATION SYSTEM - BUG #38 FIXED
-    // ============================================
-    const Notify = {
-        toast: (msg, type = 'info') => {
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            toast.textContent = Utils.sanitizeHTML(msg); // BUG #38 FIX
-            DOM.toastContainer?.appendChild(toast);
-            setTimeout(() => toast.classList.add('show'), 10);
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        },
-
-        show: (msg, isError = false) => {
-            const div = document.createElement('div');
-            div.className = 'levelup';
-            div.style.background = isError? 'linear-gradient(135deg, #ff4444, #ff0000)' : 'linear-gradient(135deg, #00ff88, #00aaff)';
-            div.innerHTML = `<p>${Utils.sanitizeHTML(msg)}</p>`; // BUG #38 FIX
-            document.body.appendChild(div);
-            setTimeout(() => div.remove(), 3000);
-        },
-
-        confirm: (msg, onYes, onNo) => {
-            const dialog = DOM.confirmDialog;
-            if (!dialog) return;
-            dialog.querySelector('p').textContent = Utils.sanitizeHTML(msg);
-            dialog.classList.remove('hidden');
-            const yesBtn = dialog.querySelector('.btn-yes');
-            const noBtn = dialog.querySelector('.btn-no');
-            const cleanup = () => {
-                dialog.classList.add('hidden');
-                yesBtn.onclick = null;
-                noBtn.onclick = null;
-            };
-            yesBtn.onclick = () => { cleanup(); onYes?.(); };
-            noBtn.onclick = () => { cleanup(); onNo?.(); };
-        }
-    };
-
-    // ============================================
-    // 11. AUDIO SYSTEM - BUG #9 FIXED
-    // ============================================
-    const Audio = {
-        init: () => {
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            } catch (e) {
-                console.warn('Audio not supported');
-            }
-        },
-
-        resume: () => {
-            if (audioContext?.state === 'suspended') {
-                audioContext.resume(); // BUG #9 FIX
-            }
-        },
-
-        play: (type) => {
-            if (!audioContext ||!gameState.player) return;
-            Audio.resume(); // BUG #9 FIX
-            const volume = (gameState.player.settings?.sfx || 50) / 100;
-            if (volume === 0) return;
-
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc.connect(gain);
-            gain.connect(audioContext.destination);
-
-            const sounds = {
-                shoot: { freq: 150, duration: 0.1, type: 'square' },
-                hit: { freq: 300, duration: 0.05, type: 'sine' },
-                pickup: { freq: 600, duration: 0.1, type: 'sine' },
-                reload: { freq: 200, duration: 0.2, type: 'sawtooth' },
-                death: { freq: 100, duration: 0.5, type: 'sawtooth' },
-                victory: { freq: 523, duration: 0.3, type: 'sine' }
-            };
-
-            const sound = sounds[type] || sounds.shoot;
-            osc.frequency.value = sound.freq;
-            osc.type = sound.type;
-            gain.gain.setValueAtTime(volume * 0.3, audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + sound.duration);
-            osc.start();
-            osc.stop(audioContext.currentTime + sound.duration);
-        }
-    };
-
-        // ============================================
-    // 12. AUTHENTICATION SYSTEM - BUG #10, #36 FIXED
-    // ============================================
-    const Auth = {
-        loginWithGoogle: async () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            DOM.authError.textContent = 'Connecting...';
-            try {
-                const result = await auth.signInWithPopup(provider);
-                const user = result.user;
-                if (!user) throw new Error('No user');
-
-                currentUser = user.displayName || user.email.split("@")[0];
-                currentUserId = user.uid;
-
-                const ref = db.collection("players").doc(user.uid);
-                const snap = await ref.get();
-
-                if (!snap.exists) {
-                    gameState.player = {
-                        username: Utils.sanitizeUsername(currentUser),
-                        email: user.email,
-                        photo: user.photoURL || "",
-                        level: 1, coins: 100, wins: 0, kills: 0, deaths: 0, matches: 0, xp: 0,
-                        bpLevel: 1, bpXP: 0, rank: "Bronze III",
-                        skin: { color: '#00ff00', hat: 'none' },
-                        friends: [],
-                        settings: { volume: 50, sfx: 50, sensitivity: 50, quality: 'medium', fps: 60 },
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    };
-                    await ref.set(gameState.player);
-                    Notify.show('Welcome to MG FIGHTER!');
-                } else {
-                    gameState.player = snap.data();
-                }
-
-                UI.updateLobby();
-                UI.showScreen('lobbyScreen');
-                socket.connect();
-                socket.emit("joinGame", {
-                    username: currentUser,
-                    uid: currentUserId,
-                    skin: gameState.player.skin,
-                    level: gameState.player.level
-                });
-
-            } catch (err) {
-                console.error("LOGIN ERROR:", err);
-                DOM.authError.textContent = 'Login failed. Try again.';
-            }
-        },
-
-        loginAnonymously: async () => {
-            try {
-                const result = await auth.signInAnonymously();
-                const user = result.user;
-                currentUser = "Guest" + Utils.randomInt(1000, 9999);
-                currentUserId = user.uid;
-
-                gameState.player = {
-                    username: currentUser,
-                    level: 1, coins: 100, wins: 0, kills: 0, deaths: 0, matches: 0, xp: 0,
-                    bpLevel: 1, bpXP: 0, rank: "Bronze III",
-                    skin: { color: '#00ff00', hat: 'none' },
-                    friends: [],
-                    settings: { volume: 50, sfx: 50, sensitivity: 50, quality: 'medium', fps: 60 },
-                    isGuest: true
-                };
-
-                UI.updateLobby();
-                UI.showScreen('lobbyScreen');
-                socket.connect();
-                socket.emit("joinGame", {
-                    username: currentUser,
-                    uid: currentUserId,
-                    skin: gameState.player.skin,
-                    level: 1
-                });
-
-            } catch (err) {
-                console.error("GUEST LOGIN ERROR:", err);
-                DOM.authError.textContent = 'Guest login failed.';
-            }
-        },
-
-        savePlayerData: async () => {
-            if (!currentUserId || gameState.player?.isGuest) return;
-            try {
-                await db.collection("players").doc(currentUserId).update({
-                    coins: gameState.player.coins,
-                    wins: gameState.player.wins,
-                    kills: gameState.player.kills,
-                    deaths: gameState.player.deaths,
-                    matches: gameState.player.matches,
-                    xp: gameState.player.xp,
-                    level: gameState.player.level,
-                    bpLevel: gameState.player.bpLevel,
-                    bpXP: gameState.player.bpXP,
-                    rank: gameState.player.rank,
-                    skin: gameState.player.skin,
-                    settings: gameState.player.settings
-                });
-            } catch (e) {
-                console.error('Save failed:', e);
-            }
-        }
-    };
-
-    auth.onAuthStateChanged(async user => {
-        if (user &&!currentUser) {
-            currentUserId = user.uid;
-            currentUser = user.displayName || "Player";
-            const ref = db.collection("players").doc(user.uid);
-            const snap = await ref.get();
-            if (snap.exists) {
-                gameState.player = snap.data();
-                UI.updateLobby();
-                UI.showScreen('lobbyScreen');
-                socket.connect();
-                socket.emit("joinGame", {
-                    username: currentUser,
-                    uid: currentUserId,
-                    skin: gameState.player.skin,
-                    level: gameState.player.level
-                });
-            }
-        } else if (!user) {
-            UI.showScreen('authScreen');
-            if (socket.connected) socket.disconnect();
-        }
-    });
-
-    // ============================================
-    // 13. SOCKET HANDLERS - BUG #31, #33, #34, #63, #74 FIXED
-    // ============================================
-    socket.on("connect", () => {
-    myId = socket.id;
-    window.myId = socket.id; // ← Ampio ity
-    console.log("✅ Connected:", myId);
-    Notify.toast('Connected to server!', 'success');
-    
-    // Alefa automatique ny joinGame
-    socket.emit("joinGame", {
-        username: "Player" + Math.floor(Math.random() * 9999),
-        uid: socket.id,
-        skin: { color: '#00ff00', hat: 'none' },
-        level: 1
-    });
+document.addEventListener('DOMContentLoaded', () => {
+    manombokaLalao();
 });
 
-    socket.on("disconnect", () => {
-        console.log('❌ Disconnected from server');
-        if (gameState.isGameRunning) {
-            Notify.show('Connection lost! Reconnecting...', true);
+async function manombokaLalao() {
+    try {
+        asehoLoading();
+        havaozyLoading(10, 'Manomana...');
+        
+        await miandry(300);
+        amboaryEventListeners();
+        
+        havaozyLoading(30, 'Mifandray amin ny Firebase...');
+        await amboaryFirebase();
+        
+        havaozyLoading(60, 'Manamarina kaonty...');
+        await jereoAuth();
+        
+        havaozyLoading(90, 'Mameno...');
+        await miandry(400);
+        
+        havaozyLoading(100, 'Vonona!');
+        await miandry(300);
+        
+        afenoLoading();
+        
+        if (lalao.mpampiasa) {
+            asehoMenu();
+        } else {
+            asehoAuth();
         }
-    });
-
-    socket.on("connect_error", (error) => {
-        console.error('❌ Connection error:', error);
-        Notify.show('Server connection failed!', true);
-        DOM.authError.textContent = 'Server offline. Try again later.';
-    });
-
-    socket.on("onlineCount", (count) => {
-        if (DOM.onlineCount) DOM.onlineCount.textContent = count;
-    });
-
-    socket.on("playersUpdate", (players) => {
-        gameState.players = players;
-        gameState.aliveCount = Object.values(players).filter(p => p.hp > 0).length;
-        if (DOM.aliveCount) DOM.aliveCount.textContent = gameState.aliveCount;
-        if (DOM.aliveCountLB) DOM.aliveCountLB.textContent = gameState.aliveCount;
-        UI.updateLeaderboard();
-        if (gameState.isGameRunning) UI.updateScoreboard();
-    });
-
-    socket.on("gameStart", async (data) => {
-        Object.assign(gameState, data);
-        gameState.isGameRunning = true;
-        UI.showScreen('gameScreen');
-        await Game.init();
-        if (isMobile && DOM.mobileControls) DOM.mobileControls.classList.remove('hidden');
-        Notify.toast('Match Started!', 'success');
-        Audio.play('victory');
-    });
-
-    socket.on("gameUpdate", (data) => {
-        // BUG #34 FIX: Interpolation for smooth movement
-        if (data.players) {
-            Object.keys(data.players).forEach(id => {
-                if (gameState.players[id] && id!== myId) {
-                    const oldP = gameState.players[id];
-                    const newP = data.players[id];
-                    // Lerp position - BUG #34 FIX
-                    oldP.x = Utils.lerp(oldP.x, newP.x, 0.3);
-                    oldP.y = Utils.lerp(oldP.y, newP.y, 0.3);
-                    oldP.hp = newP.hp;
-                    oldP.armor = newP.armor;
-                    oldP.angle = newP.angle;
-                    oldP.isMoving = newP.isMoving;
-                }
-            });
-        }
-        Object.assign(gameState, {...data, players: gameState.players });
-    });
-
-    socket.on("killFeed", (data) => {
-        UI.addKillFeed(Utils.sanitizeHTML(data.killer), Utils.sanitizeHTML(data.victim), data.weapon);
-        Audio.play('hit');
-    });
-
-    socket.on("damageNumber", (data) => {
-        UI.showDamageNumber(data.x, data.y, data.damage, data.isHeadshot);
-    });
-
-    socket.on("hitmarker", () => {
-        if (DOM.hitmarker) {
-            DOM.hitmarker.classList.remove('hidden');
-            setTimeout(() => DOM.hitmarker.classList.add('hidden'), 100);
-        }
-        Audio.play('hit');
-    });
-
-    socket.on("zoneUpdate", (zone) => {
-        gameState.zone = zone;
-        if (DOM.zoneTimer) DOM.zoneTimer.textContent = `ZONE: ${Utils.formatTime(zone.timer)}`;
-        const me = gameState.players[myId];
-        if (me && DOM.zoneWarning) {
-            const dist = Utils.getDistance(me.x, me.y, zone.x, zone.y);
-            if (dist > zone.radius) {
-                DOM.zoneWarning.classList.remove('hidden');
-            } else {
-                DOM.zoneWarning.classList.add('hidden');
-            }
-        }
-    });
-
-    socket.on("playerDied", (data) => {
-        if (data.id === myId) {
-            gameState.isGameRunning = false;
-            if (DOM.finalRank) DOM.finalRank.textContent = data.rank;
-            if (DOM.finalKills) DOM.finalKills.textContent = data.kills;
-            if (DOM.finalDamage) DOM.finalDamage.textContent = data.damage || 0;
-            if (DOM.finalTime) DOM.finalTime.textContent = Utils.formatTime(data.time || 0);
-            if (DOM.finalReward) DOM.finalReward.textContent = `+${data.coins} Coins +${data.xp} XP`;
-            if (DOM.deathScreen) DOM.deathScreen.classList.remove('hidden');
-
-            gameState.player.coins += data.coins;
-            gameState.player.xp += data.xp;
-            gameState.player.kills += data.kills;
-            gameState.player.deaths++;
-            gameState.player.matches++;
-            Game.levelUpCheck();
-            Auth.savePlayerData();
-            UI.updateLobby();
-            Audio.play('death');
-        }
-    });
-
-    socket.on("victory", (data) => {
-        gameState.isGameRunning = false;
-        if (DOM.victoryKills) DOM.victoryKills.textContent = data.kills;
-        if (DOM.victoryDamage) DOM.victoryDamage.textContent = data.damage || 0;
-        if (DOM.victoryTime) DOM.victoryTime.textContent = Utils.formatTime(data.survived || 0);
-        if (DOM.victoryReward) DOM.victoryReward.textContent = `+${data.coins} Coins +${data.xp} XP`;
-        if (DOM.victoryScreen) DOM.victoryScreen.classList.remove('hidden');
-
-        gameState.player.coins += data.coins;
-        gameState.player.xp += data.xp;
-        gameState.player.kills += data.kills;
-        gameState.player.wins++;
-        gameState.player.matches++;
-        Game.levelUpCheck();
-        Auth.savePlayerData();
-        UI.updateLobby();
-        Audio.play('victory');
-    });
-
-    socket.on("lootPickup", (data) => {
-        const me = gameState.players[myId];
-        if (!me || data.playerId!== myId) return;
-
-        if (data.type === 'weapon') {
-            me.weapon = data.item;
-            me.ammo = CONFIG.WEAPONS[data.item].ammo;
-            Notify.toast(`Picked up ${data.item}!`, 'success');
-        } else if (data.type === 'ammo') {
-            me.ammo = Utils.clampAmmo(me.ammo + data.amount); // BUG #46 FIX
-            Notify.toast(`+${data.amount} Ammo`, 'success');
-        } else if (data.type === 'armor') {
-            me.armor = Math.min(CONFIG.PLAYER_ARMOR_MAX, me.armor + data.amount);
-            Notify.toast(`+${data.amount} Armor`, 'success');
-        } else if (data.type === 'heal') {
-            me.hp = Utils.clampHP(me.hp + data.amount); // BUG #50 FIX
-            Notify.toast(`+${data.amount} HP`, 'success');
-        } else if (data.type === 'grenade') {
-            me.grenades = Math.min(5, me.grenades + data.amount);
-            Notify.toast(`+${data.amount} Grenade`, 'success');
-        }
-        Audio.play('pickup');
-    });
-
-    socket.on("explosion", (data) => {
-        Game.addParticle(data.x, data.y, 'explosion');
-        camera.shake = 10;
-        Audio.play('hit');
-    });
-
-    socket.on("soundEvent", (type) => {
-        Audio.play(type);
-    });
-
-    socket.on("serverMessage", (data) => {
-        Notify.show(Utils.sanitizeHTML(data.text), data.type === 'error'); // BUG #38 FIX
-    });
-
-    socket.on("roomUpdate", (room) => {
-        roomState = room;
-        Lobby.updateRoomUI();
-    });
-
-    socket.on("roomError", (error) => {
-        Notify.show(`Room error: ${Utils.sanitizeHTML(error)}`, true);
-    });
-
-    socket.on("kickedFromRoom", () => {
-        Notify.show('You were kicked from the room', true);
-        DOM.roomScreen?.classList.add('hidden');
-        roomState = { id: null, players: [], isReady: false };
-    });
-
-    socket.on("chatMessage", (data) => {
-        if (data.type === 'lobby') Chat.addLobbyMessage(data);
-        else if (data.type === 'room') Chat.addRoomMessage(data);
-    });
-
-    socket.on("friendRequest", (data) => {
-        Notify.confirm(`${Utils.sanitizeHTML(data.username)} sent you a friend request. Accept?`,
-            () => socket.emit('friendRequestResponse', { fromId: data.fromId, accept: true }),
-            () => socket.emit('friendRequestResponse', { fromId: data.fromId, accept: false })
-        );
-    });
-
-    socket.on("friendAdded", (data) => {
-        if (!gameState.player.friends) gameState.player.friends = [];
-        gameState.player.friends.push(data);
-        Notify.toast(`${Utils.sanitizeHTML(data.username)} is now your friend!`, 'success');
-    });
-
-    socket.on("friendUpdate", () => {
-        Friends.load();
-    });
-
-    // ============================================
-    // 14. EVENT LISTENERS INIT - BUG #74 FIXED
-    // ============================================
-    function initEventListeners() {
-        // BUG #74 FIX: Remove old listeners first
-        document.getElementById('googleLoginBtn')?.removeEventListener('click', Auth.loginWithGoogle);
-        document.getElementById('googleLoginBtn')?.addEventListener('click', Auth.loginWithGoogle);
-
-        document.getElementById('guestLoginBtn')?.removeEventListener('click', Auth.loginAnonymously);
-        document.getElementById('guestLoginBtn')?.addEventListener('click', Auth.loginAnonymously);
-
-        document.getElementById('findMatchBtn')?.addEventListener('click', () => Lobby.findMatch('solo'));
-        document.getElementById('createRoomBtn')?.addEventListener('click', Lobby.createRoom);
-        document.getElementById('joinRoomBtn')?.addEventListener('click', Lobby.joinRoom);
-        document.getElementById('cancelMatchmakingBtn')?.addEventListener('click', Lobby.cancelMatchmaking);
-
-        DOM.readyBtn?.addEventListener('click', Lobby.ready);
-        DOM.startMatchBtn?.addEventListener('click', Lobby.startMatch);
-        document.getElementById('leaveRoomBtn')?.addEventListener('click', Lobby.leaveRoom);
-
-        DOM.lobbyChatInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') Chat.sendLobby();
-        });
-        DOM.roomChatInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') Chat.sendRoom();
-        });
-
-        DOM.addFriendInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') Friends.add();
-        });
-
-        DOM.volumeSlider?.addEventListener('input', (e) => {
-            if (gameState.player) gameState.player.settings.volume = parseInt(e.target.value);
-            if (DOM.volumeValue) DOM.volumeValue.textContent = e.target.value;
-        });
-        DOM.sfxSlider?.addEventListener('input', (e) => {
-            if (gameState.player) gameState.player.settings.sfx = parseInt(e.target.value);
-            if (DOM.sfxValue) DOM.sfxValue.textContent = e.target.value;
-        });
-        DOM.sensitivitySlider?.addEventListener('input', (e) => {
-            if (gameState.player) gameState.player.settings.sensitivity = parseInt(e.target.value);
-            if (DOM.sensitivityValue) DOM.sensitivityValue.textContent = e.target.value;
-        });
-
-        // BUG #93 FIX: Prevent zoom on mobile
-        document.addEventListener('touchmove', (e) => {
-            if (e.scale!== 1) e.preventDefault();
-        }, { passive: false });
-
-        // Prevent context menu
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        lalao.vonona = true;
+    } catch (e) {
+        console.error(e);
+        asehoError('Tsy nety nampiditra');
     }
-
-    // ============================================
-    // 15. LOBBY SYSTEM - BUG #69 FIXED
-    // ============================================
-    const Lobby = {
-        findMatch: (mode) => {
-            if (!gameState.player) return;
-            gameState.matchMode = mode;
-            if (DOM.matchmakingMode) DOM.matchmakingMode.textContent = mode.toUpperCase();
-            UI.showScreen('matchmakingScreen');
-            socket.emit("findMatch", mode);
-
-            // BUG #69 FIX: Auto-cancel after 30s
-            setTimeout(() => {
-                if (DOM.matchmakingScreen &&!DOM.matchmakingScreen.classList.contains('hidden')) {
-                    Lobby.cancelMatchmaking();
-                    Notify.show('Matchmaking timeout. Try again.', true);
-                }
-            }, 30000);
-        },
-
-        cancelMatchmaking: () => {
-            socket.emit("cancelMatchmaking");
-            UI.showScreen('lobbyScreen');
-        },
-
-        createRoom: () => {
-            socket.emit("createRoom");
-            DOM.roomScreen?.classList.remove('hidden');
-        },
-
-        joinRoom: () => {
-            const code = DOM.roomCode?.value.trim().toUpperCase();
-            if (!code || code.length!== 6) return Notify.show('Invalid room code', true);
-            socket.emit("joinRoom", Utils.sanitizeHTML(code));
-            DOM.roomScreen?.classList.remove('hidden');
-        },
-
-        leaveRoom: () => {
-            socket.emit("leaveRoom");
-            DOM.roomScreen?.classList.add('hidden');
-            roomState = { id: null, players: [], isReady: false };
-        },
-
-        ready: () => {
-            roomState.isReady =!roomState.isReady;
-            socket.emit("playerReady", roomState.isReady);
-            if (DOM.readyBtn) {
-                DOM.readyBtn.textContent = roomState.isReady? 'UNREADY' : 'READY';
-                DOM.readyBtn.style.background = roomState.isReady? '#ff4444' : 'linear-gradient(135deg, #00ff88, #00ff00)';
-            }
-        },
-
-        startMatch: () => {
-            socket.emit("startMatch");
-        },
-
-        updateRoomUI: () => {
-            if (!roomState.id) return;
-            if (DOM.roomIdDisplay) DOM.roomIdDisplay.textContent = roomState.id;
-            if (DOM.roomCount) DOM.roomCount.textContent = `${roomState.players.length}/4`;
-            if (DOM.roomPlayers) {
-                DOM.roomPlayers.innerHTML = '';
-                roomState.players.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = 'room-player' + (p.ready? ' ready' : '');
-                    div.innerHTML = `
-                        <div class="room-player-name">${Utils.sanitizeHTML(p.username)} ${p.id === roomState.host? '👑' : ''}</div>
-                        <div class="room-player-status">${p.ready? '✅' : '⏳'}</div>
-                    `;
-                    DOM.roomPlayers.appendChild(div);
-                });
-            }
-
-            const allReady = roomState.players.length >= 2 && roomState.players.every(p => p.ready);
-            const isHost = roomState.host === myId;
-            if (DOM.startMatchBtn) DOM.startMatchBtn.classList.toggle('hidden',!isHost ||!allReady);
-            if (DOM.readyBtn) DOM.readyBtn.disabled =!allReady &&!roomState.isReady;
-        }
-    };
-
-    // ============================================
-    // 16. CHAT SYSTEM - BUG #36 FIXED
-    // ============================================
-    const Chat = {
-        lastChatTime: 0,
-
-        sendLobby: () => {
-            const now = Date.now();
-            if (now - Chat.lastChatTime < 1000) return; // BUG #36 FIX: Rate limit
-            Chat.lastChatTime = now;
-
-            const msg = DOM.lobbyChatInput?.value.trim();
-            if (!msg) return;
-            socket.emit("chatMessage", { type: 'lobby', message: Utils.sanitizeHTML(msg) });
-            if (DOM.lobbyChatInput) DOM.lobbyChatInput.value = '';
-        },
-
-        sendRoom: () => {
-            const now = Date.now();
-            if (now - Chat.lastChatTime < 1000) return; // BUG #36 FIX
-            Chat.lastChatTime = now;
-
-            const msg = DOM.roomChatInput?.value.trim();
-            if (!msg) return;
-            socket.emit("chatMessage", { type: 'room', message: Utils.sanitizeHTML(msg) });
-            if (DOM.roomChatInput) DOM.roomChatInput.value = '';
-        },
-
-        addLobbyMessage: (data) => {
-            if (!DOM.lobbyChatMessages) return;
-            const p = document.createElement('p');
-            p.innerHTML = `<span class="chat-time">${new Date().toLocaleTimeString()}</span><span class="chat-user">${Utils.sanitizeHTML(data.username)}:</span> ${Utils.sanitizeHTML(data.message)}`;
-            DOM.lobbyChatMessages.appendChild(p);
-            DOM.lobbyChatMessages.scrollTop = DOM.lobbyChatMessages.scrollHeight;
-        },
-
-        addRoomMessage: (data) => {
-            if (!DOM.roomChatMessages) return;
-            const p = document.createElement('p');
-            p.innerHTML = `<span class="chat-time">${new Date().toLocaleTimeString()}</span><span class="chat-user">${Utils.sanitizeHTML(data.username)}:</span> ${Utils.sanitizeHTML(data.message)}`;
-            DOM.roomChatMessages.appendChild(p);
-            DOM.roomChatMessages.scrollTop = DOM.roomChatMessages.scrollHeight;
-        }
-    };
-
-        // ============================================
-    // 17. GAME CORE - BUG #3, #13, #15, #18, #24, #28, #29, #30 FIXED
-    // ============================================
-    const Game = {
-        loadAssets: async function() {
-            try {
-                if (DOM.loadingText) DOM.loadingText.textContent = 'Loading map data...';
-
-                // 1. Load map.json - BUG #4 FIXED
-                const mapResponse = await fetch('./map.json');
-                if (mapResponse.ok) {
-                    const mapData = await mapResponse.json();
-                    gameState.mapData = mapData;
-                    mapTiles = mapData.tiles || [];
-                    console.log('✅ Map.json loaded:', mapTiles.length, 'tiles');
-                } else {
-                    console.warn('⚠️ map.json not found');
-                    gameState.mapData = { width: 4000, height: 4000, walls: [], water: [] };
-                }
-
-                // 2. Load sprite.json - BUG #5 FIXED
-                if (DOM.loadingText) DOM.loadingText.textContent = 'Loading character sprites...';
-                const spriteResponse = await fetch('./sprite.json');
-                if (spriteResponse.ok) {
-                    const rawSpriteData = await spriteResponse.json();
-                    spriteData = { tiles: {}, animations: {} };
-
-                    // Parse purple_character
-                    if (rawSpriteData.spritesheets?.purple_character) {
-                        const purple = rawSpriteData.spritesheets.purple_character;
-                        spriteData.animations.purple_idle = [];
-                        spriteData.animations.purple_walk_down = [];
-                        spriteData.animations.purple_walk_left = [];
-                        spriteData.animations.purple_walk_up = [];
-
-                        purple.frames.forEach((frame, idx) => {
-                            const key = `purple_${idx}`;
-                            spriteData.tiles[key] = {
-                                x: frame.x,
-                                y: frame.y,
-                                w: rawSpriteData.frame_width,
-                                h: rawSpriteData.frame_height
-                            };
-
-                            if (frame.row === 0) spriteData.animations.purple_idle.push(key);
-                            else if (frame.row === 1) spriteData.animations.purple_walk_down.push(key);
-                            else if (frame.row === 2) spriteData.animations.purple_walk_left.push(key);
-                            else if (frame.row === 3) spriteData.animations.purple_walk_up.push(key);
-                        });
-                        spriteData.animations.purple_walk_right = spriteData.animations.purple_walk_left;
-                    }
-
-                    // Parse pink_character
-                    if (rawSpriteData.spritesheets?.pink_character) {
-                        const pink = rawSpriteData.spritesheets.pink_character;
-                        spriteData.animations.pink_idle = [];
-                        spriteData.animations.pink_walk_down = [];
-                        spriteData.animations.pink_walk_left = [];
-                        spriteData.animations.pink_walk_up = [];
-
-                        pink.frames.forEach((frame, idx) => {
-                            const key = `pink_${idx}`;
-                            spriteData.tiles[key] = {
-                                x: frame.x,
-                                y: frame.y,
-                                w: rawSpriteData.frame_width,
-                                h: rawSpriteData.frame_height
-                            };
-
-                            if (frame.row === 0) spriteData.animations.pink_idle.push(key);
-                            else if (frame.row === 1) spriteData.animations.pink_walk_down.push(key);
-                            else if (frame.row === 2) spriteData.animations.pink_walk_left.push(key);
-                            else if (frame.row === 3) spriteData.animations.pink_walk_up.push(key);
-                        });
-                        spriteData.animations.pink_walk_right = spriteData.animations.pink_walk_left;
-                    }
-
-                    console.log('✅ sprite.json loaded:', Object.keys(spriteData.tiles).length, 'frames');
-                }
-
-                // 3. Load map.png - BUG #3, #6 FIXED
-                if (DOM.loadingText) DOM.loadingText.textContent = 'Loading map image...';
-                const mapImg = new Image();
-                mapImg.src = './map.png';
-                await new Promise((resolve) => {
-                    mapImg.onload = () => {
-                        gameState.mapImage = mapImg;
-                        gameState.mapLoaded = true;
-                        console.log('✅ map.png loaded:', mapImg.naturalWidth + 'x' + mapImg.naturalHeight);
-                        resolve();
-                    };
-                    mapImg.onerror = () => {
-                        gameState.mapLoaded = false;
-                        console.error('❌ map.png failed to load');
-                        resolve();
-                    };
-                    setTimeout(() => resolve(), 5000);
-                });
-
-                // 4. Load sprites.png
-                if (DOM.loadingText) DOM.loadingText.textContent = 'Loading sprites...';
-                spriteImage = new Image();
-                spriteImage.src = './sprites.png';
-                await new Promise((resolve) => {
-                    spriteImage.onload = () => {
-                        gameState.spritesLoaded = true;
-                        console.log('✅ sprites.png loaded');
-                        resolve();
-                    };
-                    spriteImage.onerror = () => {
-                        gameState.spritesLoaded = false;
-                        resolve();
-                    };
-                    setTimeout(resolve, 3000);
-                });
-
-                if (DOM.loadingText) DOM.loadingText.textContent = 'Ready!';
-
-                // BUG #1, #2 FIXED: DEBUG object
-                window.DEBUG = {};
-                window.DEBUG.mapImage = gameState.mapImage;
-                window.DEBUG.mapData = gameState.mapData;
-                window.DEBUG.camera = camera;
-                window.DEBUG.canvas = canvas;
-                window.DEBUG.ctx = ctx;
-                window.DEBUG.gameState = gameState;
-                console.log('🔧 DEBUG READY - typeo: window.DEBUG');
-
-                return true;
-
-            } catch (error) {
-                console.error('❌ Error loading assets:', error);
-                return false;
-            }
-        },
-
-        init: async function() {
-            canvas = DOM.game;
-            ctx = canvas.getContext('2d');
-            minimapCanvas = DOM.minimap;
-            minimapCtx = minimapCanvas?.getContext('2d');
-
-            this.resizeCanvas();
-            window.addEventListener('resize', () => this.resizeCanvas());
-
-            if (isMobile) {
-                this.setupMobileControls();
-            } else {
-                this.setupDesktopControls();
-            }
-
-            Audio.init();
-
-            const loaded = await this.loadAssets();
-            if (!loaded) return;
-
-            lastFrameTime = performance.now();
-            requestAnimationFrame(() => this.loop());
-        },
-
-        resizeCanvas: function() {
-            if (!canvas) return;
-            // BUG #16 FIX: Mobile DPR
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = window.innerWidth * (isMobile? dpr : 1);
-            canvas.height = window.innerHeight * (isMobile? dpr : 1);
-            canvas.style.width = window.innerWidth + 'px';
-            canvas.style.height = window.innerHeight + 'px';
-            if (isMobile) ctx.scale(dpr, dpr);
-        },
-
-        loop: function(currentTime) {
-            if (!gameState.isGameRunning) return;
-
-            // BUG #23 FIX: Limit deltaTime
-            const deltaTime = Math.min((currentTime - lastFrameTime) / 1000, 0.1);
-            lastFrameTime = currentTime;
-
-            frameCount++;
-            fpsTime += deltaTime;
-            if (fpsTime >= 1.0) {
-                gameState.stats.fps = frameCount;
-                frameCount = 0;
-                fpsTime = 0;
-            }
-
-            this.update(deltaTime);
-            this.render();
-            Particles.update(deltaTime);
-
-            requestAnimationFrame((time) => this.loop(time));
-        },
-
-        update: function(dt) {
-            const me = gameState.players[myId];
-            if (!me) return;
-
-            // BUG #15 FIX: Animation frame update
-            gameState.animations.frameTime += dt * 1000;
-            if (gameState.animations.frameTime >= gameState.animations.frameDuration) {
-                gameState.animations.frameTime = 0;
-                gameState.animations.currentFrame = (gameState.animations.currentFrame + 1) % 4;
-            }
-
-             // BUG #14 FIX: Camera lerp - FORCE CENTER
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
-            camera.x = Utils.lerp(camera.x, me.x - centerX, 0.15); // Ampitomboina 0.15
-            camera.y = Utils.lerp(camera.y, me.y - centerY, 0.15);
-
-            // DEBUG CAMERA
-            if (frameCount % 60 === 0) { // Isaky ny 1 seconde
-                console.log('CAMERA:', Math.floor(camera.x), Math.floor(camera.y), 'PLAYER:', Math.floor(me.x), Math.floor(me.y));
-            }
-
-            // BUG #24 FIX: Zone damage
-            if (gameState.zone) {
-                const dist = Utils.getDistance(me.x, me.y, gameState.zone.x, gameState.zone.y);
-                if (dist > gameState.zone.radius) {
-                    me.hp -= CONFIG.ZONE_DAMAGE * dt;
-                    me.hp = Utils.clampHP(me.hp);
-                    if (me.hp <= 0) socket.emit('playerDied', { cause: 'zone' });
-                }
-            }
-
-            // Update UI
-            if (DOM.hp) DOM.hp.textContent = Math.max(0, Math.floor(me.hp));
-            if (DOM.hpBar) DOM.hpBar.style.width = `${Utils.clamp(me.hp, 0, 100)}%`;
-            if (DOM.armor) DOM.armor.textContent = Math.floor(me.armor || 0);
-            if (DOM.armorBar) DOM.armorBar.style.width = `${Utils.clamp(me.armor || 0, 0, 100)}%`;
-            if (DOM.weapon) DOM.weapon.textContent = me.weapon || 'Fist';
-            if (DOM.ammo) DOM.ammo.textContent = me.ammo === Infinity? '∞' : me.ammo || 0;
-            if (DOM.grenades) DOM.grenades.textContent = me.grenades || 0;
-            if (DOM.kills) DOM.kills.textContent = me.kills || 0;
-            if (DOM.level) DOM.level.textContent = me.level || 1;
-            if (DOM.xp) DOM.xp.textContent = `${me.xp || 0}/${(me.level || 1) * 100}`;
-
-            this.handleInput();
-
-            if (window.aiManager) {
-                window.aiManager.update(dt, gameState, gameState.players);
-            }
-        },
-
-                render: function() {
-            if (!ctx) return;
-
-            // 1. CLEAR CANVAS - BUG #19 FIX
-            ctx.fillStyle = '#0a1a0a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. DRAW MAP.PNG - FIXED
-            if (gameState.mapImage && gameState.mapImage.complete && gameState.mapImage.naturalWidth > 0) {
-                ctx.drawImage(
-                    gameState.mapImage,
-                    -camera.x,
-                    -camera.y,
-                    4000,
-                    4000
-                );
-            }
-            // 3. FALLBACK GRID - TOKANA IHANY!
-            else {
-                ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
-                ctx.lineWidth = 1;
-                for (let x = -camera.x % 50; x < canvas.width; x += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, canvas.height);
-                    ctx.stroke();
-                }
-                for (let y = -camera.y % 50; y < canvas.height; y += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(canvas.width, y);
-                    ctx.stroke();
-                }
-            }
-
-            // 4. DRAW TILES - BUG #18 FIX: Culling
-            if (mapTiles.length > 0) {
-                const startX = Math.floor(camera.x / CONFIG.TILE_SIZE) - 1;
-                const startY = Math.floor(camera.y / CONFIG.TILE_SIZE) - 1;
-                const endX = Math.ceil((camera.x + canvas.width) / CONFIG.TILE_SIZE) + 1;
-                const endY = Math.ceil((camera.y + canvas.height) / CONFIG.TILE_SIZE) + 1;
-                const mapCols = gameState.mapData.width / CONFIG.TILE_SIZE;
-
-                for (let y = Math.max(0, startY); y < Math.min(endY, gameState.mapData.height / CONFIG.TILE_SIZE); y++) {
-                    for (let x = Math.max(0, startX); x < Math.min(endX, mapCols); x++) {
-                        const tileIndex = y * mapCols + x;
-                        if (tileIndex >= 0 && tileIndex < mapTiles.length) {
-                            const tile = mapTiles[tileIndex];
-                            if (!tile) continue;
-
-                            const drawX = tile.x - camera.x;
-                            const drawY = tile.y - camera.y;
-
-                            if (tile.collision) ctx.fillStyle = '#444';
-                            else if (tile.swimmable) ctx.fillStyle = '#0088ff';
-                            else ctx.fillStyle = '#2a2a2a';
-
-                            ctx.fillRect(drawX, drawY, tile.s || CONFIG.TILE_SIZE, tile.s || CONFIG.TILE_SIZE);
-                        }
-                    }
-                }
-            }
-            // 5. DRAW ZONE
-            if (gameState.zone) {
-                ctx.strokeStyle = '#0088ff';
-                ctx.lineWidth = 3;
-                ctx.setLineDash([10, 5]);
-                ctx.beginPath();
-                ctx.arc(gameState.zone.x - camera.x, gameState.zone.y - camera.y, gameState.zone.radius, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-
-            // 6. DRAW LOOT - BUG #18 FIX: Culling
-            gameState.loot.forEach(loot => {
-                const screenX = loot.x - camera.x;
-                const screenY = loot.y - camera.y;
-                if (screenX < -50 || screenX > canvas.width + 50 || screenY < -50 || screenY > canvas.height + 50) return;
-                ctx.fillStyle = '#ffff00';
-                ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
-            });
-
-            // 7. DRAW VEHICLES
-            gameState.vehicles.forEach(vehicle => {
-                const screenX = vehicle.x - camera.x;
-                const screenY = vehicle.y - camera.y;
-                if (screenX < -50 || screenX > canvas.width + 50 || screenY < -50 || screenY > canvas.height + 50) return;
-                ctx.save();
-                ctx.translate(screenX, screenY);
-                ctx.rotate(vehicle.angle || 0);
-                ctx.fillStyle = vehicle.driver? '#ff8800' : '#888888';
-                ctx.fillRect(-30, -20, 60, 40);
-                ctx.restore();
-            });
-
-            // 8. DRAW BULLETS
-            gameState.bullets.forEach(bullet => {
-                const screenX = bullet.x - camera.x;
-                const screenY = bullet.y - camera.y;
-                if (screenX < -10 || screenX > canvas.width + 10 || screenY < -10 || screenY > canvas.height + 10) return;
-                ctx.fillStyle = '#ffff00';
-                ctx.beginPath();
-                ctx.arc(screenX, screenY, 3, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // 9. DRAW PLAYERS - BUG #15 FIX: Animation
-            Object.values(gameState.players).forEach(p => {
-                if (p.hp <= 0) return;
-                const x = p.x - camera.x;
-                const y = p.y - camera.y;
-                if (x < -100 || x > canvas.width + 100 || y < -100 || y > canvas.height + 100) return;
-
-                const isMe = p.id === myId;
-                const skinType = p.skin?.color === '#ff00ff' || p.skin?.color === '#ff69b4'? 'pink' : 'purple';
-
-                let animName = `${skinType}_idle`;
-                let flipX = false;
-
-                if (p.isMoving) {
-                    const angle = p.angle || 0;
-                    const deg = (angle * 180 / Math.PI + 360) % 360;
-                    if (deg >= 315 || deg < 45) {
-                        animName = `${skinType}_walk_right`;
-                        flipX = true;
-                    } else if (deg >= 45 && deg < 135) {
-                        animName = `${skinType}_walk_down`;
-                    } else if (deg >= 135 && deg < 225) {
-                        animName = `${skinType}_walk_left`;
-                    } else {
-                        animName = `${skinType}_walk_up`;
-                    }
-                }
-
-                const animFrames = spriteData.animations?.[animName];
-                const frameIndex = gameState.animations.currentFrame % (animFrames?.length || 1);
-                const spriteKey = animFrames?.[frameIndex];
-
-                if (spriteImage?.complete && spriteKey && spriteData.tiles[spriteKey]) {
-                    const sprite = spriteData.tiles[spriteKey];
-                    ctx.save();
-                    ctx.translate(x, y);
-                    if (flipX) ctx.scale(-1, 1);
-                    ctx.drawImage(spriteImage, sprite.x, sprite.y, sprite.w, sprite.h, -32, -48, 64, 64);
-                    ctx.restore();
-                } else {
-    // BUG FIX: Mampiasa p.skin fa tsy gameState.player
-    ctx.fillStyle = isMe? (p.skin?.color || '#00ff00') : '#ff4444';
-    ctx.fillRect(x - 12, y - 12, 24, 24);
 }
 
-                if (p.skin?.hat && p.skin.hat!== 'none') {
-                    ctx.font = '20px Arial';
-                    const hatEmoji = { crown: '👑', helmet: '🪖', cap: '🧢', viking: '🪖', wizard: '🧙' }[p.skin.hat];
-                    if (hatEmoji) ctx.fillText(hatEmoji, x - 10, y - 55);
-                }
-
-                ctx.fillStyle = '#fff';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(Utils.sanitizeHTML(p.username), x, y - 65);
-
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                ctx.fillRect(x - 20, y - 60, 40, 4);
-                ctx.fillStyle = p.hp > 50? '#00ff00' : p.hp > 25? '#ffff00' : '#ff0000';
-                ctx.fillRect(x - 20, y - 60, 40 * (p.hp / 100), 4);
-
-                if (p.armor > 0) {
-                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                    ctx.fillRect(x - 20, y - 66, 40, 3);
-                    ctx.fillStyle = '#00aaff';
-                    ctx.fillRect(x - 20, y - 66, 40 * (p.armor / 100), 3);
-                }
-            });
-
-            Particles.render(ctx);
-            this.renderMinimap();
-
-            if (DOM.fps) DOM.fps.textContent = gameState.stats.fps;
-            if (DOM.ping) DOM.ping.textContent = gameState.stats.ping;
-        },
-
-        renderMinimap: function() {
-            if (!minimapCtx ||!minimapCanvas) return;
-            minimapCtx.fillStyle = '#000';
-            minimapCtx.fillRect(0, 0, 180, 180);
-
-            const scale = 180 / gameState.mapData.width;
-
-            if (gameState.zone) {
-                minimapCtx.strokeStyle = '#0088ff';
-                minimapCtx.lineWidth = 2;
-                minimapCtx.beginPath();
-                minimapCtx.arc(gameState.zone.x * scale, gameState.zone.y * scale, gameState.zone.radius * scale, 0, Math.PI * 2);
-                minimapCtx.stroke();
-            }
-
-            Object.values(gameState.players).forEach(p => {
-                if (p.hp <= 0) return;
-                minimapCtx.fillStyle = p.id === myId? '#00ff00' : '#ff0000';
-                minimapCtx.beginPath();
-                minimapCtx.arc(p.x * scale, p.y * scale, p.id === myId? 4 : 3, 0, Math.PI * 2);
-                minimapCtx.fill();
-            });
-
-            gameState.loot.forEach(loot => {
-                minimapCtx.fillStyle = '#ffff00';
-                minimapCtx.fillRect(loot.x * scale - 1, loot.y * scale - 1, 2, 2);
-            });
-        },
-
-        handleInput: function() {
-            if (!gameState.isGameRunning) return;
-
-            let moveX = 0, moveY = 0;
-
-            if (isMobile && joystickActive) {
-                moveX = joystickPos.x;
-                moveY = joystickPos.y;
-            } else {
-                if (keys['w'] || keys['z'] || keys['arrowup']) moveY = -1; // BUG #89 FIX
-                if (keys['s'] || keys['arrowdown']) moveY = 1;
-                if (keys['a'] || keys['q'] || keys['arrowleft']) moveX = -1; // BUG #89 FIX
-                if (keys['d'] || keys['arrowright']) moveX = 1;
-            }
-
-            // BUG #30 FIX: Normalize diagonal
-            if (moveX!== 0 && moveY!== 0) {
-                const normalized = Utils.normalizeVector(moveX, moveY);
-                moveX = normalized.x;
-                moveY = normalized.y;
-            }
-
-            const me = gameState.players[myId];
-            if (me) {
-                me.isMoving = (moveX!== 0 || moveY!== 0);
-            }
-
-            const now = Date.now();
-            if (now - lastMoveEmit > MOVE_THROTTLE) {
-                socket.emit('move', {
-                    x: moveX,
-                    y: moveY,
-                    angle: mouseAngle,
-                    sprint: keys['shift'] || false,
-                    isMoving: moveX!== 0 || moveY!== 0
-                });
-                lastMoveEmit = now;
-            }
-        },
-
-        setupDesktopControls: function() {
-            window.addEventListener('keydown', (e) => {
-                keys[e.key.toLowerCase()] = true;
-                if (e.key === 'Tab') {
-                    e.preventDefault();
-                    DOM.scoreboard?.classList.toggle('hidden');
-                }
-                if (e.key === 'm' || e.key === 'M') DOM.skinMenu?.classList.toggle('hidden');
-                if (e.key === 'b' || e.key === 'B') BattlePass.open();
-                if (e.key === 'i' || e.key === 'I') DOM.inventoryMenu?.classList.toggle('hidden');
-                if (e.key === 'p' || e.key === 'P') DOM.shopMenu?.classList.toggle('hidden');
-                if (e.key === 'r' || e.key === 'R') socket.emit('reload');
-                if (e.key === 'g' || e.key === 'G') socket.emit('grenade', { angle: mouseAngle });
-                if (e.key === 'f' || e.key === 'F') socket.emit('interact');
-                if (e.key === 'e' || e.key === 'E') socket.emit('enterVehicle');
-                if (e.key === 'q' || e.key === 'Q') {
-                    const me = gameState.players[myId];
-                    if (me) {
-                        const weapons = ['fist', 'pistol', 'shotgun', 'smg', 'rifle', 'sniper'];
-                        const idx = weapons.indexOf(me.weapon);
-                        const nextWeapon = weapons[(idx + 1) % weapons.length];
-                        socket.emit('switchWeapon', nextWeapon);
-                    }
-                }
-                if (e.key >= '1' && e.key <= '6') {
-                    const weapons = ['fist', 'pistol', 'shotgun', 'smg', 'rifle', 'sniper'];
-                    socket.emit('switchWeapon', weapons[parseInt(e.key) - 1]);
-                }
-            });
-
-            window.addEventListener('keyup', (e) => {
-                keys[e.key.toLowerCase()] = false;
-            });
-
-            canvas?.addEventListener('mousemove', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const me = gameState.players[myId];
-                if (!me) return;
-                const dx = e.clientX - rect.left - canvas.width / 2;
-                const dy = e.clientY - rect.top - canvas.height / 2;
-                mouseAngle = Math.atan2(dy, dx);
-            });
-
-            canvas?.addEventListener('mousedown', (e) => {
-                if (e.button === 0) socket.emit('shoot', { angle: mouseAngle });
-                if (e.button === 2) socket.emit('scope', true);
-            });
-
-            canvas?.addEventListener('mouseup', (e) => {
-                if (e.button === 2) socket.emit('scope', false);
-            });
-
-            canvas?.addEventListener('contextmenu', (e) => e.preventDefault());
-
-            canvas?.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const me = gameState.players[myId];
-                if (!me) return;
-                const weapons = ['fist', 'pistol', 'shotgun', 'smg', 'rifle', 'sniper'];
-                const idx = weapons.indexOf(me.weapon);
-                const nextIdx = e.deltaY > 0? (idx + 1) % weapons.length : (idx - 1 + weapons.length) % weapons.length;
-                socket.emit('switchWeapon', weapons[nextIdx]);
-            });
-        },
-
-        setupMobileControls: function() {
-            DOM.mobileControls?.classList.remove('hidden');
-
-            DOM.joystick?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                joystickActive = true;
-            });
-
-            DOM.joystick?.addEventListener('touchmove', (e) => {
-                if (!joystickActive) return;
-                e.preventDefault();
-                const touch = e.touches[0];
-                const rect = DOM.joystick.getBoundingClientRect();
-                const cx = rect.left + rect.width / 2;
-                const cy = rect.top + rect.height / 2;
-                let dx = touch.clientX - cx;
-                let dy = touch.clientY - cy;
-                const dist = Math.min(Utils.getDistance(0, 0, dx, dy), 40); // BUG #82 FIX
-                const angle = Math.atan2(dy, dx);
-                dx = Math.cos(angle) * dist;
-                dy = Math.sin(angle) * dist;
-                joystickPos = { x: dx / 40, y: dy / 40 };
-                if (DOM.joystickKnob) DOM.joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-            });
-
-            DOM.joystick?.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                joystickActive = false;
-                joystickPos = { x: 0, y: 0 };
-                if (DOM.joystickKnob) DOM.joystickKnob.style.transform = 'translate(-50%, -50%)';
-            });
-
-            DOM.shootBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (touchShootInterval) clearInterval(touchShootInterval);
-                socket.emit('shoot', { angle: mouseAngle });
-                touchShootInterval = setInterval(() => socket.emit('shoot', { angle: mouseAngle }), 100);
-            });
-
-            DOM.shootBtn?.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                if (touchShootInterval) {
-                    clearInterval(touchShootInterval);
-                    touchShootInterval = null;
-                }
-            });
-
-            DOM.scopeBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('scope', true);
-            });
-
-            DOM.scopeBtn?.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                socket.emit('scope', false);
-            });
-
-            DOM.lootBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('interact');
-            });
-
-            DOM.sprintBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                keys['shift'] = true;
-            });
-
-            DOM.sprintBtn?.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                keys['shift'] = false;
-            });
-
-            DOM.grenadeBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('grenade', { angle: mouseAngle });
-            });
-
-            DOM.vehicleBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('enterVehicle');
-            });
-
-            DOM.reloadBtn?.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                socket.emit('reload');
-            });
-        },
-
-        addParticle: function(x, y, type) {
-            Particles.create(x, y, type);
-        },
-
-        levelUpCheck: function() {
-            if (!gameState.player) return;
-            const xpNeeded = gameState.player.level * 100;
-            while (gameState.player.xp >= xpNeeded) {
-                gameState.player.xp -= xpNeeded;
-                gameState.player.level++;
-                Notify.show(`LEVEL UP! You are now level ${gameState.player.level}`);
-                Audio.play('victory');
-            }
-            gameState.player.bpXP += 10;
-            if (gameState.player.bpXP >= 100) {
-                gameState.player.bpXP = 0;
-                gameState.player.bpLevel++;
-                Notify.show(`Battle Pass Level ${gameState.player.bpLevel} unlocked!`);
-            }
-            UI.updateLobby();
-        }
-    };
-
-    // ============================================
-    // 18. PARTICLE SYSTEM - BUG #17 FIXED
-    // ============================================
-    const Particles = {
-        create: (x, y, type) => {
-            const particle = {
-                x, y,
-                vx: Utils.randomRange(-100, 100),
-                vy: Utils.randomRange(-200, -50),
-                life: 1.0,
-                maxLife: 1.0,
-                size: Utils.randomRange(2, 5),
-                color: type === 'blood'? '#ff0000' : type === 'explosion'? '#ff8800' : '#ffff00'
-            };
-            gameState.particles.push(particle);
-        },
-
-        update: (dt) => {
-            // BUG #17 FIX: Filter dead particles
-            gameState.particles = gameState.particles.filter(p => {
-                p.x += p.vx * dt;
-                p.y += p.vy * dt;
-                p.vy += 300 * dt; // Gravity
-                p.life -= dt;
-                return p.life > 0;
-            });
-        },
-
-        render: (ctx) => {
-            gameState.particles.forEach(p => {
-                ctx.globalAlpha = p.life / p.maxLife;
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x - camera.x, p.y - camera.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            ctx.globalAlpha = 1.0; // BUG #32 FIX
-        }
-    };
-
-        // ============================================
-    // 19. UI SYSTEM - BUG #38, #48 FIXED
-    // ============================================
-    const UI = {
-        showScreen: (screenId) => {
-            ['authScreen', 'lobbyScreen', 'matchmakingScreen', 'gameScreen', 'roomScreen'].forEach(id => {
-                document.getElementById(id)?.classList.add('hidden');
-            });
-            document.getElementById(screenId)?.classList.remove('hidden');
-        },
-
-        updateLobby: () => {
-            if (!gameState.player) return;
-            const p = gameState.player;
-            if (DOM.playerName) DOM.playerName.textContent = Utils.sanitizeHTML(p.username);
-            if (DOM.playerLevel) DOM.playerLevel.textContent = p.level;
-            if (DOM.playerCoins) DOM.playerCoins.textContent = p.coins;
-            if (DOM.playerWins) DOM.playerWins.textContent = p.wins;
-            if (DOM.playerKills) DOM.playerKills.textContent = p.kills;
-            if (DOM.playerRank) DOM.playerRank.textContent = p.rank;
-            if (DOM.bpLevel) DOM.bpLevel.textContent = p.bpLevel;
-            if (DOM.bpXP) DOM.bpXP.style.width = `${(p.bpXP % 100)}%`;
-            if (DOM.bpXPText) DOM.bpXPText.textContent = `${p.bpXP % 100}/100 XP`;
-            if (p.photo && DOM.playerAvatar) {
-                DOM.playerAvatar.style.backgroundImage = `url(${p.photo})`;
-                DOM.playerAvatar.style.backgroundSize = 'cover';
-            }
-            Friends.load();
-        },
-
-        updateLeaderboard: () => {
-            if (!DOM.lbList) return;
-            const sorted = Object.values(gameState.players)
-              .filter(p => p.hp > 0)
-              .sort((a, b) => (b.kills || 0) - (a.kills || 0))
-              .slice(0, 10);
-
-            DOM.lbList.innerHTML = '';
-            sorted.forEach((p, i) => {
-                const li = document.createElement('li');
-                if (p.id === myId) li.classList.add('me');
-                li.innerHTML = `
-                    <span><span class="rank">#${i + 1}</span> ${Utils.sanitizeHTML(p.username)}</span>
-                    <span>${p.kills || 0} 💀</span>
-                `;
-                DOM.lbList.appendChild(li);
-            });
-        },
-
-        updateScoreboard: () => {
-            if (!DOM.scoreboardBody) return;
-            const sorted = Object.values(gameState.players).sort((a, b) => (b.kills || 0) - (a.kills || 0));
-            DOM.scoreboardBody.innerHTML = '';
-            sorted.forEach(p => {
-                const tr = document.createElement('tr');
-                if (p.id === myId) tr.classList.add('me');
-                tr.innerHTML = `
-                    <td>${Utils.sanitizeHTML(p.username)}</td>
-                    <td>${p.kills || 0}</td>
-                    <td>${p.level || 1}</td>
-                    <td>${p.hp > 0? '✅ Alive' : '💀 Dead'}</td>
-                `;
-                DOM.scoreboardBody.appendChild(tr);
-            });
-        },
-
-        addKillFeed: (killer, victim, weapon) => {
-            if (!DOM.killFeed) return;
-            const div = document.createElement('div');
-            div.className = 'kill';
-            div.innerHTML = `${Utils.sanitizeHTML(killer)} <span class="weapon">[${Utils.sanitizeHTML(weapon)}]</span> ${Utils.sanitizeHTML(victim)}`;
-            DOM.killFeed.appendChild(div);
-            setTimeout(() => div.remove(), 5000);
-        },
-
-        showDamageNumber: (x, y, damage, isHeadshot) => {
-            if (!DOM.damageNumbers) return;
-            const div = document.createElement('div');
-            div.className = 'damage' + (isHeadshot? ' headshot' : '');
-            div.style.left = `${x - camera.x}px`;
-            div.style.top = `${y - camera.y}px`;
-            div.style.color = isHeadshot? '#ff0000' : '#ffff00';
-            div.textContent = damage;
-            DOM.damageNumbers.appendChild(div);
-            setTimeout(() => div.remove(), 1000);
-        }
-    };
-
-    // ============================================
-    // 20. BATTLE PASS SYSTEM
-    // ============================================
-    const BattlePass = {
-        open: () => {
-            DOM.battlePassMenu?.classList.remove('hidden');
-            BattlePass.render();
-        },
-
-        render: () => {
-            const container = DOM.bpRewards;
-            if (!container ||!gameState.player) return;
-            let html = '';
-            for (let i = 1; i <= 50; i++) {
-                const unlocked = i <= gameState.player.bpLevel;
-                const claimed = i <= gameState.player.bpLevel;
-                html += `
-                    <div class="bp-item ${unlocked? 'unlocked' : ''} ${claimed? 'claimed' : ''}">
-                        <div class="bp-level">${i}</div>
-                        <div class="bp-reward">${i % 5 === 0? '💎' : '🎁'}</div>
-                        <div class="bp-reward-name">${i % 5 === 0? `${i*10} Coins` : `${i*5} XP`}</div>
-                    </div>
-                `;
-            }
-            container.innerHTML = html;
-        },
-
-        buy: () => {
-            if (gameState.player?.coins >= 500) {
-                socket.emit('buyBattlePass');
-            } else {
-                Notify.toast('Not enough coins! Need 500', 'error');
-            }
-        }
-    };
-
-    // ============================================
-    // 21. FRIENDS SYSTEM - COMPLETE
-    // ============================================
-    const Friends = {
-        add: () => {
-            const input = DOM.addFriendInput;
-            if (input?.value.trim()) {
-                socket.emit("addFriend", Utils.sanitizeHTML(input.value.trim()));
-                Notify.toast(`Friend request sent to ${input.value}`, 'success');
-                input.value = '';
-            }
-        },
-
-        load: () => {
-            if (!DOM.friendsList ||!gameState.player?.friends) return;
-            DOM.friendsList.innerHTML = '';
-            if (gameState.player.friends.length === 0) {
-                DOM.friendsList.innerHTML = '<p style="color:#666;text-align:center;padding:20px;">No friends yet</p>';
-                return;
-            }
-            gameState.player.friends.forEach(f => {
-                const div = document.createElement('div');
-                div.className = 'friend-item' + (f.online? ' online' : '');
-                div.innerHTML = `
-                    <div class="friend-avatar">${f.username[0].toUpperCase()}</div>
-                    <div class="friend-info">
-                        <div class="friend-name">${Utils.sanitizeHTML(f.username)}</div>
-                        <div class="friend-status">${f.online? 'Online' : 'Offline'}</div>
-                    </div>
-                    ${f.online? '<button class="btn-invite" onclick="Friends.invite(\'' + f.id + '\')">INVITE</button>' : ''}
-                `;
-                DOM.friendsList.appendChild(div);
-            });
-        },
-
-        invite: (friendId) => {
-            if (roomState.id) {
-                socket.emit("inviteFriend", { friendId, roomId: roomState.id });
-                Notify.toast('Invite sent!', 'success');
-            } else {
-                Notify.toast('Create a room first!', 'error');
-            }
-        }
-    };
-
-    // ============================================
-    // 22. SHOP SYSTEM - COMPLETE
-    // ============================================
-    const Shop = {
-        open: () => {
-            DOM.shopMenu?.classList.remove('hidden');
-            Shop.renderSkins();
-        },
-
-        renderSkins: () => {
-            const grid = DOM.shopSkinsGrid;
-            if (!grid) return;
-            const items = [
-                { id: 'red_skin', name: 'Red Skin', price: 100, rarity: 'common', emoji: '👕' },
-                { id: 'blue_skin', name: 'Blue Skin', price: 100, rarity: 'common', emoji: '👔' },
-                { id: 'gold_skin', name: 'Golden Skin', price: 500, rarity: 'legendary', emoji: '✨' },
-                { id: 'crown', name: 'Golden Crown', price: 500, rarity: 'legendary', emoji: '👑' },
-                { id: 'viking', name: 'Viking Helmet', price: 300, rarity: 'epic', emoji: '🪖' },
-                { id: 'wizard', name: 'Wizard Hat', price: 300, rarity: 'epic', emoji: '🧙' },
-                { id: 'cowboy', name: 'Cowboy Hat', price: 200, rarity: 'rare', emoji: '🤠' },
-                { id: 'tophat', name: 'Top Hat', price: 200, rarity: 'rare', emoji: '🎩' }
-            ];
-            grid.innerHTML = items.map(item => `
-                <div class="shop-item ${item.rarity}">
-                    <div class="item-image">${item.emoji}</div>
-                    <h4>${item.name}</h4>
-                    <p class="rarity">${item.rarity.toUpperCase()}</p>
-                    <div class="item-price">${item.price} 💰</div>
-                    <button onclick="Shop.buy('${item.id}', ${item.price})">BUY</button>
-                </div>
-            `).join('');
-        },
-
-        buy: (id, price) => {
-            if (gameState.player?.coins >= price) {
-                socket.emit('buyItem', { id, price });
-            } else {
-                Notify.toast('Not enough coins!', 'error');
-            }
-        }
-    };
-
-    // ============================================
-    // 23. INVENTORY SYSTEM
-    // ============================================
-    const Inventory = {
-        open: () => {
-            DOM.inventoryMenu?.classList.remove('hidden');
-            Inventory.render();
-        },
-
-        render: () => {
-            const grid = DOM.invSkinsGrid;
-            if (!grid ||!gameState.player) return;
-            grid.innerHTML = '<p style="color:#666;text-align:center;padding:40px;">No items yet. Visit shop!</p>';
-        }
-    };
-
-    // ============================================
-    // 24. SETTINGS SYSTEM - BUG #58 FIXED
-    // ============================================
-    const Settings = {
-        open: () => {
-            DOM.settingsMenu?.classList.remove('hidden');
-            if (gameState.player?.settings) {
-                if (DOM.volumeSlider) DOM.volumeSlider.value = gameState.player.settings.volume;
-                if (DOM.volumeValue) DOM.volumeValue.textContent = gameState.player.settings.volume;
-                if (DOM.sfxSlider) DOM.sfxSlider.value = gameState.player.settings.sfx;
-                if (DOM.sfxValue) DOM.sfxValue.textContent = gameState.player.settings.sfx;
-                if (DOM.sensitivitySlider) DOM.sensitivitySlider.value = gameState.player.settings.sensitivity;
-                if (DOM.sensitivityValue) DOM.sensitivityValue.textContent = gameState.player.settings.sensitivity;
-                if (DOM.qualitySelect) DOM.qualitySelect.value = gameState.player.settings.quality;
-                if (DOM.fpsSelect) DOM.fpsSelect.value = gameState.player.settings.fps;
-            }
-        },
-
-        save: () => {
-            if (!gameState.player) return;
-            gameState.player.settings = {
-                volume: parseInt(DOM.volumeSlider?.value) || 50,
-                sfx: parseInt(DOM.sfxSlider?.value) || 50,
-                sensitivity: parseInt(DOM.sensitivitySlider?.value) || 50,
-                quality: DOM.qualitySelect?.value || 'medium',
-                fps: parseInt(DOM.fpsSelect?.value) || 60
-            };
-            Auth.savePlayerData();
-            Notify.toast('Settings saved!', 'success');
-            Settings.close();
-        },
-
-        reset: () => {
-            if (DOM.volumeSlider) DOM.volumeSlider.value = 50;
-            if (DOM.volumeValue) DOM.volumeValue.textContent = 50;
-            if (DOM.sfxSlider) DOM.sfxSlider.value = 50;
-            if (DOM.sfxValue) DOM.sfxValue.textContent = 50;
-            if (DOM.sensitivitySlider) DOM.sensitivitySlider.value = 50;
-            if (DOM.sensitivityValue) DOM.sensitivityValue.textContent = 50;
-            if (DOM.qualitySelect) DOM.qualitySelect.value = 'medium';
-            if (DOM.fpsSelect) DOM.fpsSelect.value = 60;
-            Notify.toast('Settings reset to default', 'info');
-        },
-
-        close: () => {
-            DOM.settingsMenu?.classList.add('hidden');
-        }
-    };
-
-    // ============================================
-    // 25. PROFILE SYSTEM
-    // ============================================
-    const Profile = {
-        open: () => {
-            DOM.profileMenu?.classList.remove('hidden');
-            if (gameState.player) {
-                if (DOM.profileLevel) DOM.profileLevel.textContent = gameState.player.level || 1;
-                if (DOM.statWins) DOM.statWins.textContent = gameState.player.wins || 0;
-                if (DOM.statKills) DOM.statKills.textContent = gameState.player.kills || 0;
-                if (DOM.statDeaths) DOM.statDeaths.textContent = gameState.player.deaths || 0;
-                if (DOM.statMatches) DOM.statMatches.textContent = gameState.player.matches || 0;
-                const deaths = gameState.player.deaths || 0;
-                const kdr = deaths === 0? (gameState.player.kills > 0? '∞' : '0.00') : (gameState.player.kills / deaths).toFixed(2);
-                if (DOM.profileKDR) DOM.profileKDR.textContent = kdr;
-                if (DOM.profileUsername) DOM.profileUsername.value = gameState.player.username;
-            }
-        },
-
-        saveUsername: () => {
-            const newName = DOM.profileUsername?.value;
-            if (newName && newName.length >= 3) {
-                const cleanName = Utils.sanitizeUsername(newName);
-                if (DOM.playerName) DOM.playerName.textContent = cleanName;
-                if (gameState.player) gameState.player.username = cleanName;
-                Notify.toast('Username updated!', 'success');
-                socket.emit('updateUsername', cleanName);
-            } else {
-                Notify.toast('Username must be 3+ characters', 'error');
-            }
-        },
-
-        close: () => {
-            DOM.profileMenu?.classList.add('hidden');
-        }
-    };
-
-    // ============================================
-    // 26. MAIL SYSTEM
-    // ============================================
-    const Mail = {
-        open: () => {
-            DOM.mailMenu?.classList.remove('hidden');
-            Mail.render();
-        },
-
-        render: () => {
-            const inbox = DOM.mailInboxList;
-            if (inbox) inbox.innerHTML = `
-                <div class="mail-item unread">
-                    <div class="mail-item-header">
-                        <span class="mail-sender">System</span>
-                        <span class="mail-date">Today</span>
-                    </div>
-                    <div class="mail-subject">Welcome to MG FIGHTER!</div>
-                    <div class="mail-preview">Thanks for joining. Claim your starter reward!</div>
-                    <button onclick="Mail.claim(1)" class="btn-claim">CLAIM 100 COINS</button>
-                </div>
-            `;
-        },
-
-        claim: (mailId) => {
-            if (gameState.player) {
-                gameState.player.coins += 100;
-                UI.updateLobby();
-                Notify.toast('Claimed 100 coins!', 'success');
-                DOM.mailBadge?.classList.add('hidden');
-            }
-        },
-
-        claimAll: () => {
-            Notify.toast('All rewards claimed!', 'success');
-            DOM.mailBadge?.classList.add('hidden');
-        },
-
-        deleteRead: () => {
-            Notify.toast('Read mail deleted', 'info');
-        },
-
-        close: () => {
-            DOM.mailMenu?.classList.add('hidden');
-        }
-    };
-
-        // ============================================
-    // 27. LEADERBOARD SYSTEM
-    // ============================================
-    const Leaderboard = {
-        open: () => {
-            DOM.fullLeaderboard?.classList.remove('hidden');
-            Leaderboard.load();
-        },
-
-        load: () => {
-            const tbody = DOM.fullLeaderboardBody;
-            if (!tbody) return;
-            const mockData = [
-                {rank: 1, name: 'ProGamer', level: 50, wins: 120, kills: 2500, kd: 5.2, score: 5000},
-                {rank: 2, name: 'EliteSniper', level: 48, wins: 115, kills: 2300, kd: 4.8, score: 4800},
-                {rank: 3, name: 'KingSlayer', level: 45, wins: 100, kills: 2100, kd: 4.5, score: 4600},
-                {rank: 4, name: 'ShadowStrike', level: 42, wins: 95, kills: 1900, kd: 4.2, score: 4300},
-                {rank: 5, name: 'ThunderBolt', level: 40, wins: 88, kills: 1750, kd: 3.9, score: 4100}
-            ];
-            tbody.innerHTML = mockData.map(p => `
-                <tr><td>${p.rank}</td><td>${Utils.sanitizeHTML(p.name)}</td><td>${p.level}</td><td>${p.wins}</td><td>${p.kills}</td><td>${p.kd}</td><td>${p.score}</td></tr>
-            `).join('');
-        },
-
-        close: () => {
-            DOM.fullLeaderboard?.classList.add('hidden');
-        },
-
-        filter: (type, e) => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            if (e?.target) e.target.classList.add('active');
-            Leaderboard.load();
-        }
-    };
-
-    // ============================================
-    // 28. AI SYSTEM - COMPLETE - BUG #42, #43, #44, #45, #51, #52 FIXED
-    // ============================================
-    class AIPlayer {
-        constructor(id, spawnX, spawnY, targetPlayerLevel = 1) {
-            this.id = id;
-            this.name = this.generateBotName();
-            this.x = spawnX;
-            this.y = spawnY;
-            this.hp = 100;
-            this.armor = 0;
-            this.weapon = 'fist';
-            this.ammo = 0;
-            this.grenades = 0;
-            this.kills = 0;
-            this.level = Math.max(1, targetPlayerLevel + Utils.randomInt(-2, 2));
-            this.angle = 0;
-            this.targetAngle = 0;
-            this.username = this.name;
-
-            this.playerLevel = targetPlayerLevel;
-            this.difficulty = this.calculateDifficulty();
-            this.reactionTime = this.getReactionTime();
-            this.accuracy = this.getAccuracy();
-            this.aggressiveness = this.getAggressiveness();
-            this.lootPriority = 0.7;
-            this.survivalInstinct = 0.8;
-
-            this.state = 'looting';
-            this.stateTimer = 0;
-            this.target = null;
-            this.lastSeenEnemy = null;
-            this.lastSeenTime = 0;
-            this.memory = [];
-
-            this.velocityX = 0;
-            this.velocityY = 0;
-            this.moveTarget = null;
-            this.stuckTimer = 0;
-            this.lastPosition = { x: spawnX, y: spawnY };
-
-            this.lastShotTime = 0;
-            this.fireRate = this.getFireRate();
-            this.reloadTime = 0;
-            this.isReloading = false;
-            this.lastDamageTime = 0;
-            this.dodgeDirection = 0;
-
-            this.preferredRange = this.getPreferredRange();
-            this.zoneAwareness = 0.9;
-            this.teamwork = false;
-
-            this.personality = this.generatePersonality();
-            this.skin = {
-                color: this.getRandomColor(),
-                hat: this.getRandomHat()
-            };
-        }
-
-        calculateDifficulty() {
-            if (this.level <= 5) return 'easy';
-            if (this.level <= 15) return 'medium';
-            if (this.level <= 30) return 'hard';
-            return 'pro';
-        }
-
-        generateBotName() {
-            const names = [
-                'ShadowHunter', 'ProSniper', 'EliteWarrior', 'NightStalker', 'ThunderBolt',
-                'CrimsonViper', 'IronFist', 'GhostRider', 'PhoenixRising', 'WolfPack',
-                'StormBreaker', 'DarkKnight', 'SilentAssassin', 'FireDragon', 'IceQueen',
-                'BloodEagle', 'SteelTitan', 'RapidFire', 'DeathDealer', 'KingSlayer'
-            ];
-            const suffix = this.level > 20? 'Elite' : this.level > 10? 'Pro' : '';
-            return names[Utils.randomInt(0, names.length - 1)] + suffix + Utils.randomInt(1, 99);
-        }
-
-        getReactionTime() {
-            const base = { easy: 500, medium: 300, hard: 200, pro: 100 };
-            const bonus = Math.max(0, 50 - this.playerLevel * 2);
-            return Math.max(50, base[this.difficulty] - bonus);
-        }
-
-        getAccuracy() {
-            const base = { easy: 0.4, medium: 0.65, hard: 0.8, pro: 0.95 };
-            const bonus = Math.min(0.2, this.playerLevel * 0.01);
-            return Math.min(0.98, base[this.difficulty] + bonus);
-        }
-
-        getAggressiveness() {
-            const base = { easy: 0.3, medium: 0.6, hard: 0.8, pro: 0.95 };
-            const bonus = Math.min(0.15, this.playerLevel * 0.005);
-            return Math.min(0.98, base[this.difficulty] + bonus);
-        }
-
-        getFireRate() {
-            const rates = {
-                'pistol': 400, 'shotgun': 800, 'smg': 100,
-                'rifle': 150, 'sniper': 1200, 'fist': 600
-            };
-            let rate = rates[this.weapon] || 400;
-            rate = Math.max(50, rate - this.playerLevel * 3);
-            return rate;
-        }
-
-        getPreferredRange() {
-            const ranges = {
-                'shotgun': 80, 'smg': 150, 'pistol': 200,
-                'rifle': 300, 'sniper': 500, 'fist': 30
-            };
-            return ranges[this.weapon] || 200;
-        }
-
-        getRandomColor() {
-            if (this.level > 30) {
-                const proColors = ['#ff0000', '#ff00ff', '#00ffff', '#ffd700', '#ff6600'];
-                return proColors[Utils.randomInt(0, proColors.length - 1)];
-            }
-            const colors = ['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff', '#44ffff', '#ff8800'];
-            return colors[Utils.randomInt(0, colors.length - 1)];
-        }
-
-        getRandomHat() {
-            if (this.level > 25) {
-                const proHats = ['crown', 'viking', 'wizard'];
-                return proHats[Utils.randomInt(0, proHats.length - 1)];
-            }
-            if (this.level > 10) {
-                const midHats = ['helmet', 'cowboy', 'tophat'];
-                return midHats[Utils.randomInt(0, midHats.length - 1)];
-            }
-            const hats = ['none', 'cap', 'helmet'];
-            return hats[Utils.randomInt(0, hats.length - 1)];
-        }
-
-        generatePersonality() {
-            const levelFactor = Math.min(1, this.playerLevel / 50);
-            return {
-                camper: Math.random() < (0.3 - levelFactor * 0.1),
-                rusher: Math.random() < (0.2 + levelFactor * 0.3),
-                sniper: Math.random() < (0.15 + levelFactor * 0.2),
-                looter: Math.random() < (0.5 - levelFactor * 0.2),
-                cautious: Math.random() < (0.4 - levelFactor * 0.2)
-            };
-        }
-
-        calculatePower() {
-            let power = 0;
-            power += this.hp / 100 * 0.4;
-            power += this.armor / 100 * 0.3;
-            power += this.accuracy * 0.2;
-            power += (this.weapon!== 'fist')? 0.3 : 0;
-            power += this.kills * 0.05;
-            power += this.level * 0.02;
-            return Math.min(1, power);
-        }
-
-        calculateThreat(enemy) {
-            if (!enemy) return 0;
-            let threat = 0;
-            threat += (enemy.hp || 100) / 100 * 0.4;
-            threat += (enemy.armor || 0) / 100 * 0.3;
-            threat += (enemy.weapon!== 'fist')? 0.3 : 0;
-            return threat;
-        }
-
-        shouldEngage(enemy) {
-            if (!enemy) return false;
-            const myPower = this.calculatePower();
-            const enemyPower = this.calculateThreat(enemy.entity);
-            const dist = enemy.distance;
-            const confidenceBoost = this.level * 0.01;
-
-            if (myPower + confidenceBoost < 0.3) return false;
-            if (enemyPower > myPower * 1.5) return false;
-            if (this.aggressiveness > 0.7) return true;
-            if (dist < this.preferredRange * 1.2 && dist > this.preferredRange * 0.5) return true;
-            return myPower > enemyPower;
-        }
-
-        update(dt, gameState, players) {
-            this.stateTimer += dt;
-
-            if (this.memory.length > 10) this.memory.shift();
-
-            const me = { x: this.x, y: this.y, hp: this.hp, id: this.id };
-            const enemies = Object.values(players).filter(p => p.id!== this.id && p.hp > 0);
-
-            let nearestEnemy = null;
-            let nearestDist = Infinity;
-            enemies.forEach(enemy => {
-                const dist = Utils.getDistance(this.x, this.y, enemy.x, enemy.y);
-                if (dist < nearestDist) {
-                    nearestDist = dist;
-                    nearestEnemy = { entity: enemy, distance: dist };
-                }
-            });
-
-            if (this.hp < 30 && this.survivalInstinct > 0.5) {
-                this.state = 'fleeing';
-            } else if (nearestEnemy && this.shouldEngage(nearestEnemy)) {
-                this.state = 'combat';
-                this.target = nearestEnemy;
-            } else if (this.lootPriority > 0.5) {
-                this.state = 'looting';
-            } else {
-                this.state = 'roaming';
-            }
-
-            this.executeState(dt, gameState, nearestEnemy);
-
-            // BUG #51 FIX: Wall collision for AI
-            this.checkWallCollision();
-        }
-
-        checkWallCollision() {
-            // BUG #41, #42 FIX: AABB collision
-            const tileX = Math.floor(this.x / CONFIG.TILE_SIZE);
-            const tileY = Math.floor(this.y / CONFIG.TILE_SIZE);
-            const mapCols = gameState.mapData.width / CONFIG.TILE_SIZE;
-            const tileIndex = tileY * mapCols + tileX;
-
-            if (tileIndex >= 0 && tileIndex < mapTiles.length) {
-                const tile = mapTiles[tileIndex];
-                if (tile && tile.collision) {
-                    // Push back from wall
-                    this.x = this.lastPosition.x;
-                    this.y = this.lastPosition.y;
-                    this.stuckTimer += 0.016;
-                    if (this.stuckTimer > 1) {
-                        this.moveTarget = null; // Find new path
-                        this.stuckTimer = 0;
-                    }
-                } else {
-                    this.lastPosition = { x: this.x, y: this.y };
-                    this.stuckTimer = 0;
-                }
-            }
-        }
-
-        executeState(dt, gameState, enemy) {
-            switch (this.state) {
-                case 'combat':
-                    this.combatBehavior(dt, enemy);
-                    break;
-                case 'fleeing':
-                    this.fleeBehavior(dt, gameState);
-                    break;
-                case 'looting':
-                    this.lootBehavior(dt, gameState);
-                    break;
-                default:
-                    this.roamBehavior(dt, gameState);
-            }
-        }
-
-        combatBehavior(dt, enemy) {
-            if (!enemy) return;
-            const dx = enemy.entity.x - this.x;
-            const dy = enemy.entity.y - this.y;
-            this.targetAngle = Math.atan2(dy, dx);
-
-            const dist = enemy.distance;
-            if (dist > this.preferredRange * 1.2) {
-                this.velocityX = Math.cos(this.targetAngle) * 200 * dt;
-                this.velocityY = Math.sin(this.targetAngle) * 200 * dt;
-            } else if (dist < this.preferredRange * 0.8) {
-                this.velocityX = -Math.cos(this.targetAngle) * 200 * dt;
-                this.velocityY = -Math.sin(this.targetAngle) * 200 * dt;
-            }
-
-            if (Math.random() < 0.3) {
-                const strafeAngle = this.targetAngle + Math.PI / 2 * (Math.random() < 0.5? 1 : -1);
-                this.velocityX += Math.cos(strafeAngle) * 100 * dt;
-                this.velocityY += Math.sin(strafeAngle) * 100 * dt;
-            }
-
-            const now = Date.now();
-            if (now - this.lastShotTime > this.fireRate) {
-                if (Math.random() < this.accuracy) {
-                    socket.emit('shoot', { angle: this.targetAngle, botId: this.id });
-                }
-                this.lastShotTime = now;
-            }
-
-            this.x += this.velocityX;
-            this.y += this.velocityY;
-        }
-
-        fleeBehavior(dt, gameState) {
-            const zoneAngle = Math.atan2(gameState.zone.y - this.y, gameState.zone.x - this.x);
-            this.velocityX = Math.cos(zoneAngle) * 300 * dt;
-            this.velocityY = Math.sin(zoneAngle) * 300 * dt;
-            this.x += this.velocityX;
-            this.y += this.velocityY;
-        }
-
-        lootBehavior(dt, gameState) {
-            if (gameState.loot.length > 0) {
-                const nearestLoot = gameState.loot.reduce((closest, loot) => {
-                    const dist = Utils.getDistance(this.x, this.y, loot.x, loot.y);
-                    return dist < closest.dist? { loot, dist } : closest;
-                }, { loot: null, dist: Infinity });
-
-                if (nearestLoot.loot) {
-                    const angle = Math.atan2(nearestLoot.loot.y - this.y, nearestLoot.loot.x - this.x);
-                    this.velocityX = Math.cos(angle) * 250 * dt;
-                    this.velocityY = Math.sin(angle) * 250 * dt;
-                    this.x += this.velocityX;
-                    this.y += this.velocityY;
-                }
-            }
-        }
-
-        roamBehavior(dt, gameState) {
-            if (!this.moveTarget || Utils.getDistance(this.x, this.y, this.moveTarget.x, this.moveTarget.y) < 50) {
-                this.moveTarget = {
-                    x: Utils.randomRange(100, gameState.mapData.width - 100),
-                    y: Utils.randomRange(100, gameState.mapData.height - 100)
-                };
-            }
-            const angle = Math.atan2(this.moveTarget.y - this.y, this.moveTarget.x - this.x);
-            this.velocityX = Math.cos(angle) * 150 * dt;
-            this.velocityY = Math.sin(angle) * 150 * dt;
-            this.x += this.velocityX;
-            this.y += this.velocityY;
-        }
-
-        serialize() {
-            return {
-                id: this.id,
-                name: this.name,
-                username: this.name,
-                x: this.x,
-                y: this.y,
-                hp: this.hp,
-                armor: this.armor,
-                weapon: this.weapon,
-                kills: this.kills,
-                level: this.level,
-                angle: this.targetAngle,
-                skin: this.skin,
-                isBot: true,
-                isMoving: this.velocityX!== 0 || this.velocityY!== 0
-            };
-        }
-    }
-
-    class AIManager {
-        constructor() {
-            this.bots = new Map();
-            this.maxBots = 20;
-            this.spawnTimer = 0;
-            this.spawnInterval = 5;
-        }
-
-        update(dt, gameState, players) {
-            this.spawnTimer += dt;
-            if (this.spawnTimer > this.spawnInterval) {
-                this.trySpawnBot(gameState, players);
-                this.spawnTimer = 0;
-            }
-
-            this.bots.forEach(bot => {
-                if (bot.hp > 0) {
-                    bot.update(dt, gameState, players);
-                } else {
-                    this.bots.delete(bot.id);
-                }
-            });
-        }
-
-        trySpawnBot(gameState, players) {
-            const realPlayers = Object.values(players).filter(p =>!p.isBot);
-            if (realPlayers.length === 0) return;
-
-            const avgLevel = realPlayers.reduce((sum, p) => sum + (p.level || 1), 0) / realPlayers.length;
-            const targetLevel = Math.floor(avgLevel);
-
-            const realPlayerCount = realPlayers.length;
-            const targetBotCount = Math.max(0, CONFIG.MAX_PLAYERS - realPlayerCount);
-
-            if (this.bots.size >= targetBotCount || this.bots.size >= this.maxBots) {
-                return;
-            }
-
-            const spawn = this.findSpawnLocation(gameState, players);
-            if (!spawn) return;
-
-            const botId = 'bot_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            const bot = new AIPlayer(botId, spawn.x, spawn.y, targetLevel);
-            this.bots.set(botId, bot);
-            console.log(`🤖 Spawned Level ${bot.level} bot: ${bot.name} (${bot.difficulty})`);
-        }
-
-        findSpawnLocation(gameState, players) {
-            const attempts = 20;
-            const minDistFromPlayers = 300;
-            const mapWidth = gameState.mapData.width;
-            const mapHeight = gameState.mapData.height;
-
-            for (let i = 0; i < attempts; i++) {
-                const x = Utils.randomRange(100, mapWidth - 100);
-                const y = Utils.randomRange(100, mapHeight - 100);
-
-                let tooClose = false;
-                Object.values(players).forEach(player => {
-                    const dist = Utils.getDistance(x, y, player.x, player.y);
-                    if (dist < minDistFromPlayers) tooClose = true;
-                });
-
-                if (!tooClose) {
-                    const zoneDist = Utils.getDistance(x, y, gameState.zone.x, gameState.zone.y);
-                    if (zoneDist < gameState.zone.radius * 0.8) {
-                        return { x, y };
-                    }
-                }
-            }
-            return { x: gameState.zone.x, y: gameState.zone.y };
-        }
-
-        getAllBots() {
-            return Array.from(this.bots.values()).map(bot => bot.serialize());
-        }
-
-        getBot(id) {
-            return this.bots.get(id);
-        }
-
-        removeBot(id) {
-            this.bots.delete(id);
-        }
-    }
-
-    // ============================================
-    // 29. ADMIN LOGIN - BUG #99 FIXED: Secure
-    // ============================================
-    const AdminLogin = {
-        show: function() {
-            const sidebar = document.getElementById('adminLoginSidebar');
-            if (sidebar) {
-                sidebar.style.display = 'block';
-                setTimeout(() => sidebar.style.right = '0px', 10);
-            }
-        },
-
-        hide: function() {
-            const sidebar = document.getElementById('adminLoginSidebar');
-            if (sidebar) {
-                sidebar.style.right = '-350px';
-                setTimeout(() => sidebar.style.display = 'none', 300);
-            }
-        },
-
-        // BUG #99 FIX: Server-side validation
-        requestAccess: function() {
-            const username = gameState.player?.username || '';
-            const msg = document.getElementById('adminLoginMsg');
-
-            msg.style.color = '#ffaa00';
-            msg.textContent = '⏳ Verifying...';
-
-            socket.emit('requestAdminAccess', { username: username });
-
-            socket.once('adminAccessResult', (data) => {
-                if (data.granted) {
-                    msg.style.color = '#00ff00';
-                    msg.textContent = '✓ Access Granted';
-                    gameState.isAdmin = true;
-                    AdminPage.show();
-                    setTimeout(() => {
-                        this.hide();
-                        msg.textContent = '';
-                        Notify.toast('👑 ADMIN ACCESS GRANTED', 'success');
-                    }, 1000);
-                } else {
-                    msg.style.color = '#ff6666';
-                    msg.textContent = '✗ Access Denied';
-                    setTimeout(() => msg.textContent = '', 2000);
-                }
-            });
-        }
-    };
-
-    window.closeAdminLogin = () => AdminLogin.hide();
-    window.requestAdminAccess = () => AdminLogin.requestAccess();
-
-    window.acceptTerms = function() {
-        document.getElementById('termsModal')?.classList.add('hidden');
-        AdminLogin.show();
-    };
-
-        // ============================================
-    // 30. ADMIN PAGE - BUG #99 FIXED
-    // ============================================
-    const AdminPage = {
-        show: () => {
-            if (!gameState.isAdmin) return Notify.show('Access Denied', true);
-            DOM.adminPage?.classList.remove('hidden');
-            AdminPage.updateStats();
-        },
-
-        hide: () => {
-            DOM.adminPage?.classList.add('hidden');
-        },
-
-        updateStats: () => {
-            if (DOM.adminPlayerCount) DOM.adminPlayerCount.textContent = Object.keys(gameState.players).length;
-            if (DOM.adminBotCount) DOM.adminBotCount.textContent = window.aiManager?.bots.size || 0;
-            if (DOM.adminMatchTime) DOM.adminMatchTime.textContent = Utils.formatTime(Date.now() / 1000);
-        },
-
-        kickPlayer: (playerId) => {
-            if (!gameState.isAdmin) return;
-            socket.emit('adminKick', { playerId });
-            Notify.toast(`Kicked player ${playerId}`, 'success');
-        },
-
-        banPlayer: (playerId) => {
-            if (!gameState.isAdmin) return;
-            socket.emit('adminBan', { playerId });
-            Notify.toast(`Banned player ${playerId}`, 'error');
-        },
-
-        teleportPlayer: (playerId, x, y) => {
-            if (!gameState.isAdmin) return;
-            socket.emit('adminTeleport', { playerId, x, y });
-        },
-
-        spawnLoot: (type, x, y) => {
-            if (!gameState.isAdmin) return;
-            socket.emit('adminSpawnLoot', { type, x, y });
-        }
-    };
-
-    // ============================================
-    // 31. GLOBAL WINDOW FUNCTIONS - BUG #74 FIXED
-    // ============================================
-    window.loginWithGoogle = Auth.loginWithGoogle;
-    window.loginAnonymously = Auth.loginAnonymously;
-    window.findMatch = Lobby.findMatch;
-    window.cancelMatchmaking = Lobby.cancelMatchmaking;
-    window.createRoom = Lobby.createRoom;
-    window.joinRoom = Lobby.joinRoom;
-    window.leaveRoom = Lobby.leaveRoom;
-    window.ready = Lobby.ready;
-    window.startMatch = Lobby.startMatch;
-    window.sendLobbyChat = Chat.sendLobby;
-    window.sendRoomChat = Chat.sendRoom;
-    window.addFriend = Friends.add;
-    window.inviteFriend = Friends.invite;
-    window.openBattlePass = BattlePass.open;
-    window.buyBattlePass = BattlePass.buy;
-    window.openShop = Shop.open;
-    window.buyItem = Shop.buy;
-    window.openInventory = Inventory.open;
-    window.openSettings = Settings.open;
-    window.saveSettings = Settings.save;
-    window.resetSettings = Settings.reset;
-    window.closeSettings = Settings.close;
-    window.openProfile = Profile.open;
-    window.saveUsername = Profile.saveUsername;
-    window.closeProfile = Profile.close;
-    window.openMail = Mail.open;
-    window.claimAllMail = Mail.claimAll;
-    window.deleteReadMail = Mail.deleteRead;
-    window.closeMail = Mail.close;
-    window.openFullLeaderboard = Leaderboard.open;
-    window.loadLeaderboardData = Leaderboard.load;
-    window.closeFullLeaderboard = Leaderboard.close;
-    window.filterLeaderboard = Leaderboard.filter;
-    window.returnToLobby = () => {
-        DOM.victoryScreen?.classList.add('hidden');
-        DOM.deathScreen?.classList.add('hidden');
-        DOM.scoreboard?.classList.add('hidden');
-        DOM.spectateUI?.classList.add('hidden');
-        UI.showScreen('lobbyScreen');
-        gameState.isGameRunning = false;
-        if (socket.connected) socket.disconnect();
-        setTimeout(() => socket.connect(), 500);
-    };
-    window.playAgain = () => {
-        window.returnToLobby();
-        setTimeout(() => Lobby.findMatch(gameState.matchMode), 1000);
-    };
-    window.spectate = () => {
-        DOM.deathScreen?.classList.add('hidden');
-        DOM.spectateUI?.classList.remove('hidden');
-        Notify.toast('Spectating...', 'info');
-    };
-    window.changeSkinColor = (color) => {
-        if (gameState.player) gameState.player.skin.color = color;
-        socket.emit("changeSkin", gameState.player.skin);
-        Notify.toast('Skin color changed!');
-    };
-    window.changeSkinHat = (hat) => {
-        if (gameState.player) gameState.player.skin.hat = hat;
-        socket.emit("changeSkin", gameState.player.skin);
-        Notify.toast('Hat changed!');
-    };
-
-    // ============================================
-    // 32. INIT GAME - BUG #21, #35, #47, #91 FIXED
-    // ============================================
-    window.addEventListener('load', async () => {
-        console.log('MG FIGHTER v4.3.0 Loaded');
-        if (DOM.loadingText) DOM.loadingText.textContent = 'Loading assets...';
-
-        await Game.loadAssets();
-
-        if (DOM.loadingText) DOM.loadingText.textContent = 'Ready!';
-        setTimeout(() => {
-            DOM.loadingScreen?.classList.add('hidden');
-            UI.showScreen('authScreen');
-        }, 500);
-
-        if (isMobile) {
-            document.body.classList.add('mobile');
-            // BUG #47 FIX: Force 30 FPS on mobile
-            if (gameState.player) gameState.player.settings.fps = 30;
-        }
-
-        // BUG #91 FIX: iOS audio unlock
-        document.addEventListener('touchstart', () => {
-            Audio.resume();
-        }, { once: true });
-
-        // Instantiate AI Manager
-        window.aiManager = new AIManager();
-    });
-// ==================== LOBBY EVENTS ====================
-socket.on('joinedLobby', (data) => {
-    document.getElementById('lobbyScreen').style.display = 'flex';
-    document.getElementById('lobbyCount').textContent = data.players;
-});
-
-socket.on('lobbyUpdate', (data) => {
-    document.getElementById('lobbyCount').textContent = data.totalPlayers;
-    const listEl = document.getElementById('lobbyPlayersList');
-    listEl.innerHTML = '';
-    data.players?.forEach(p => {
-        const tag = document.createElement('div');
-        tag.style.cssText = 'background:rgba(0,255,0,0.2);border:1px solid #00ff00;padding:8px 15px;border-radius:20px;font-size:14px;';
-        tag.textContent = p.isBot? '🤖 ' + p.username : '👤 ' + p.username;
-        listEl.appendChild(tag);
-    });
-});
-
-socket.on('lobbyCountdown', (data) => {
-    const el = document.getElementById('lobbyCountdown');
-    el.textContent = `HANOMBOKA AFAKA ${data.time}s`;
-    el.style.color = data.time <= 5? '#ff0000' : '#ffff00';
-});
-
-socket.on('matchLaunched', (data) => {
-    document.getElementById('lobbyScreen').style.display = 'none';
-    document.getElementById('gameMode').textContent = data.mode;
-    Notify.toast(`${data.mode} ${data.zoneTime/60}MIN!`, 'success');
-});
-
-socket.on('zoneUpdate', (data) => {
-    const min = Math.floor(data.timeLeft / 60);
-    const sec = data.timeLeft % 60;
-    document.getElementById('zoneTime').textContent = `${min}:${sec.toString().padStart(2, '0')}`;
-    document.getElementById('zoneTime').style.color = data.timeLeft === 0? '#ff0000' : '#ffff00';
-});
-
-socket.on('matchInProgress', (data) => { alert(data.message); });
-socket.on('matchEnd', (data) => { Notify.toast(`🏆 MPANDRESY: ${data.winner}`, 'warning'); });
-socket.on('returnToLobby', () => {
-    document.getElementById('lobbyScreen').style.display = 'flex';
-    document.getElementById('lobbyCountdown').textContent = 'Miandry players... (2 minimum)';
-    document.getElementById('lobbyCountdown').style.color = '#ffff00';
-});
-
-socket.on('gameState', (state) => {
-    gameState = state;
-    const aliveCount = Object.values(state.players).filter(p => p.hp > 0 &&!p.inLobby).length;
-    document.getElementById('playerCount').textContent = aliveCount;
-});
-    // ============================================
-    // 33. CLEANUP ON EXIT - BUG #100 FIXED
-    // ============================================
-    window.addEventListener('beforeunload', () => {
-        if (touchShootInterval) clearInterval(touchShootInterval);
-        if (socket.connected) socket.disconnect();
-        // BUG #100 FIX: Stop game loop
-        gameState.isGameRunning = false;
-    });
-
-    // BUG #92 FIX: Android back button
-    window.addEventListener('popstate', (e) => {
-        if (gameState.isGameRunning) {
-            e.preventDefault();
-            Notify.confirm('Exit match?', () => window.returnToLobby());
-        }
-    });
-
-    // BUG #94 FIX: Disable double-tap zoom
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', (e) => {
-        const now = Date.now();
-        if (now - lastTouchEnd <= 300) {
-            e.preventDefault();
-        }
-        lastTouchEnd = now;
-    }, false);
-
-    // BUG #96 FIX: iPhone safe area
-    if (isMobile) {
-        document.documentElement.style.setProperty('--safe-area-inset-top', 'env(safe-area-inset-top)');
-        document.documentElement.style.setProperty('--safe-area-inset-bottom', 'env(safe-area-inset-bottom)');
-    }
-
-    // BUG #97 FIX: Landscape lock
-    if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(() => {});
-    }
-
-    console.log('🔥 MG FIGHTER v4.3.0 - ALL SYSTEMS READY');
-    console.log('📱 Mobile:', isMobile);
-    console.log('🎮 Controls: WASD/Arrows = Move, Mouse = Aim, Click = Shoot, R = Reload, G = Grenade, F = Interact, 1-6 = Weapons');
-    console.log('🛠️ BUGS FIXED: 100/100');
-    console.log('✅ PRODUCTION READY');
-    console.log('🔥 MG FIGHTER v4.3.0 - ALL SYSTEMS READY');
-
-    // AMPINAO IZAO 👇
-    window.gameState = gameState;
-    window.myId = myId;
-    window.camera = camera;
-    window.mapTiles = mapTiles;
-
-})(); // END IIFE
-// ==================== SETTINGS ====================
-let gameSettings = {
-    sensitivity: 50,
-    volume: 50,
-    autoShoot: false,
-    selectedWeapon: 'pistol'
+function miandry(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+function havaozyLoading(isa, soratra) {
+    const feno = document.getElementById('loadingProgress');
+    const isan = document.getElementById('loadingPercent');
+    const sora = document.getElementById('loadingText');
+    if (feno) feno.style.width = isa + '%';
+    if (isan) isan.textContent = isa + '%';
+    if (sora) sora.textContent = soratra;
+}
+
+function asehoLoading() {
+    document.getElementById('loadingScreen')?.classList.remove('hidden');
+}
+
+function afenoLoading() {
+    document.getElementById('loadingScreen')?.classList.add('hidden');
+}
+
+async function amboaryFirebase() {
+    const firebaseConfig = {
+  apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
+  authDomain: "mgfigther-b3760.firebaseapp.com",
+  databaseURL: "https://mgfigther-b3760-default-rtdb.firebaseio.com",
+  projectId: "mgfigther-b3760",
+  storageBucket: "mgfigther-b3760.firebasestorage.app",
+  messagingSenderId: "829325634031",
+  appId: "1:829325634031:web:b9c13b78ffec75a372ee1a",
+  measurementId: "G-30QH3M5E9Z"
 };
+    
+    firebase.initializeApp(config);
+    lalao.firebase = firebase;
+    lalao.auth = firebase.auth();
+    lalao.db = firebase.firestore();
+    
+    await amboarySocket();
+}
 
-document.getElementById('settingsBtn').onclick = () => {
-    document.getElementById('settingsPanel').style.display = 'block';
-};
-
-document.getElementById('sensitivity').oninput = (e) => {
-    gameSettings.sensitivity = e.target.value;
-    document.getElementById('sensVal').textContent = e.target.value;
-};
-
-document.getElementById('volume').oninput = (e) => {
-    gameSettings.volume = e.target.value;
-    document.getElementById('volVal').textContent = e.target.value;
-};
-
-document.getElementById('autoShoot').onchange = (e) => {
-    gameSettings.autoShoot = e.target.checked;
-};
-
-// ==================== WEAPON SELECT LOBBY ====================
-document.querySelectorAll('.weaponSelectBtn').forEach(btn => {
-    btn.onclick = () => {
-        document.querySelectorAll('.weaponSelectBtn').forEach(b => {
-            b.style.background = 'rgba(0,0,0,0.4)';
-            b.style.borderColor = '#666';
+async function amboarySocket() {
+    return new Promise((resolve, reject) => {
+        const socket = io(CONFIG.server, {
+            transports: ['websocket'],
+            reconnection: true
         });
-        btn.style.background = 'rgba(0,255,0,0.3)';
-        btn.style.borderColor = '#00ff00';
-        gameSettings.selectedWeapon = btn.dataset.weapon;
-        document.getElementById('selectedWeapon').textContent = btn.textContent.trim();
-    };
-});
-
-// Ovay ny joinGame mba alefa ny weapon
-const originalJoinGame = window.joinGame || function(){};
-window.joinGame = function() {
-    socket.emit("joinGame", {
-        username: "Player" + Math.floor(Math.random() * 9999),
-        uid: socket.id,
-        skin: { color: '#00ff00', hat: 'none' },
-        level: 1,
-        startWeapon: gameSettings.selectedWeapon // ← Ampio ity
+        
+        socket.on('connect', () => {
+            lalao.socket = socket;
+            console.log('Tafiditra server');
+            resolve();
+        });
+        
+        socket.on('connect_error', (err) => {
+            reject(err);
+        });
     });
+}
+
+async function jereoAuth() {
+    return new Promise((resolve) => {
+        lalao.auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                lalao.mpampiasa = user;
+                await makaDataMpampiasa(user.uid);
+            }
+            resolve(user);
+        });
+    });
+}
+
+async function hiditraGoogle() {
+    try {
+        asehoToast('Mifandray amin Google...', 'info');
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const valiny = await lalao.auth.signInWithPopup(provider);
+        const user = valiny.user;
+        
+        lalao.mpampiasa = user;
+        await mamoronaProfile(user);
+        await makaDataMpampiasa(user.uid);
+        
+        asehoToast('Tonga soa ' + user.displayName, 'success');
+        asehoMenu();
+    } catch (e) {
+        asehoToast('Tsy nety niditra', 'error');
+    }
+}
+
+async function hiditraFacebook() {
+    try {
+        asehoToast('Mifandray amin Facebook...', 'info');
+        const provider = new firebase.auth.FacebookAuthProvider();
+        const valiny = await lalao.auth.signInWithPopup(provider);
+        const user = valiny.user;
+        
+        lalao.mpampiasa = user;
+        await mamoronaProfile(user);
+        await makaDataMpampiasa(user.uid);
+        
+        asehoToast('Tonga soa ' + user.displayName, 'success');
+        asehoMenu();
+    } catch (e) {
+        asehoToast('Tsy nety niditra', 'error');
+    }
+}
+
+async function hiditraAnonyme() {
+    try {
+        asehoToast('Mamorona kaonty vahiny...', 'info');
+        const valiny = await lalao.auth.signInAnonymously();
+        const user = valiny.user;
+        const anarana = 'Vahiny' + Math.floor(Math.random() * 9999);
+        
+        await user.updateProfile({displayName: anarana});
+        lalao.mpampiasa = user;
+        
+        await mamoronaProfile(user);
+        mpilalao.anarana = anarana;
+        
+        asehoToast('Tafiditra vahiny', 'success');
+        asehoMenu();
+    } catch (e) {
+        asehoToast('Tsy nety', 'error');
+    }
+}
+
+async function hiditraEmail() {
+    const email = document.getElementById('emailInput').value.trim();
+    const teny = document.getElementById('passwordInput').value;
+    
+    if (!email || !teny) {
+        asehoAuthError('Fenoy daholo');
+        return;
+    }
+    
+    try {
+        const valiny = await lalao.auth.signInWithEmailAndPassword(email, teny);
+        lalao.mpampiasa = valiny.user;
+        await makaDataMpampiasa(valiny.user.uid);
+        asehoToast('Tonga soa indray', 'success');
+        asehoMenu();
+    } catch (e) {
+        asehoAuthError('Email na teny diso');
+    }
+}
+
+async function hisoratraEmail() {
+    const email = document.getElementById('emailInput').value.trim();
+    const teny = document.getElementById('passwordInput').value;
+    const anarana = document.getElementById('usernameInput').value.trim();
+    
+    if (!email || !teny || !anarana) {
+        asehoAuthError('Fenoy daholo');
+        return;
+    }
+    
+    if (anarana.length < 3) {
+        asehoAuthError('Anarana fohy loatra');
+        return;
+    }
+    
+    try {
+        const valiny = await lalao.auth.createUserWithEmailAndPassword(email, teny);
+        const user = valiny.user;
+        await user.updateProfile({displayName: anarana});
+        
+        lalao.mpampiasa = user;
+        mpilalao.anarana = anarana;
+        mpilalao.uid = user.uid;
+        
+        await mamoronaProfile(user);
+        asehoToast('Voasoratra!', 'success');
+        asehoMenu();
+    } catch (e) {
+        asehoAuthError('Efa misy io email io');
+    }
+}
+
+async function hivoaka() {
+    await lalao.auth.signOut();
+    lalao.mpampiasa = null;
+    mpilalao = {
+        uid: null,
+        anarana: '',
+        level: 1,
+        xp: 0,
+        volamena: 0,
+        diamondra: 0,
+        fandresena: 0,
+        vono: 0,
+        fahafatesana: 0,
+        lalao: 0,
+        hoditra: ['default'],
+        hoditraAnkehitriny: 'default'
+    };
+    asehoToast('Nivoaka', 'info');
+    asehoAuth();
+}
+
+function asehoAuthError(hafatra) {
+    const el = document.getElementById('authError');
+    if (el) {
+        el.textContent = hafatra;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 4000);
+    }
+}
+
+async function mamoronaProfile(user) {
+    const ref = lalao.db.collection('mpilalao').doc(user.uid);
+    const doc = await ref.get();
+    
+    if (!doc.exists) {
+        await ref.set({
+            uid: user.uid,
+            anarana: user.displayName || mpilalao.anarana,
+            email: user.email || null,
+            namboarina: firebase.firestore.FieldValue.serverTimestamp(),
+            niditraFarany: firebase.firestore.FieldValue.serverTimestamp(),
+            level: 1,
+            xp: 0,
+            volamena: 1000,
+            diamondra: 50,
+            fandresena: 0,
+            vono: 0,
+            fahafatesana: 0,
+            lalao: 0,
+            hoditra: ['default'],
+            hoditraAnkehitriny: 'default',
+            battlePass: 1,
+            battlePassXP: 0
+        });
+    } else {
+        await ref.update({
+            niditraFarany: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+}
+
+async function makaDataMpampiasa(uid) {
+    const doc = await lalao.db.collection('mpilalao').doc(uid).get();
+    if (doc.exists) {
+        const data = doc.data();
+        mpilalao = {...mpilalao, ...data};
+        havaozyUI();
+    }
+}
+
+async function mitahiryData() {
+    if (!lalao.mpampiasa) return;
+    
+    await lalao.db.collection('mpilalao').doc(lalao.mpampiasa.uid).update({
+        anarana: mpilalao.anarana,
+        level: mpilalao.level,
+        xp: mpilalao.xp,
+        volamena: mpilalao.volamena,
+        diamondra: mpilalao.diamondra,
+        fandresena: mpilalao.fandresena,
+        vono: mpilalao.vono,
+        fahafatesana: mpilalao.fahafatesana,
+        lalao: mpilalao.lalao,
+        hoditra: mpilalao.hoditra,
+        hoditraAnkehitriny: mpilalao.hoditraAnkehitriny,
+        battlePass: mpilalao.battlePass,
+        battlePassXP: mpilalao.battlePassXP,
+        novaina: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
+function havaozyUI() {
+    const anar = document.getElementById('playerNameMini');
+    const lvl = document.getElementById('playerLevelMini');
+    const vola = document.getElementById('headerCoins');
+    const diam = document.getElementById('headerDiamonds');
+    
+    if (anar) anar.textContent = mpilalao.anarana;
+    if (lvl) lvl.textContent = 'Lv.' + mpilalao.level;
+    if (vola) vola.textContent = formatNomera(mpilalao.volamena);
+    if (diam) diam.textContent = formatNomera(mpilalao.diamondra);
+}
+
+function asehoEfijery(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById(id)?.classList.remove('hidden');
+    lalao.efijery = id;
+}
+
+function asehoAuth() {
+    asehoEfijery('authScreen');
+}
+
+function asehoMenu() {
+    asehoEfijery('mainMenu');
+    havaozyUI();
+    makaOnline();
+}
+
+function asehoLobby() {
+    asehoEfijery('lobbyScreen');
+}
+
+function asehoPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById(id)?.classList.remove('hidden');
+}
+
+function afenoPanel(id) {
+    document.getElementById(id)?.classList.add('hidden');
+}
+
+function formatNomera(isa) {
+    if (isa >= 1000000) return (isa / 1000000).toFixed(1) + 'M';
+    if (isa >= 1000) return (isa / 1000).toFixed(1) + 'K';
+    return isa.toString();
+}
+
+function asehoToast(hafatra, karazana = 'info', fotoana = 3000) {
+    const fito = document.getElementById('toastContainer');
+    if (!fito) return;
+    
+    const t = document.createElement('div');
+    t.className = `toast toast-${karazana}`;
+    t.textContent = hafatra;
+    fito.appendChild(t);
+    
+    setTimeout(() => t.classList.add('show'), 10);
+    setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 300);
+    }, fotoana);
+}
+
+function asehoNotification(lohateny, hafatra, karazana = 'info') {
+    const fito = document.getElementById('notificationContainer');
+    if (!fito) return;
+    
+    const n = document.createElement('div');
+    n.className = `notification ${karazana}`;
+    n.innerHTML = `
+        <div class="notification-icon">${saryNotification(karazana)}</div>
+        <div class="notification-content">
+            <div class="notification-title">${lohateny}</div>
+            <div class="notification-message">${hafatra}</div>
+        </div>
+    `;
+    fito.appendChild(n);
+    
+    setTimeout(() => {
+        n.classList.add('fade-out');
+        setTimeout(() => n.remove(), 400);
+    }, 5000);
+}
+
+function saryNotification(k) {
+    const s = {success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️'};
+    return s[k] || 'ℹ️';
+}
+
+function asehoError(hafatra) {
+    asehoNotification('Hadisoana', hafatra, 'error');
+}
+
+function amboaryEventListeners() {
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+        }
+    });
+    window.addEventListener('beforeunload', e => {
+        if (lalao.efijery === 'game') {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+}
+
+function makaOnline() {
+    lalao.socket.emit('makaOnline');
+    lalao.socket.on('onlineValiny', (isa) => {
+        const el = document.getElementById('onlineCount');
+        if (el) el.textContent = formatNomera(isa);
+    });
+}
+
+function manombokaLalaoVaovao(mode) {
+    if (!lalao.socket) return;
+    
+    lalao.socket.emit('mamoronaLobby', {
+        mode: mode,
+        mpilalao: {
+            uid: mpilalao.uid,
+            anarana: mpilalao.anarana,
+            level: mpilalao.level,
+            hoditra: mpilalao.hoditraAnkehitriny
+        }
+    });
+    
+    lalao.socket.once('lobbyVoavoatra', (data) => {
+        asehoLobby();
+        asehoToast('Lobby voaforona', 'success');
+    });
+}
+
+function miditraLobby(id) {
+    lalao.socket.emit('miditraLobby', {
+        id: id,
+        mpilalao: {
+            uid: mpilalao.uid,
+            anarana: mpilalao.anarana,
+            level: mpilalao.level
+        }
+    });
+}
+
+function mialaLobby() {
+    lalao.socket.emit('mialaLobby');
+    asehoMenu();
+}
+
+function mandefaChat(hafatra) {
+    if (!hafatra.trim()) return;
+    lalao.socket.emit('chatLobby', {
+        hafatra: hafatra.substring(0, 200),
+        anarana: mpilalao.anarana,
+        fotoana: Date.now()
+    });
+}
+
+function mifidyMode(mode) {
+    lalao.socket.emit('ovayMode', {mode});
+}
+
+function mifidyFitaovana(fitaovana) {
+    lalao.socket.emit('ovayFitaovana', {fitaovana});
+}
+
+function vononaHilalao() {
+    lalao.socket.emit('vonona');
+}
+
+function mividyZavatra(id, vidiny) {
+    if (mpilalao.volamena < vidiny) {
+        asehoToast('Tsy ampy volamena', 'error');
+        return;
+    }
+    
+    lalao.socket.emit('mividy', {id, vidiny});
+    
+    lalao.socket.once('vidyValiny', (valiny) => {
+        if (valiny.vita) {
+            mpilalao.volamena -= vidiny;
+            mpilalao.hoditra.push(id);
+            mitahiryData();
+            havaozyUI();
+            asehoToast('Vita ny fividianana', 'success');
+        } else {
+            asehoToast('Tsy nety', 'error');
+        }
+    });
+}
+
+function manokatraBattlePass() {
+    asehoPanel('battlePassMenu');
+    lalao.socket.emit('makaBattlePass');
+    
+    lalao.socket.once('battlePassData', (data) => {
+        asehoBattlePass(data);
+    });
+}
+
+function makaValisoa(level) {
+    lalao.socket.emit('makaValisoa', {level});
+}
+
+function manokatraInventory() {
+    asehoPanel('inventoryMenu');
+    asehoInventory();
+}
+
+function asehoInventory() {
+    const fito = document.getElementById('inventoryGrid');
+    if (!fito) return;
+    
+    fito.innerHTML = '';
+    mpilalao.hoditra.forEach(h => {
+        const el = document.createElement('div');
+        el.className = 'inventory-item';
+        el.innerHTML = `<div class="skin-emoji">👤</div><div>${h}</div>`;
+        el.onclick = () => mifidyHoditra(h);
+        fito.appendChild(el);
+    });
+}
+
+function mifidyHoditra(hoditra) {
+    mpilalao.hoditraAnkehitriny = hoditra;
+    mitahiryData();
+    asehoToast('Hoditra voafidy', 'success');
+    afenoPanel('inventoryMenu');
+}
+
+function manokatraSettings() {
+    asehoPanel('settingsPanel');
+}
+
+function mitahirySettings() {
+    const s = mpilalao.settings || {};
+    s.sensitivity = parseFloat(document.getElementById('sensitivitySlider').value);
+    s.volume = parseInt(document.getElementById('volumeSlider').value);
+    mpilalao.settings = s;
+    mitahiryData();
+    asehoToast('Settings voatahiry', 'success');
+}
+
+function manokatraProfile() {
+    asehoPanel('profileMenu');
+    const anar = document.getElementById('profileUsername');
+    if (anar) anar.value = mpilalao.anarana;
+}
+
+function manovaAnarana() {
+    const vaovao = document.getElementById('profileUsername').value.trim();
+    if (vaovao.length < 3) {
+        asehoToast('Anarana fohy', 'error');
+        return;
+    }
+    
+    mpilalao.anarana = vaovao;
+    mitahiryData();
+    lalao.mpampiasa.updateProfile({displayName: vaovao});
+    havaozyUI();
+    asehoToast('Anarana novaina', 'success');
+}
+
+function manokatraShop() {
+    asehoPanel('shopMenu');
+    lalao.socket.emit('makaShop');
+    
+    lalao.socket.once('shopData', (zavatra) => {
+        asehoShop(zavatra);
+    });
+}
+
+function asehoShop(zavatra) {
+    const fito = document.getElementById('shopGrid');
+    if (!fito) return;
+    
+    fito.innerHTML = '';
+    zavatra.forEach(z => {
+        const el = document.createElement('div');
+        el.className = 'shop-item';
+        el.innerHTML = `
+            <div class="item-image">${z.sary}</div>
+            <h4>${z.anarana}</h4>
+            <div class="item-price">${z.vidiny} 💰</div>
+            <button onclick="mividyZavatra('${z.id}', ${z.vidiny})" class="buy-btn">Vidio</button>
+        `;
+        fito.appendChild(el);
+    });
+}
+
+function manokatraLeaderboard() {
+    asehoPanel('fullLeaderboard');
+    lalao.socket.emit('makaLeaderboard');
+    
+    lalao.socket.once('leaderboardData', (lisitra) => {
+        asehoLeaderboard(lisitra);
+    });
+}
+
+function asehoLeaderboard(lisitra) {
+    const tbody = document.querySelector('#leaderboardTable tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    lisitra.forEach((p, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${p.anarana}</td>
+            <td>${p.level}</td>
+            <td>${p.vono}</td>
+            <td>${p.fandresena}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function mandefaHafatraMail() {
+    const hafatra = document.getElementById('mailInput').value;
+    if (!hafatra) return;
+    
+    lalao.socket.emit('mandefaMail', {hafatra});
+    asehoToast('Lasa ny hafatra', 'success');
+}
+
+function makaMail() {
+    lalao.socket.emit('makaMail');
+    lalao.socket.once('mailData', (mail) => {
+        asehoMail(mail);
+    });
+}
+
+function asehoMail(mail) {
+    const fito = document.getElementById('mailList');
+    if (!fito) return;
+    
+    fito.innerHTML = '';
+    mail.forEach(m => {
+        const el = document.createElement('div');
+        el.className = 'mail-item';
+        el.innerHTML = `
+            <div class="mail-sender">${m.nandefa}</div>
+            <div class="mail-subject">${m.lohateny}</div>
+            <div class="mail-preview">${m.votoatiny}</div>
+        `;
+        fito.appendChild(el);
+    });
+}
+
+function mialaAdmin() {
+    if (confirm('Hiala admin?')) {
+        window.location.href = '/';
+    }
+}
+
+function manokatraCredits() {
+    asehoEfijery('creditsScreen');
+}
+
+function miverinaMenu() {
+    asehoMenu();
+}
+
+function kisendrasendra(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function manakana(a, min, max) {
+    return Math.max(min, Math.min(max, a));
+}
+
+function halavirana(x1, y1, x2, y2) {
+    return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+}
+
+function mamoronaId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function mamadikaFotoana(segondra) {
+    const min = Math.floor(segondra / 60);
+    const sec = Math.floor(segondra % 60);
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+function mandikaClipboard(soratra) {
+    navigator.clipboard.writeText(soratra).then(() => {
+        asehoToast('Nadika', 'success');
+    });
+}
+
+function alefaSon(fe) {
+    if (mpilalao.settings?.volume > 0) {
+        const audio = new Audio(`/sounds/${fe}.mp3`);
+        audio.volume = mpilalao.settings.volume / 100;
+        audio.play().catch(() => {});
+    }
+}
+
+function manombokaLalaoServer(data) {
+    asehoEfijery('gameScreen');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    lalao.socket.on('gameUpdate', (state) => {
+        saryLalao(ctx, state);
+    });
+    
+    lalao.socket.on('lalaoTapitra', (vokatra) => {
+        asehoVokatra(vokatra);
+    });
+}
+
+function saryLalao(ctx, state) {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillStyle = '#0a0015';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    
+    state.mpilalao.forEach(p => {
+        ctx.fillStyle = p.uid === mpilalao.uid ? '#ff006e' : '#9d4edd';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = 'white';
+        ctx.font = '12px Arial';
+        ctx.fillText(p.anarana, p.x - 20, p.y - 25);
+    });
+}
+
+function mihetsika(tari) {
+    lalao.socket.emit('mihetsika', {tari});
+}
+
+function mitifitra(tari) {
+    lalao.socket.emit('mitifitra', {tari});
+}
+
+function mamerinaBasy() {
+    lalao.socket.emit('reload');
+}
+
+function mampiasaFitsaboana() {
+    lalao.socket.emit('fahasitranana');
+}
+
+function manipyGrenady(tari) {
+    lalao.socket.emit('grenady', {tari});
+}
+
+function asehoVokatra(vokatra) {
+    if (vokatra.fandresena) {
+        asehoEfijery('victoryScreen');
+        document.getElementById('victoryKills').textContent = vokatra.vono;
+    } else {
+        asehoEfijery('deathScreen');
+        document.getElementById('deathKills').textContent = vokatra.vono;
+    }
+    
+    mpilalao.vono += vokatra.vono;
+    mpilalao.lalao += 1;
+    if (vokatra.fandresena) mpilalao.fandresena += 1;
+    else mpilalao.fahafatesana += 1;
+    
+    mitahiryData();
+}
+
+function miverinaLobby() {
+    lalao.socket.emit('miverinaLobby');
+    asehoLobby();
+}
+
+let lobby = {
+    id: null,
+    tompony: false,
+    mpilalao: [],
+    mode: 'battle_royale',
+    fitaovana: 'ak47',
+    isaMax: 100,
+    countdown: 60,
+    mandeha: false,
+    fotoana: null,
+    chat: [],
+    vonona: new Set()
 };
 
-// ==================== MINIMAP ====================
-function drawMinimap() {
-    const canvas = document.getElementById('minimapCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const mapSize = 3000;
-    const scale = 200 / mapSize;
-    
-    ctx.clearRect(0, 0, 200, 200);
-    ctx.fillStyle = '#1a3a1a';
-    ctx.fillRect(0, 0, 200, 200);
-    
-    // Zone
-    if (gameState.zone && gameState.zone.isActive) {
-        ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 2;
+function amboaryLobbyListeners() {
+    if (!lalao.socket) return;
+
+    const s = lalao.socket;
+
+    s.on('lobbyNoforonina', (data) => {
+        lobby.id = data.id;
+        lobby.tompony = true;
+        lobby.mpilalao = data.mpilalao;
+        lobby.mode = data.mode;
+        asehoLobby();
+        havaozyLobby();
+        manombokaCountdown(data.countdown);
+        asehoToast('Lobby voaforona', 'success');
+        alefaSon('lobby');
+    });
+
+    s.on('lobbyNiditra', (data) => {
+        lobby.id = data.id;
+        lobby.tompony = data.tompony;
+        lobby.mpilalao = data.mpilalao;
+        lobby.mode = data.mode;
+        asehoLobby();
+        havaozyLobby();
+        if (data.countdownMandeha) {
+            manombokaCountdown(data.countdown);
+        }
+        asehoToast('Tafiditra lobby', 'success');
+    });
+
+    s.on('mpilalaoNiditra', (data) => {
+        lobby.mpilalao.push(data.mpilalao);
+        havaozyLobby();
+        asehoToast(data.mpilalao.anarana + ' niditra', 'info');
+        ampianaChatSystem(data.mpilalao.anarana + ' niditra');
+        alefaSon('join');
+    });
+
+    s.on('mpilalaoNiala', (data) => {
+        const index = lobby.mpilalao.findIndex(p => p.uid === data.uid);
+        if (index!== -1) {
+            const anar = lobby.mpilalao[index].anarana;
+            lobby.mpilalao.splice(index, 1);
+            havaozyLobby();
+            asehoToast(anar + ' niala', 'info');
+            ampianaChatSystem(anar + ' niala');
+        }
+    });
+
+    s.on('tomponyNiova', (data) => {
+        lobby.mpilalao.forEach(p => {
+            p.tompony = (p.uid === data.uidVaovao);
+        });
+        lobby.tompony = (data.uidVaovao === mpilalao.uid);
+        havaozyLobby();
+        asehoToast('Tompony vaovao: ' + data.anarana, 'info');
+        if (lobby.tompony) {
+            asehoToast('Ianao no tompony', 'success');
+        }
+    });
+
+    s.on('lobbyNohavaozina', (data) => {
+        if (data.mpilalao) lobby.mpilalao = data.mpilalao;
+        if (data.mode) lobby.mode = data.mode;
+        if (data.fitaovana) lobby.fitaovana = data.fitaovana;
+        havaozyLobby();
+    });
+
+    s.on('countdownNohavaozina', (data) => {
+        if (data.mandeha) {
+            manombokaCountdown(data.fotoana);
+        } else {
+            atsahatraCountdown();
+        }
+    });
+
+    s.on('chatLobby', (data) => {
+        raisoChat(data);
+    });
+
+    s.on('vononaNohavaozina', (data) => {
+        if (data.vonona) {
+            lobby.vonona.add(data.uid);
+        } else {
+            lobby.vonona.delete(data.uid);
+        }
+        havaozyVonona();
+    });
+
+    s.on('matchHita', (data) => {
+        afenoMatchmaking();
+        asehoFanekenaMatch(data);
+    });
+
+    s.on('matchManomboka', (data) => {
+        asehoToast('Manomboka ao anatin ny 3...', 'success');
+        setTimeout(() => {
+            manombokaLalaoServer(data);
+        }, 3000);
+    });
+
+    s.on('matchFoana', (data) => {
+        afenoMatchmaking();
+        asehoToast('Foana: ' + data.antony, 'warning');
+    });
+}
+
+function havaozyLobby() {
+    havaozyIsanMpilalao();
+    asehoMpilalaoLobby();
+    havaozyModeAseho();
+    havaozyIdLobby();
+    havaozyFanarahaMasoTompony();
+}
+
+function havaozyIsanMpilalao() {
+    const isa = document.getElementById('lobbyPlayerCount');
+    const max = document.getElementById('lobbyPlayerMax');
+    if (isa) isa.textContent = lobby.mpilalao.length;
+    if (max) max.textContent = lobby.isaMax;
+}
+
+function asehoMpilalaoLobby() {
+    const fito = document.getElementById('lobbyPlayersList');
+    if (!fito) return;
+
+    fito.innerHTML = '';
+
+    lobby.mpilalao.forEach(p => {
+        const el = document.createElement('div');
+        el.className = 'player-tag';
+        const vonona = lobby.vonona.has(p.uid)? '✓' : '';
+        const satroka = p.tompony? '👑' : '👤';
+
+        el.innerHTML = `
+            <span class="player-tag-icon">${satroka}</span>
+            <span class="player-tag-name">${p.anarana}</span>
+            <span class="player-tag-level">Lv.${p.level}</span>
+            <span class="ready-badge">${vonona}</span>
+        `;
+
+        if (lobby.tompony &&!p.tompony && p.uid!== mpilalao.uid) {
+            el.onclick = () => asehoMenuMpilalao(p);
+        }
+
+        fito.appendChild(el);
+    });
+}
+
+function havaozyModeAseho() {
+    const el = document.getElementById('lobbyModeDisplay');
+    if (!el) return;
+
+    const anarana = {
+        'battle_royale': 'BATTLE ROYALE',
+        'team_deathmatch': 'TEAM DEATHMATCH',
+        'squad': 'SQUAD'
+    };
+
+    el.textContent = anarana[lobby.mode] || lobby.mode.toUpperCase();
+}
+
+function havaozyIdLobby() {
+    const el = document.getElementById('lobbyRoomId');
+    if (el && lobby.id) {
+        el.textContent = 'ID: ' + lobby.id.substring(0, 8).toUpperCase();
+        el.onclick = () => mandikaClipboard(lobby.id);
+    }
+}
+
+function havaozyFanarahaMasoTompony() {
+    document.querySelectorAll('.host-only').forEach(el => {
+        el.style.display = lobby.tompony? 'block' : 'none';
+    });
+}
+
+function manombokaCountdown(segondra) {
+    atsahatraCountdown();
+
+    lobby.countdown = segondra;
+    lobby.mandeha = true;
+
+    havaozyCountdown();
+
+    lobby.fotoana = setInterval(() => {
+        lobby.countdown--;
+        havaozyCountdown();
+
+        if (lobby.countdown <= 0) {
+            atsahatraCountdown();
+        }
+    }, 1000);
+}
+
+function atsahatraCountdown() {
+    if (lobby.fotoana) {
+        clearInterval(lobby.fotoana);
+        lobby.fotoana = null;
+    }
+    lobby.mandeha = false;
+}
+
+function havaozyCountdown() {
+    const el = document.getElementById('lobbyCountdown');
+    const feno = document.getElementById('countdownFill');
+
+    if (el) {
+        const min = Math.floor(lobby.countdown / 60);
+        const sec = lobby.countdown % 60;
+        el.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+
+        if (lobby.countdown <= 10) {
+            el.style.color = '#ff4444';
+        } else {
+            el.style.color = '';
+        }
+    }
+
+    if (feno) {
+        const isanjato = (lobby.countdown / 60) * 100;
+        feno.style.width = isanjato + '%';
+    }
+}
+
+function mamoronaLobby(mode) {
+    if (!lalao.socket) return;
+
+    lalao.socket.emit('mamoronaLobby', {
+        mode: mode,
+        mpilalao: {
+            uid: mpilalao.uid,
+            anarana: mpilalao.anarana,
+            level: mpilalao.level,
+            hoditra: mpilalao.hoditraAnkehitriny
+        }
+    });
+}
+
+function miditraLobbyId(id) {
+    if (!lalao.socket ||!id) return;
+
+    lalao.socket.emit('miditraLobby', {
+        id: id,
+        mpilalao: {
+            uid: mpilalao.uid,
+            anarana: mpilalao.anarana,
+            level: mpilalao.level,
+            hoditra: mpilalao.hoditraAnkehitriny
+        }
+    });
+}
+
+function mialaAminLobby() {
+    if (lobby.id && lalao.socket) {
+        lalao.socket.emit('mialaLobby', {id: lobby.id});
+    }
+
+    atsahatraCountdown();
+    lobby = {
+        id: null,
+        tompony: false,
+        mpilalao: [],
+        mode: 'battle_royale',
+        fitaovana: 'ak47',
+        isaMax: 100,
+        countdown: 60,
+        mandeha: false,
+        fotoana: null,
+        chat: [],
+        vonona: new Set()
+    };
+
+    afenoChat();
+    asehoMenu();
+}
+
+function manovaModeLobby(mode) {
+    if (!lobby.tompony) {
+        asehoToast('Tompony ihany', 'warning');
+        return;
+    }
+
+    lobby.mode = mode;
+    lalao.socket.emit('manovaMode', {
+        id: lobby.id,
+        mode: mode
+    });
+
+    havaozyModeAseho();
+}
+
+function manovaFitaovanaLobby(fitaovana) {
+    lobby.fitaovana = fitaovana;
+
+    document.querySelectorAll('.weapon-select-btn').forEach(b => {
+        b.classList.remove('selected');
+    });
+
+    const voafidy = document.querySelector(`[data-weapon="${fitaovana}"]`);
+    if (voafidy) voafidy.classList.add('selected');
+
+    const anar = document.getElementById('selectedWeaponName');
+    if (anar) anar.textContent = fitaovana.toUpperCase();
+
+    lalao.socket.emit('manovaFitaovana', {
+        id: lobby.id,
+        fitaovana: fitaovana
+    });
+}
+
+function manovaVonona() {
+    const efaVonona = lobby.vonona.has(mpilalao.uid);
+
+    if (efaVonona) {
+        lobby.vonona.delete(mpilalao.uid);
+    } else {
+        lobby.vonona.add(mpilalao.uid);
+    }
+
+    lalao.socket.emit('manovaVonona', {
+        id: lobby.id,
+        vonona:!efaVonona
+    });
+
+    havaozyVonona();
+}
+
+function havaozyVonona() {
+    const bokotra = document.getElementById('readyButton');
+    if (!bokotra) return;
+
+    const vonona = lobby.vonona.has(mpilalao.uid);
+    bokotra.textContent = vonona? 'TSY VONONA' : 'VONONA';
+    bokotra.className = vonona? 'ready-btn not-ready' : 'ready-btn';
+}
+
+function manombokaMatch() {
+    if (!lobby.tompony) return;
+
+    lalao.socket.emit('manombokaMatch', {id: lobby.id});
+}
+
+function amboaryChat() {
+    const soratra = document.getElementById('lobbyChatInput');
+    const bokotra = document.getElementById('lobbyChatSend');
+
+    if (soratra) {
+        soratra.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                alefaChat();
+            }
+        });
+    }
+
+    if (bokotra) {
+        bokotra.addEventListener('click', alefaChat);
+    }
+}
+
+function alefaChat() {
+    const soratra = document.getElementById('lobbyChatInput');
+    if (!soratra) return;
+
+    const hafatra = soratra.value.trim();
+    if (!hafatra) return;
+
+    if (hafatra.length > 200) {
+        asehoToast('Lava loatra', 'warning');
+        return;
+    }
+
+    lalao.socket.emit('alefaChat', {
+        id: lobby.id,
+        hafatra: hafatra
+    });
+
+    soratra.value = '';
+}
+
+function raisoChat(data) {
+    lobby.chat.push(data);
+
+    if (lobby.chat.length > 100) {
+        lobby.chat.shift();
+    }
+
+    asehoChat(data);
+}
+
+function asehoChat(data) {
+    const fito = document.getElementById('lobbyChatMessages');
+    if (!fito) return;
+
+    const el = document.createElement('div');
+    el.className = 'chat-message';
+
+    const fotoana = new Date(data.fotoana).toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    const loko = makaLokoMpilalao(data.uid);
+
+    el.innerHTML = `
+        <span class="chat-time">[${fotoana}]</span>
+        <span class="chat-username" style="color:${loko}">${data.anarana}:</span>
+        <span class="chat-text">${data.hafatra}</span>
+    `;
+
+    fito.appendChild(el);
+    fito.scrollTop = fito.scrollHeight;
+
+    if (data.uid!== mpilalao.uid) {
+        alefaSon('chat');
+    }
+}
+
+function makaLokoMpilalao(uid) {
+    let hash = 0;
+    for (let i = 0; i < uid.length; i++) {
+        hash = uid.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const loko = ['#ff006e', '#9d4edd', '#3a86ff', '#06ffa5', '#ffaa00'];
+    return loko[Math.abs(hash) % loko.length];
+}
+
+function ampianaChatSystem(hafatra) {
+    raisoChat({
+        uid: 'system',
+        anarana: 'RAFITRA',
+        hafatra: hafatra,
+        fotoana: Date.now()
+    });
+}
+
+function afenoChat() {
+    const fito = document.getElementById('lobbyChatMessages');
+    if (fito) fito.innerHTML = '';
+    lobby.chat = [];
+}
+
+function mitadyMatchHaingana(mode) {
+    if (!lalao.socket) return;
+
+    asehoMatchmaking(mode);
+
+    lalao.socket.emit('mitadyMatch', {
+        mode: mode,
+        mpilalao: {
+            uid: mpilalao.uid,
+            anarana: mpilalao.anarana,
+            level: mpilalao.level
+        }
+    });
+
+    manombokaFotoanaMatchmaking();
+}
+
+function asehoMatchmaking(mode) {
+    const overlay = document.createElement('div');
+    overlay.id = 'matchmakingOverlay';
+    overlay.className = 'matchmaking-overlay';
+    overlay.innerHTML = `
+        <div class="matchmaking-content">
+            <div class="matchmaking-spinner"></div>
+            <h2>Mitady mpilalao...</h2>
+            <p>Mode: ${mode.toUpperCase()}</p>
+            <p class="matchmaking-timer" id="matchmakingTimer">0:00</p>
+            <button onclick="ajanonaMatchmaking()" class="cancel-btn">Ajanona</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function afenoMatchmaking() {
+    const el = document.getElementById('matchmakingOverlay');
+    if (el) el.remove();
+    atsahatraFotoanaMatchmaking();
+}
+
+function manombokaFotoanaMatchmaking() {
+    let segondra = 0;
+    const el = document.getElementById('matchmakingTimer');
+
+    lobby.fotoanaMatchmaking = setInterval(() => {
+        segondra++;
+        if (el) {
+            el.textContent = mamadikaFotoana(segondra);
+        }
+    }, 1000);
+}
+
+function atsahatraFotoanaMatchmaking() {
+    if (lobby.fotoanaMatchmaking) {
+        clearInterval(lobby.fotoanaMatchmaking);
+        lobby.fotoanaMatchmaking = null;
+    }
+}
+
+function ajanonaMatchmaking() {
+    lalao.socket.emit('ajanonaMitady');
+    afenoMatchmaking();
+    asehoToast('Najanona', 'info');
+}
+
+function asehoFanekenaMatch(data) {
+    const hafatra = `Mpilalao: ${data.isa}/${data.max}\nSarintany: ${data.sarintany}\nManomboka afaka 10 segondra`;
+
+    showConfirmDialog('Match Hita!', hafatra,
+        () => manaikyMatch(data.id),
+        () => mandàMatch(data.id)
+    );
+
+    setTimeout(() => {
+        const dialog = document.getElementById('confirmDialog');
+        if (dialog &&!dialog.classList.contains('hidden')) {
+            manaikyMatch(data.id);
+        }
+    }, 8000);
+}
+
+function manaikyMatch(id) {
+    lalao.socket.emit('manaikyMatch', {id});
+    asehoToast('Nekena', 'success');
+    document.getElementById('confirmDialog')?.classList.add('hidden');
+}
+
+function mandàMatch(id) {
+    lalao.socket.emit('mandàMatch', {id});
+    asehoToast('Nolavina', 'info');
+    document.getElementById('confirmDialog')?.classList.add('hidden');
+}
+
+function asehoMenuMpilalao(p) {
+    if (!lobby.tompony) return;
+
+    const safidy = confirm(`${p.anarana}\n\nTe hamoaka?`);
+    if (safidy) {
+        lalao.socket.emit('avoakaMpilalao', {
+            id: lobby.id,
+            uid: p.uid
+        });
+    }
+}
+
+function makaLobbyListe() {
+    lalao.socket.emit('makaLobbyListe');
+
+    lalao.socket.once('lobbyListe', (lisitra) => {
+        asehoLobbyListe(lisitra);
+    });
+}
+
+function asehoLobbyListe(lisitra) {
+    const fito = document.getElementById('lobbyListContainer');
+    if (!fito) return;
+
+    fito.innerHTML = '';
+
+    lisitra.forEach(l => {
+        const el = document.createElement('div');
+        el.className = 'lobby-item';
+        el.innerHTML = `
+            <div class="lobby-info">
+                <div class="lobby-mode">${l.mode}</div>
+                <div class="lobby-players">${l.isa}/${l.max}</div>
+            </div>
+            <button onclick="miditraLobbyId('${l.id}')" class="join-btn">Miditra</button>
+        `;
+        fito.appendChild(el);
+    });
+}
+
+function mamerinaLobby() {
+    if (lobby.id) {
+        lalao.socket.emit('mamerinaLobby', {id: lobby.id});
+    }
+}
+
+amboaryLobbyListeners();
+amboaryChat();
+
+let lalaoEo = {
+    canvas: null,
+    ctx: null,
+    mandeha: false,
+    state: null,
+    mpilalaoTaloha: new Map(),
+    fotoana: 0,
+    faritra: {x: 0, y: 0, radius: 5000},
+    faritraManaraka: {x: 0, y: 0, radius: 4000},
+    sarintany: null,
+    fanalahidy: {},
+    totozy: {x: 0, y: 0, tsindry: false},
+    fakan-tsary: {x: 0, y: 0, zoom: 1}
+};
+
+function manombokaLalaoEo(data) {
+    lalaoEo.canvas = document.getElementById('gameCanvas');
+    lalaoEo.ctx = lalaoEo.canvas.getContext('2d');
+
+    lalaoEo.canvas.width = window.innerWidth;
+    lalaoEo.canvas.height = window.innerHeight;
+
+    lalaoEo.mandeha = true;
+    lalaoEo.state = data.state;
+    lalaoEo.faritra = data.faritra;
+
+    amboaryFanaraha();
+    mihainoFanavaozana();
+    manombokaRender();
+
+    asehoToast('Lalao manomboka', 'success');
+}
+
+function mihainoFanavaozana() {
+    lalao.socket.on('fanavaozanaLalao', (data) => {
+        lalaoEo.state = data.state;
+        lalaoEo.fotoana = data.fotoana;
+        if (data.faritra) lalaoEo.faritra = data.faritra;
+        if (data.faritraManaraka) lalaoEo.faritraManaraka = data.faritraManaraka;
+    });
+
+    lalao.socket.on('mpilalaoMaty', (data) => {
+        raisoFahafatesana(data);
+    });
+
+    lalao.socket.on('mpilalaoNandresy', (data) => {
+        raisoFandresena(data);
+    });
+
+    lalao.socket.on('fahasimbana', (data) => {
+        raisoFahasimbana(data);
+        havaozyFahasalamana(data.fahasalamana);
+    });
+
+    lalao.socket.on('balaLany', () => {
+        havaozyBala(0);
+        alefaSon('reload');
+    });
+
+    lalao.socket.on('fitaovanaNovaina', (data) => {
+        havaozyFitaovana(data);
+    });
+
+    lalao.socket.on('faritraMiova', (data) => {
+        lalaoEo.faritraManaraka = data.vaovao;
+        asehoFampitandremanaFaritra();
+    });
+}
+
+function manombokaRender() {
+    function render() {
+        if (!lalaoEo.mandeha) return;
+
+        saryRehetra();
+        havaozyHUD();
+
+        requestAnimationFrame(render);
+    }
+    render();
+}
+
+function saryRehetra() {
+    const ctx = lalaoEo.ctx;
+    const canvas = lalaoEo.canvas;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0a0015';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!lalaoEo.state) return;
+
+    const ahy = lalaoEo.state.mpilalao.find(p => p.uid === mpilalao.uid);
+    if (ahy) {
+        lalaoEo.fakan-tsary.x = ahy.x - canvas.width / 2;
+        lalaoEo.fakan-tsary.y = ahy.y - canvas.height / 2;
+    }
+
+    ctx.save();
+    ctx.translate(-lalaoEo.fakan-tsary.x, -lalaoEo.fakan-tsary.y);
+
+    sarySarintany(ctx);
+    saryFaritraMena(ctx);
+    saryFaritraManaraka(ctx);
+    saryLoot(ctx);
+    saryBalaRehetra(ctx);
+    saryMpilalaoRehetra(ctx);
+    saryGrenady(ctx);
+
+    ctx.restore();
+
+    saryTandrifana(ctx);
+    saryFamantarana(ctx);
+}
+
+function sarySarintany(ctx) {
+    ctx.fillStyle = '#1a0033';
+    ctx.fillRect(-5000, -5000, 10000, 10000);
+
+    ctx.strokeStyle = '#2a0044';
+    ctx.lineWidth = 2;
+
+    for (let x = -5000; x <= 5000; x += 200) {
         ctx.beginPath();
-        ctx.arc(
-            gameState.zone.x * scale,
-            gameState.zone.y * scale,
-            gameState.zone.radius * scale,
-            0, Math.PI * 2
-        );
+        ctx.moveTo(x, -5000);
+        ctx.lineTo(x, 5000);
         ctx.stroke();
     }
-    
-    // Players
-    Object.values(gameState.players).forEach(p => {
-        if (p.hp <= 0 || p.inLobby) return;
-        ctx.fillStyle = p.id === socket.id ? '#00ff00' : (p.isBot ? '#888' : '#ff0000');
+
+    for (let y = -5000; y <= 5000; y += 200) {
         ctx.beginPath();
-        ctx.arc(p.x * scale, p.y * scale, 3, 0, Math.PI * 2);
+        ctx.moveTo(-5000, y);
+        ctx.lineTo(5000, y);
+        ctx.stroke();
+    }
+}
+
+function saryFaritraMena(ctx) {
+    const f = lalaoEo.faritra;
+
+    ctx.fillStyle = 'rgba(255, 0, 110, 0.1)';
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#ff006e';
+    ctx.lineWidth = 5;
+    ctx.shadowColor = '#ff006e';
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+}
+
+function saryFaritraManaraka(ctx) {
+    const f = lalaoEo.faritraManaraka;
+    if (!f) return;
+
+    ctx.strokeStyle = 'rgba(157, 78, 221, 0.5)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([20, 20]);
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+function saryMpilalaoRehetra(ctx) {
+    if (!lalaoEo.state ||!lalaoEo.state.mpilalao) return;
+
+    lalaoEo.state.mpilalao.forEach(p => {
+        saryMpilalaoIray(ctx, p);
+    });
+}
+
+function saryMpilalaoIray(ctx, p) {
+    const taloha = lalaoEo.mpilalaoTaloha.get(p.uid) || p;
+    const x = taloha.x + (p.x - taloha.x) * 0.3;
+    const y = taloha.y + (p.y - taloha.y) * 0.3;
+
+    lalaoEo.mpilalaoTaloha.set(p.uid, {x, y});
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(p.zoro || 0);
+
+    const loko = p.uid === mpilalao.uid? '#ff006e' : p.ekipa === 'mena'? '#ff4444' : '#9d4edd';
+
+    ctx.fillStyle = loko;
+    ctx.shadowColor = loko;
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(0, 0, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#1a0033';
+    ctx.beginPath();
+    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.anarana.substring(0, 8), 0, -35);
+
+    const fahasalamanaIsanjato = p.fahasalamana / 100;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(-25, 28, 50, 6);
+    ctx.fillStyle = fahasalamanaIsanjato > 0.5? '#06ffa5' : fahasalamanaIsanjato > 0.2? '#ffaa00' : '#ff4444';
+    ctx.fillRect(-25, 28, 50 * fahasalamanaIsanjato, 6);
+
+    if (p.mitifitra) {
+        ctx.strokeStyle = '#ffaa00';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(40, 0);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+function saryBalaRehetra(ctx) {
+    if (!lalaoEo.state ||!lalaoEo.state.bala) return;
+
+    ctx.fillStyle = '#ffaa00';
+    ctx.shadowColor = '#ffaa00';
+    ctx.shadowBlur = 10;
+
+    lalaoEo.state.bala.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.shadowBlur = 0;
+}
+
+function saryGrenady(ctx) {
+    if (!lalaoEo.state ||!lalaoEo.state.grenady) return;
+
+    lalaoEo.state.grenady.forEach(g => {
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.arc(g.x, g.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,68,0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(g.x, g.y, g.radius || 0, 0, Math.PI * 2);
+        ctx.stroke();
+    });
+}
+
+function saryLoot(ctx) {
+    if (!lalaoEo.state ||!lalaoEo.state.loot) return;
+
+    lalaoEo.state.loot.forEach(l => {
+        ctx.fillStyle = '#ffd700';
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur = 15;
+        ctx.font = '24px Arial';
+        ctx.fillText('📦', l.x - 12, l.y + 8);
+        ctx.shadowBlur = 0;
+    });
+}
+
+function saryTandrifana(ctx) {
+    const canvas = lalaoEo.canvas;
+    ctx.strokeStyle = 'rgba(255, 0, 110, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#ff006e';
+    ctx.shadowBlur = 10;
+
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2 - 20, canvas.height / 2);
+    ctx.lineTo(canvas.width / 2 + 20, canvas.height / 2);
+    ctx.moveTo(canvas.width / 2, canvas.height / 2 - 20);
+    ctx.lineTo(canvas.width / 2, canvas.height / 2 + 20);
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+}
+
+function saryFamantarana(ctx) {
+    if (!lalaoEo.state) return;
+
+    const ahy = lalaoEo.state.mpilalao.find(p => p.uid === mpilalao.uid);
+    if (!ahy) return;
+
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Fahasalamana: ${Math.floor(ahy.fahasalamana)}`, 20, 40);
+    ctx.fillText(`Bala: ${ahy.bala}`, 20, 65);
+    ctx.fillText(`Vono: ${ahy.vono}`, 20, 90);
+}
+
+function amboaryFanaraha() {
+    window.addEventListener('keydown', (e) => {
+        lalaoEo.fanalahidy[e.code] = true;
+        alefaHetsika();
+    });
+
+    window.addEventListener('keyup', (e) => {
+        lalaoEo.fanalahidy[e.code] = false;
+        alefaHetsika();
+    });
+
+    lalaoEo.canvas.addEventListener('mousemove', (e) => {
+        const rect = lalaoEo.canvas.getBoundingClientRect();
+        lalaoEo.totozy.x = e.clientX - rect.left;
+        lalaoEo.totozy.y = e.clientY - rect.top;
+
+        const ahy = lalaoEo.state.mpilalao.find(p => p.uid === mpilalao.uid);
+        if (ahy) {
+            const zoro = Math.atan2(
+                lalaoEo.totozy.y - lalaoEo.canvas.height / 2,
+                lalaoEo.totozy.x - lalaoEo.canvas.width / 2
+            );
+            lalao.socket.emit('manodina', {zoro});
+        }
+    });
+
+    lalaoEo.canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 0) {
+            lalaoEo.totozy.tsindry = true;
+            alefaTifitra();
+        }
+    });
+
+    lalaoEo.canvas.addEventListener('mouseup', (e) => {
+        if (e.button === 0) {
+            lalaoEo.totozy.tsindry = false;
+            lalao.socket.emit('ajanonaTifitra');
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        lalaoEo.canvas.width = window.innerWidth;
+        lalaoEo.canvas.height = window.innerHeight;
+    });
+}
+
+function alefaHetsika() {
+    const f = lalaoEo.fanalahidy;
+    const hetsika = {
+        ambony: f['KeyW'] || f['ArrowUp'],
+        ambany: f['KeyS'] || f['ArrowDown'],
+        ankavia: f['KeyA'] || f['ArrowLeft'],
+        ankavanana: f['KeyD'] || f['ArrowRight'],
+        sprint: f['ShiftLeft']
+    };
+
+    lalao.socket.emit('hetsika', hetsika);
+}
+
+function alefaTifitra() {
+    const ahy = lalaoEo.state.mpilalao.find(p => p.uid === mpilalao.uid);
+    if (!ahy || ahy.bala <= 0) return;
+
+    const zoro = Math.atan2(
+        lalaoEo.totozy.y - lalaoEo.canvas.height / 2,
+        lalaoEo.totozy.x - lalaoEo.canvas.width / 2
+    );
+
+    lalao.socket.emit('tifitra', {zoro});
+    alefaSon('tifitra');
+}
+
+function alefaReload() {
+    lalao.socket.emit('reload');
+    asehoToast('Mamerina bala', 'info');
+}
+
+function alefaFitsaboana() {
+    lalao.socket.emit('fitsaboana');
+}
+
+function alefaGrenady() {
+    const zoro = Math.atan2(
+        lalaoEo.totozy.y - lalaoEo.canvas.height / 2,
+        lalaoEo.totozy.x - lalaoEo.canvas.width / 2
+    );
+    lalao.socket.emit('grenady', {zoro});
+}
+
+function alefaMitsambikina() {
+    lalao.socket.emit('mitsambikina');
+}
+
+function alefaMiondrika() {
+    lalao.socket.emit('miondrika');
+}
+
+function havaozyHUD() {
+    if (!lalaoEo.state) return;
+
+    const ahy = lalaoEo.state.mpilalao.find(p => p.uid === mpilalao.uid);
+    if (!ahy) return;
+
+    const fahasalamana = document.getElementById('healthFill');
+    const fahasalamanaIsa = document.getElementById('healthValue');
+    const bala = document.getElementById('ammoCount');
+    const balaMax = document.getElementById('ammoMax');
+
+    if (fahasalamana) {
+        fahasalamana.style.width = ahy.fahasalamana + '%';
+    }
+    if (fahasalamanaIsa) {
+        fahasalamanaIsa.textContent = Math.floor(ahy.fahasalamana);
+    }
+    if (bala) {
+        bala.textContent = ahy.bala;
+    }
+    if (balaMax) {
+        balaMax.textContent = ahy.balaMax || 30;
+    }
+}
+
+function havaozyFahasalamana(isa) {
+    const el = document.getElementById('healthFill');
+    if (el) el.style.width = isa + '%';
+}
+
+function havaozyBala(isa) {
+    const el = document.getElementById('ammoCount');
+    if (el) el.textContent = isa;
+}
+
+function havaozyFitaovana(data) {
+    const el = document.getElementById('currentWeaponName');
+    if (el) el.textContent = data.anarana.toUpperCase();
+}
+
+function havaozySarintanyKely() {
+    const canvas = document.getElementById('minimapCanvas');
+    if (!canvas ||!lalaoEo.state) return;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 200, 200);
+
+    ctx.fillStyle = '#0a0015';
+    ctx.fillRect(0, 0, 200, 200);
+
+    const scale = 200 / 10000;
+
+    ctx.strokeStyle = '#ff006e';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(
+        100 + lalaoEo.faritra.x * scale,
+        100 + lalaoEo.faritra.y * scale,
+        lalaoEo.faritra.radius * scale,
+        0, Math.PI * 2
+    );
+    ctx.stroke();
+
+    lalaoEo.state.mpilalao.forEach(p => {
+        const x = 100 + p.x * scale;
+        const y = 100 + p.y * scale;
+
+        ctx.fillStyle = p.uid === mpilalao.uid? '#ff006e' : '#9d4edd';
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
         ctx.fill();
     });
 }
 
-// ==================== HEAL SYSTEM ====================
-let medkits = 0;
-document.getElementById('healBtn').onclick = () => {
-    if (medkits > 0 && gameState.players[socket.id]?.hp < 100) {
-        socket.emit('useMedkit');
-    }
-};
+function raisoFahasimbana(data) {
+    asehoHitmarker();
+    alefaSon('hit');
 
-socket.on('medkitUpdate', (data) => {
-    medkits = data.count;
-    document.getElementById('healCount').textContent = medkits;
-    document.getElementById('healBtn').style.display = medkits > 0 ? 'block' : 'none';
+    if (data.avyAmin) {
+        const el = document.createElement('div');
+        el.className = 'damage-number damage-normal';
+        el.textContent = '-' + data.isa;
+        el.style.left = '50%';
+        el.style.top = '40%';
+        document.getElementById('damageNumbers').appendChild(el);
+
+        setTimeout(() => el.remove(), 1200);
+    }
+}
+
+function raisoFahafatesana(data) {
+    lalaoEo.mandeha = false;
+    asehoVokatra({
+        fandresena: false,
+        vono: data.vono,
+        laharana: data.laharana
+    });
+    alefaSon('maty');
+}
+
+function raisoFandresena(data) {
+    lalaoEo.mandeha = false;
+    asehoVokatra({
+        fandresena: true,
+        vono: data.vono,
+        laharana: 1
+    });
+    alefaSon('fandresena');
+}
+
+function asehoHitmarker() {
+    const el = document.getElementById('hitmarker');
+    if (!el) return;
+
+    el.innerHTML = '<div class="hitmarker-cross"></div>';
+    el.style.display = 'block';
+
+    setTimeout(() => {
+        el.style.display = 'none';
+        el.innerHTML = '';
+    }, 200);
+}
+
+function asehoFampitandremanaFaritra() {
+    const el = document.getElementById('zoneWarning');
+    if (!el) return;
+
+    el.classList.remove('hidden');
+    alefaSon('faritra');
+
+    setTimeout(() => {
+        el.classList.add('hidden');
+    }, 3000);
+}
+
+function atsahatraLalao() {
+    lalaoEo.mandeha = false;
+    lalao.socket.removeAllListeners('fanavaozanaLalao');
+    lalaoEo.mpilalaoTaloha.clear();
+}
+
+document.addEventListener('keydown', (e) => {
+    if (!lalaoEo.mandeha) return;
+
+    switch(e.code) {
+        case 'KeyR':
+            alefaReload();
+            break;
+        case 'KeyH':
+            alefaFitsaboana();
+            break;
+        case 'KeyG':
+            alefaGrenady();
+            break;
+        case 'Space':
+            e.preventDefault();
+            alefaMitsambikina();
+            break;
+        case 'KeyC':
+            alefaMiondrika();
+            break;
+        case 'Digit1':
+        case 'Digit2':
+        case 'Digit3':
+            lalao.socket.emit('ovayFitaovana', {laharana: parseInt(e.code[5])});
+            break;
+    }
 });
 
-// ==================== FIRE 4 DIRECTIONS ====================
-document.querySelectorAll('.fireDirBtn').forEach(btn => {
-    btn.onclick = () => {
-        const angle = parseInt(btn.dataset.angle) * Math.PI / 180;
-        socket.emit('shoot', { angle: angle });
+setInterval(() => {
+    if (lalaoEo.mandeha) {
+        havaozySarintanyKely();
+    }
+}, 200);
+
+
+let shopData = {
+    zavatra: [],
+    sokajy: 'rehetra',
+    fotoana: 0
+};
+
+let inventoryData = {
+    zavatra: [],
+    voafidy: null
+};
+
+let battlePassData = {
+    level: 1,
+    xp: 0,
+    premium: false,
+    valisoa: []
+};
+
+let mailData = {
+    hafatra: [],
+    tsyVakiana: 0
+};
+
+let leaderboardData = {
+    lisitra: [],
+    toerana: 0
+};
+
+function makaShopData() {
+    lalao.socket.emit('makaShop');
+
+    lalao.socket.once('shopValiny', (data) => {
+        shopData.zavatra = data.zavatra;
+        shopData.fotoana = data.fotoanaMiverina;
+        asehoShop();
+        manombokaFotoanaShop();
+    });
+}
+
+function asehoShop() {
+    const fito = document.getElementById('shopGrid');
+    if (!fito) return;
+
+    fito.innerHTML = '';
+
+    const voasivana = shopData.sokajy === 'rehetra' 
+        ? shopData.zavatra 
+        : shopData.zavatra.filter(z => z.sokajy === shopData.sokajy);
+
+    voasivana.forEach(z => {
+        const el = document.createElement('div');
+        el.className = 'shop-item' + (z.featured? ' featured' : '');
+
+        const manana = mpilalao.hoditra.includes(z.id);
+        const vidiny = z.vidinyFihena || z.vidiny;
+
+        el.innerHTML = `
+            ${z.featured? '<div class="item-badge">FEATURED</div>' : ''}
+            ${z.vaovao? '<div class="item-badge">VAOVAO</div>' : ''}
+            <div class="item-image">${z.sary}</div>
+            <h4>${z.anarana}</h4>
+            <div class="item-rarity ${z.rarity}">${z.rarity.toUpperCase()}</div>
+            <div class="item-desc">${z.famaritana}</div>
+            ${z.vidinyFihena? `<div class="item-price-old">${z.vidiny} 💰</div>` : ''}
+            <div class="item-price">${vidiny} ${z.vola === 'diamondra'? '💎' : '💰'}</div>
+            <button class="buy-btn" ${manana? 'disabled' : ''} onclick="vidioZavatra('${z.id}')">
+                ${manana? 'EFA MANANA' : 'VIDIO'}
+            </button>
+        `;
+
+        fito.appendChild(el);
+    });
+
+    havaozyFotoanaShop();
+}
+
+function manovaSokajyShop(sokajy) {
+    shopData.sokajy = sokajy;
+
+    document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('active');
+    });
+
+    const voafidy = document.querySelector(`[data-filter="${sokajy}"]`);
+    if (voafidy) voafidy.classList.add('active');
+
+    asehoShop();
+}
+
+function vidioZavatra(id) {
+    const zavatra = shopData.zavatra.find(z => z.id === id);
+    if (!zavatra) return;
+
+    const vidiny = zavatra.vidinyFihena || zavatra.vidiny;
+    const vola = zavatra.vola === 'diamondra'? mpilalao.diamondra : mpilalao.volamena;
+
+    if (vola < vidiny) {
+        asehoToast('Tsy ampy vola', 'error');
+        alefaSon('error');
+        return;
+    }
+
+    if (mpilalao.hoditra.includes(id)) {
+        asehoToast('Efa manana', 'warning');
+        return;
+    }
+
+    lalao.socket.emit('mividyZavatra', {id: id});
+
+    lalao.socket.once('fividiananaValiny', (valiny) => {
+        if (valiny.vita) {
+            if (zavatra.vola === 'diamondra') {
+                mpilalao.diamondra -= vidiny;
+            } else {
+                mpilalao.volamena -= vidiny;
+            }
+
+            mpilalao.hoditra.push(id);
+            mitahiryData();
+            havaozyUI();
+            asehoShop();
+
+            asehoToast('Vita fividianana!', 'success');
+            alefaSon('vidy');
+            asehoNotification('Fividianana', `Nahazo ${zavatra.anarana}`, 'success');
+        } else {
+            asehoToast(valiny.antony || 'Tsy nety', 'error');
+        }
+    });
+}
+
+function manombokaFotoanaShop() {
+    const el = document.getElementById('shopTimer');
+    if (!el ||!shopData.fotoana) return;
+
+    function havaozy() {
+        const sisa = shopData.fotoana - Date.now();
+        if (sisa <= 0) {
+            el.textContent = 'Miverina...';
+            makaShopData();
+            return;
+        }
+
+        const ora = Math.floor(sisa / 3600000);
+        const min = Math.floor((sisa % 3600000) / 60000);
+        const sec = Math.floor((sisa % 60000) / 1000);
+
+        el.textContent = `${ora.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    havaozy();
+    setInterval(havaozy, 1000);
+}
+
+function havaozyFotoanaShop() {
+    const el = document.getElementById('shopRefreshTime');
+    if (el && shopData.fotoana) {
+        const daty = new Date(shopData.fotoana);
+        el.textContent = daty.toLocaleTimeString('fr-FR');
+    }
+}
+
+function makaInventoryData() {
+    lalao.socket.emit('makaInventory');
+
+    lalao.socket.once('inventoryValiny', (data) => {
+        inventoryData.zavatra = data.zavatra;
+        asehoInventory();
+    });
+}
+
+function asehoInventory() {
+    const fito = document.getElementById('inventoryGrid');
+    if (!fito) return;
+
+    fito.innerHTML = '';
+
+    const sokajy = document.querySelector('.inv-tab.active')?.dataset.tab || 'rehetra';
+    const voasivana = sokajy === 'rehetra'
+        ? inventoryData.zavatra
+        : inventoryData.zavatra.filter(z => z.karazana === sokajy);
+
+    voasivana.forEach(z => {
+        const el = document.createElement('div');
+        el.className = 'inventory-item' + (z.ampiasaina? ' equipped' : '');
+
+        el.innerHTML = `
+            <div class="item-icon">${z.sary}</div>
+            <div class="item-name">${z.anarana}</div>
+            <div class="item-rarity ${z.rarity}">${z.rarity}</div>
+            ${z.ampiasaina? '<div class="equipped-badge">✓</div>' : ''}
+        `;
+
+        el.onclick = () => mifidyZavatraInventory(z);
+
+        fito.appendChild(el);
+    });
+}
+
+function mifidyZavatraInventory(zavatra) {
+    inventoryData.voafidy = zavatra;
+
+    document.querySelectorAll('.inventory-item').forEach(el => {
+        el.classList.remove('selected');
+    });
+
+    event.target.closest('.inventory-item').classList.add('selected');
+
+    const info = document.getElementById('itemInfo');
+    if (info) {
+        info.innerHTML = `
+            <h3>${zavatra.anarana}</h3>
+            <p>${zavatra.famaritana}</p>
+            <button onclick="mampiasaZavatra('${zavatra.id}')" class="use-btn">
+                ${zavatra.ampiasaina? 'ESORINA' : 'AMPIASAINA'}
+            </button>
+        `;
+    }
+}
+
+function mampiasaZavatra(id) {
+    lalao.socket.emit('mampiasaZavatra', {id: id});
+
+    lalao.socket.once('fampiasanaValiny', (valiny) => {
+        if (valiny.vita) {
+            inventoryData.zavatra.forEach(z => {
+                if (z.karazana === valiny.karazana) {
+                    z.ampiasaina = (z.id === id);
+                }
+            });
+
+            if (valiny.karazana === 'hoditra') {
+                mpilalao.hoditraAnkehitriny = id;
+                mitahiryData();
+            }
+
+            asehoInventory();
+            asehoToast('Vita', 'success');
+        }
+    });
+}
+
+function manovaTabilaoInventory(tabilao) {
+    document.querySelectorAll('.inv-tab').forEach(t => {
+        t.classList.remove('active');
+    });
+
+    const voafidy = document.querySelector(`[data-tab="${tabilao}"]`);
+    if (voafidy) voafidy.classList.add('active');
+
+    asehoInventory();
+}
+
+function makaBattlePassData() {
+    lalao.socket.emit('makaBattlePass');
+
+    lalao.socket.once('battlePassValiny', (data) => {
+        battlePassData = data;
+        asehoBattlePass();
+    });
+}
+
+function asehoBattlePass() {
+    const level = document.getElementById('bpLevelNumber');
+    const xpText = document.getElementById('bpProgressText');
+    const xpFill = document.getElementById('bpProgressFill');
+
+    if (level) level.textContent = battlePassData.level;
+    if (xpText) xpText.textContent = `${battlePassData.xp} / 1000 XP`;
+    if (xpFill) xpFill.style.width = (battlePassData.xp / 10) + '%';
+
+    const premiumSection = document.getElementById('bpPremiumSection');
+    if (premiumSection) {
+        premiumSection.style.display = battlePassData.premium? 'none' : 'block';
+    }
+
+    asehoValisoaBattlePass();
+}
+
+function asehoValisoaBattlePass() {
+    const fito = document.getElementById('bpRewardsTrack');
+    if (!fito) return;
+
+    fito.innerHTML = '';
+
+    for (let i = 1; i <= 50; i++) {
+        const valisoa = battlePassData.valisoa.find(v => v.level === i);
+        const azo = i <= battlePassData.level;
+        const nalaina = valisoa?.nalaina || false;
+
+        const el = document.createElement('div');
+        el.className = 'bp-reward-item' + (azo? ' unlocked' : '') + (valisoa?.premium? ' premium' : '');
+
+        el.innerHTML = `
+            <div class="reward-level">${i}</div>
+            <div class="reward-icon">${valisoa?.sary || '🎁'}</div>
+            <div class="reward-name">${valisoa?.anarana || 'Mystery'}</div>
+            ${azo &&!nalaina? `<button class="reward-claim-btn" onclick="makaValisoaBP(${i})">Alaina</button>` : ''}
+            ${nalaina? '<div class="claimed">✓</div>' : ''}
+        `;
+
+        fito.appendChild(el);
+    }
+}
+
+function makaValisoaBP(level) {
+    lalao.socket.emit('makaValisoaBP', {level: level});
+
+    lalao.socket.once('valisoaValiny', (valiny) => {
+        if (valiny.vita) {
+            const valisoa = battlePassData.valisoa.find(v => v.level === level);
+            if (valisoa) valisoa.nalaina = true;
+
+            if (valiny.karazana === 'volamena') {
+                mpilalao.volamena += valiny.isa;
+            } else if (valiny.karazana === 'diamondra') {
+                mpilalao.diamondra += valiny.isa;
+            } else if (valiny.karazana === 'hoditra') {
+                mpilalao.hoditra.push(valiny.id);
+            }
+
+            mitahiryData();
+            havaozyUI();
+            asehoBattlePass();
+
+            asehoToast('Valisoa azo!', 'success');
+            alefaSon('valisoa');
+        }
+    });
+}
+
+function mividyBattlePassPremium() {
+    if (mpilalao.diamondra < 500) {
+        asehoToast('Tsy ampy diamondra', 'error');
+        return;
+    }
+
+    lalao.socket.emit('mividyBPPremium');
+
+    lalao.socket.once('bpPremiumValiny', (valiny) => {
+        if (valiny.vita) {
+            mpilalao.diamondra -= 500;
+            battlePassData.premium = true;
+            mitahiryData();
+            havaozyUI();
+            asehoBattlePass();
+
+            asehoToast('Premium voavidy!', 'success');
+            asehoNotification('Battle Pass', 'Premium activated', 'success');
+        }
+    });
+}
+
+function makaProfileData() {
+    lalao.socket.emit('makaProfile');
+
+    lalao.socket.once('profileValiny', (data) => {
+        asehoProfile(data);
+    });
+}
+
+function asehoProfile(data) {
+    const stats = data.statistika;
+
+    document.getElementById('profileWins').textContent = stats.fandresena || 0;
+    document.getElementById('profileKills').textContent = stats.vono || 0;
+    document.getElementById('profileMatches').textContent = stats.lalao || 0;
+    document.getElementById('profileKD').textContent = stats.lalao > 0? (stats.vono / stats.lalao).toFixed(2) : '0.00';
+
+    const winrate = stats.lalao > 0? Math.round((stats.fandresena / stats.lalao) * 100) : 0;
+    document.getElementById('profileWinrate').textContent = winrate + '%';
+
+    asehoZavaBita(data.zavaBita);
+}
+
+function asehoZavaBita(lisitra) {
+    const fito = document.getElementById('achievementsGrid');
+    if (!fito) return;
+
+    fito.innerHTML = '';
+
+    lisitra.forEach(z => {
+        const el = document.createElement('div');
+        el.className = 'achievement-item' + (z.vita? ' unlocked' : ' locked');
+
+        el.innerHTML = `
+            <div class="achievement-icon">${z.sary}</div>
+            <div class="achievement-info">
+                <div class="achievement-name">${z.anarana}</div>
+                <div class="achievement-desc">${z.famaritana}</div>
+            </div>
+            <div class="achievement-reward">${z.valisoa} 💰</div>
+        `;
+
+        fito.appendChild(el);
+    });
+}
+
+function makaMailData() {
+    lalao.socket.emit('makaMail');
+
+    lalao.socket.once('mailValiny', (data) => {
+        mailData.hafatra = data.hafatra;
+        mailData.tsyVakiana = data.hafatra.filter(m =>!m.vakiana).length;
+        asehoMail();
+        havaozyMailBadge();
+    });
+}
+
+function asehoMail() {
+    const fito = document.getElementById('mailList');
+    if (!fito) return;
+
+    fito.innerHTML = '';
+
+    const sokajy = document.querySelector('.mail-tab.active')?.dataset.tab || 'rehetra';
+    let voasivana = mailData.hafatra;
+
+    if (sokajy === 'tsyVakiana') {
+        voasivana = voasivana.filter(m =>!m.vakiana);
+    } else if (sokajy === 'valisoa') {
+        voasivana = voasivana.filter(m => m.valisoa);
+    }
+
+    voasivana.forEach(m => {
+        const el = document.createElement('div');
+        el.className = 'mail-item' + (!m.vakiana? ' unread' : '');
+
+        const daty = new Date(m.fotoana).toLocaleDateString('fr-FR');
+
+        el.innerHTML = `
+            <div class="mail-item-header">
+                <span class="mail-sender">${m.nandefa}</span>
+                <span class="mail-time">${daty}</span>
+            </div>
+            <div class="mail-subject">${m.lohateny}</div>
+            <div class="mail-preview">${m.votoatiny.substring(0, 80)}...</div>
+            ${m.valisoa? `<div class="mail-reward">🎁 ${m.valisoa.anarana}</div>` : ''}
+        `;
+
+        el.onclick = () => mamakyMail(m.id);
+
+        fito.appendChild(el);
+    });
+
+    if (voasivana.length === 0) {
+        fito.innerHTML = '<div class="mail-empty">Tsy misy hafatra</div>';
+    }
+}
+
+function mamakyMail(id) {
+    const mail = mailData.hafatra.find(m => m.id === id);
+    if (!mail) return;
+
+    lalao.socket.emit('mamakyMail', {id: id});
+
+    if (!mail.vakiana) {
+        mail.vakiana = true;
+        mailData.tsyVakiana--;
+        havaozyMailBadge();
+    }
+
+    asehoMailDetail(mail);
+}
+
+function asehoMailDetail(mail) {
+    const modal = document.getElementById('mailDetailModal');
+    if (!modal) return;
+
+    document.getElementById('mailDetailSender').textContent = mail.nandefa;
+    document.getElementById('mailDetailSubject').textContent = mail.lohateny;
+    document.getElementById('mailDetailBody').textContent = mail.votoatiny;
+    document.getElementById('mailDetailTime').textContent = new Date(mail.fotoana).toLocaleString('fr-FR');
+
+    const valisoaBtn = document.getElementById('mailClaimBtn');
+    if (mail.valisoa &&!mail.valisoa.nalaina) {
+        valisoaBtn.style.display = 'block';
+        valisoaBtn.onclick = () => makaValisoaMail(mail.id);
+    } else {
+        valisoaBtn.style.display = 'none';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function makaValisoaMail(id) {
+    lalao.socket.emit('makaValisoaMail', {id: id});
+
+    lalao.socket.once('valisoaMailValiny', (valiny) => {
+        if (valiny.vita) {
+            const mail = mailData.hafatra.find(m => m.id === id);
+            if (mail && mail.valisoa) {
+                mail.valisoa.nalaina = true;
+
+                if (valiny.karazana === 'volamena') {
+                    mpilalao.volamena += valiny.isa;
+                } else if (valiny.karazana === 'diamondra') {
+                    mpilalao.diamondra += valiny.isa;
+                }
+
+                mitahiryData();
+                havaozyUI();
+                asehoMail();
+                document.getElementById('mailDetailModal').classList.add('hidden');
+
+                asehoToast('Valisoa azo', 'success');
+            }
+        }
+    });
+}
+
+function mamafaMailVakiana() {
+    const vakiana = mailData.hafatra.filter(m => m.vakiana).map(m => m.id);
+
+    if (vakiana.length === 0) {
+        asehoToast('Tsy misy', 'info');
+        return;
+    }
+
+    lalao.socket.emit('mamafaMail', {ids: vakiana});
+
+    lalao.socket.once('famafanaValiny', (valiny) => {
+        if (valiny.vita) {
+            mailData.hafatra = mailData.hafatra.filter(m =>!m.vakiana);
+            asehoMail();
+            asehoToast('Voafafa', 'success');
+        }
+    });
+}
+
+function havaozyMailBadge() {
+    const badge = document.getElementById('mailBadge');
+    if (badge) {
+        if (mailData.tsyVakiana > 0) {
+            badge.textContent = mailData.tsyVakiana;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+function manovaTabilaoMail(tabilao) {
+    document.querySelectorAll('.mail-tab').forEach(t => {
+        t.classList.remove('active');
+    });
+
+    const voafidy = document.querySelector(`[data-tab="${tabilao}"]`);
+    if (voafidy) voafidy.classList.add('active');
+
+    asehoMail();
+}
+
+function makaLeaderboardData(sokajy = 'vono') {
+    lalao.socket.emit('makaLeaderboard', {sokajy: sokajy});
+
+    lalao.socket.once('leaderboardValiny', (data) => {
+        leaderboardData.lisitra = data.lisitra;
+        leaderboardData.toerana = data.toerana;
+        asehoLeaderboard();
+    });
+}
+
+function asehoLeaderboard() {
+    const tbody = document.querySelector('#leaderboardFullTable tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    leaderboardData.lisitra.forEach((p, i) => {
+        const tr = document.createElement('tr');
+        const isAhy = p.uid === mpilalao.uid;
+
+        tr.className = isAhy? 'my-row' : '';
+        tr.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${p.anarana} ${isAhy? '(Ianao)' : ''}</td>
+            <td>Lv.${p.level}</td>
+            <td>${p.vono}</td>
+            <td>${p.fandresena}</td>
+            <td>${p.lalao}</td>
+            <td>${p.lalao > 0? ((p.vono / p.lalao).toFixed(2)) : '0.00'}</td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+
+    const toeranaEl = document.getElementById('myRankValue');
+    if (toeranaEl) {
+        toeranaEl.textContent = '#' + leaderboardData.toerana;
+    }
+}
+
+function manovaSokajyLeaderboard(sokajy) {
+    document.querySelectorAll('.leaderboard-filter').forEach(b => {
+        b.classList.remove('active');
+    });
+
+    const voafidy = document.querySelector(`[data-sort="${sokajy}"]`);
+    if (voafidy) voafidy.classList.add('active');
+
+    makaLeaderboardData(sokajy);
+}
+
+function mitadyMpilalaoLeaderboard() {
+    const anarana = document.getElementById('leaderboardSearch').value.trim();
+    if (!anarana) {
+        makaLeaderboardData();
+        return;
+    }
+
+    lalao.socket.emit('mitadyMpilalao', {anarana: anarana});
+
+    lalao.socket.once('fikarohanaValiny', (data) => {
+        if (data.hita) {
+            leaderboardData.lisitra = [data.mpilalao];
+            asehoLeaderboard();
+        } else {
+            asehoToast('Tsy hita', 'warning');
+        }
+    });
+}
+
+
+let adminData = {
+    mpilalaoAnjara: [],
+    statistika: {},
+    fanarahaMaso: true
+};
+
+let dailyData = {
+    andro: 0,
+    nalaina: false,
+    valisoa: []
+};
+
+let friendsData = {
+    namana: [],
+    fangatahana: [],
+    sosoKevi: []
+};
+
+let clanData = {
+    anarana: null,
+    mpikambana: [],
+    level: 1,
+    xp: 0
+};
+
+function makaAdminData() {
+    if (!mpilalao.admin) return;
+
+    lalao.socket.emit('makaAdminData');
+
+    lalao.socket.once('adminValiny', (data) => {
+        adminData.statistika = data.statistika;
+        adminData.mpilalaoAnjara = data.mpilalao;
+        asehoAdminDashboard();
+    });
+}
+
+function asehoAdminDashboard() {
+    document.getElementById('adminTotalPlayers').textContent = adminData.statistika.totalMpilalao || 0;
+    document.getElementById('adminOnlinePlayers').textContent = adminData.statistika.mifandray || 0;
+    document.getElementById('adminTotalMatches').textContent = adminData.statistika.totalLalao || 0;
+    document.getElementById('adminActiveLobbies').textContent = adminData.statistika.lobbyMavitrika || 0;
+
+    const fito = document.getElementById('adminPlayersList');
+    if (!fito) return;
+
+    fito.innerHTML = '';
+
+    adminData.mpilalaoAnjara.forEach(p => {
+        const el = document.createElement('div');
+        el.className = 'admin-player-item';
+        el.innerHTML = `
+            <span>${p.anarana}</span>
+            <span>Lv.${p.level}</span>
+            <span>${p.mifandray? '🟢' : '⚫'}</span>
+            <button onclick="adminJereoMpilalao('${p.uid}')">Jereo</button>
+        `;
+        fito.appendChild(el);
+    });
+}
+
+function adminJereoMpilalao(uid) {
+    lalao.socket.emit('adminJereoMpilalao', {uid: uid});
+
+    lalao.socket.once('mpilalaoInfo', (data) => {
+        const info = `
+Anarana: ${data.anarana}
+Level: ${data.level}
+Vono: ${data.vono}
+Fandresena: ${data.fandresena}
+Volamena: ${data.volamena}
+Diamondra: ${data.diamondra}
+Niditra farany: ${new Date(data.niditraFarany).toLocaleString()}
+        `;
+        alert(info);
+    });
+}
+
+function adminAvoakaMpilalao(uid) {
+    if (!confirm('Avoaka ity mpilalao ity?')) return;
+
+    lalao.socket.emit('adminAvoaka', {uid: uid});
+
+    lalao.socket.once('avoakaValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Voavoaka', 'success');
+            makaAdminData();
+        }
+    });
+}
+
+function adminOmeVolamena(uid, isa) {
+    const vola = parseInt(prompt('Ohatrinona?'));
+    if (!vola || vola <= 0) return;
+
+    lalao.socket.emit('adminOmeVolamena', {uid: uid, isa: vola});
+
+    lalao.socket.once('omeValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Vita', 'success');
+        }
+    });
+}
+
+function adminBanMpilalao(uid) {
+    const antony = prompt('Antony ban?');
+    if (!antony) return;
+
+    if (!confirm('Ban ity mpilalao ity?')) return;
+
+    lalao.socket.emit('adminBan', {uid: uid, antony: antony});
+
+    lalao.socket.once('banValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Voaban', 'success');
+            makaAdminData();
+        }
+    });
+}
+
+function adminAlefaHafatra() {
+    const hafatra = document.getElementById('adminBroadcastMessage').value.trim();
+    if (!hafatra) return;
+
+    lalao.socket.emit('adminBroadcast', {hafatra: hafatra});
+
+    lalao.socket.once('broadcastValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Lasa ny hafatra', 'success');
+            document.getElementById('adminBroadcastMessage').value = '';
+        }
+    });
+}
+
+function adminAtsahatraServer() {
+    if (!confirm('Atsahatra ny server?')) return;
+    if (!confirm('Tena azo antoka?')) return;
+
+    lalao.socket.emit('adminAtsahatra');
+}
+
+function makaDailyReward() {
+    lalao.socket.emit('makaDaily');
+
+    lalao.socket.once('dailyValiny', (data) => {
+        dailyData = data;
+        asehoDailyReward();
+    });
+}
+
+function asehoDailyReward() {
+    const modal = document.getElementById('dailyRewardModal');
+    if (!modal) return;
+
+    const andro = document.getElementById('dailyDay');
+    const valisoa = document.getElementById('dailyRewardItem');
+    const bokotra = document.getElementById('dailyClaimBtn');
+
+    if (andro) andro.textContent = `Andro ${dailyData.andro + 1}`;
+    if (valisoa) valisoa.textContent = dailyData.valisoa[dailyData.andro]?.sary || '🎁';
+
+    if (bokotra) {
+        bokotra.disabled = dailyData.nalaina;
+        bokotra.textContent = dailyData.nalaina? 'Efa nalaina' : 'Alaina';
+        bokotra.onclick = makaDailyAnkehitriny;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function makaDailyAnkehitriny() {
+    if (dailyData.nalaina) return;
+
+    lalao.socket.emit('makaDailyAnkehitriny');
+
+    lalao.socket.once('dailyAlaValiny', (valiny) => {
+        if (valiny.vita) {
+            dailyData.nalaina = true;
+
+            if (valiny.karazana === 'volamena') {
+                mpilalao.volamena += valiny.isa;
+            } else if (valiny.karazana === 'diamondra') {
+                mpilalao.diamondra += valiny.isa;
+            }
+
+            mitahiryData();
+            havaozyUI();
+            asehoDailyReward();
+
+            asehoToast(`Nahazo ${valiny.isa} ${valiny.karazana}`, 'success');
+            alefaSon('valisoa');
+
+            setTimeout(() => {
+                document.getElementById('dailyRewardModal').classList.add('hidden');
+            }, 2000);
+        }
+    });
+}
+
+function afenoDailyReward() {
+    document.getElementById('dailyRewardModal').classList.add('hidden');
+}
+
+function makaFriendsData() {
+    lalao.socket.emit('makaNamana');
+
+    lalao.socket.once('namanaValiny', (data) => {
+        friendsData.namana = data.namana;
+        friendsData.fangatahana = data.fangatahana;
+        friendsData.sosoKevi = data.sosoKevi;
+        asehoFriends();
+    });
+}
+
+function asehoFriends() {
+    const fitoNamana = document.getElementById('friendsList');
+    const fitoFangatahana = document.getElementById('friendRequests');
+    const fitoSoso = document.getElementById('friendSuggestions');
+
+    if (fitoNamana) {
+        fitoNamana.innerHTML = '';
+
+        if (friendsData.namana.length === 0) {
+            fitoNamana.innerHTML = '<div class="empty">Tsy misy namana</div>';
+        } else {
+            friendsData.namana.forEach(n => {
+                const el = document.createElement('div');
+                el.className = 'friend-item';
+                el.innerHTML = `
+                    <div class="friend-info">
+                        <span class="friend-name">${n.anarana}</span>
+                        <span class="friend-level">Lv.${n.level}</span>
+                        <span class="friend-status">${n.mifandray? '🟢 Mifandray' : '⚫ Tsy mifandray'}</span>
+                    </div>
+                    <div class="friend-actions">
+                        <button onclick="manasaHilalao('${n.uid}')">Manasa</button>
+                        <button onclick="esoryNamana('${n.uid}')">Esory</button>
+                    </div>
+                `;
+                fitoNamana.appendChild(el);
+            });
+        }
+    }
+
+    if (fitoFangatahana) {
+        fitoFangatahana.innerHTML = '';
+
+        friendsData.fangatahana.forEach(f => {
+            const el = document.createElement('div');
+            el.className = 'friend-request';
+            el.innerHTML = `
+                <span>${f.anarana} (Lv.${f.level})</span>
+                <div>
+                    <button onclick="ekenaNamana('${f.uid}')">Ekena</button>
+                    <button onclick="lavinaNamana('${f.uid}')">Lavina</button>
+                </div>
+            `;
+            fitoFangatahana.appendChild(el);
+        });
+    }
+
+    if (fitoSoso) {
+        fitoSoso.innerHTML = '';
+
+        friendsData.sosoKevi.slice(0, 5).forEach(s => {
+            const el = document.createElement('div');
+            el.className = 'friend-suggestion';
+            el.innerHTML = `
+                <span>${s.anarana} (Lv.${s.level})</span>
+                <button onclick="angatahoNamana('${s.uid}')">Ampiana</button>
+            `;
+            fitoSoso.appendChild(el);
+        });
+    }
+}
+
+function angatahoNamana(uid) {
+    lalao.socket.emit('angatahoNamana', {uid: uid});
+
+    lalao.socket.once('fangatahanaValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Lasa ny fangatahana', 'success');
+            makaFriendsData();
+        } else {
+            asehoToast(valiny.antony || 'Tsy nety', 'error');
+        }
+    });
+}
+
+function ekenaNamana(uid) {
+    lalao.socket.emit('ekenaNamana', {uid: uid});
+
+    lalao.socket.once('ekenaValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Namana vaovao', 'success');
+            makaFriendsData();
+        }
+    });
+}
+
+function lavinaNamana(uid) {
+    lalao.socket.emit('lavinaNamana', {uid: uid});
+
+    lalao.socket.once('lavinaValiny', (valiny) => {
+        if (valiny.vita) {
+            makaFriendsData();
+        }
+    });
+}
+
+function esoryNamana(uid) {
+    if (!confirm('Esorina ity namana ity?')) return;
+
+    lalao.socket.emit('esoryNamana', {uid: uid});
+
+    lalao.socket.once('esoryValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Voafafa', 'info');
+            makaFriendsData();
+        }
+    });
+}
+
+function manasaHilalao(uid) {
+    if (!lobby.id) {
+        asehoToast('Mamorona lobby aloha', 'warning');
+        return;
+    }
+
+    lalao.socket.emit('manasaNamana', {uid: uid, lobbyId: lobby.id});
+
+    lalao.socket.once('fanasanaValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Lasa ny fanasana', 'success');
+        }
+    });
+}
+
+function mitadyNamana() {
+    const anarana = document.getElementById('friendSearchInput').value.trim();
+    if (!anarana || anarana.length < 3) {
+        asehoToast('Soraty anarana', 'warning');
+        return;
+    }
+
+    lalao.socket.emit('mitadyNamana', {anarana: anarana});
+
+    lalao.socket.once('fikarohanaNamanaValiny', (data) => {
+        const fito = document.getElementById('friendSearchResults');
+        if (!fito) return;
+
+        fito.innerHTML = '';
+
+        if (data.vokatra.length === 0) {
+            fito.innerHTML = '<div class="empty">Tsy hita</div>';
+            return;
+        }
+
+        data.vokatra.forEach(p => {
+            const el = document.createElement('div');
+            el.className = 'search-result';
+            el.innerHTML = `
+                <span>${p.anarana} (Lv.${p.level})</span>
+                <button onclick="angatahoNamana('${p.uid}')">Ampiana</button>
+            `;
+            fito.appendChild(el);
+        });
+    });
+}
+
+function makaClanData() {
+    lalao.socket.emit('makaClan');
+
+    lalao.socket.once('clanValiny', (data) => {
+        clanData = data;
+        asehoClan();
+    });
+}
+
+function asehoClan() {
+    const anaranaEl = document.getElementById('clanName');
+    const levelEl = document.getElementById('clanLevel');
+    const mpikambanaEl = document.getElementById('clanMembers');
+
+    if (!clanData.anarana) {
+        document.getElementById('clanNoClan').style.display = 'block';
+        document.getElementById('clanHasClan').style.display = 'none';
+        return;
+    }
+
+    document.getElementById('clanNoClan').style.display = 'none';
+    document.getElementById('clanHasClan').style.display = 'block';
+
+    if (anaranaEl) anaranaEl.textContent = clanData.anarana;
+    if (levelEl) levelEl.textContent = 'Level ' + clanData.level;
+
+    if (mpikambanaEl) {
+        mpikambanaEl.innerHTML = '';
+        clanData.mpikambana.forEach(m => {
+            const el = document.createElement('div');
+            el.className = 'clan-member';
+            el.innerHTML = `
+                <span>${m.anarana} ${m.tompony? '👑' : ''}</span>
+                <span>Lv.${m.level}</span>
+                <span>${m.mifandray? '🟢' : '⚫'}</span>
+            `;
+            mpikambanaEl.appendChild(el);
+        });
+    }
+}
+
+function mamoronaClan() {
+    const anarana = prompt('Anaran ny clan:');
+    if (!anarana || anarana.length < 3 || anarana.length > 20) {
+        asehoToast('Anarana tsy mety', 'error');
+        return;
+    }
+
+    if (mpilalao.volamena < 5000) {
+        asehoToast('Mila 5000 volamena', 'error');
+        return;
+    }
+
+    lalao.socket.emit('mamoronaClan', {anarana: anarana});
+
+    lalao.socket.once('clanForonina', (valiny) => {
+        if (valiny.vita) {
+            mpilalao.volamena -= 5000;
+            mitahiryData();
+            havaozyUI();
+            makaClanData();
+            asehoToast('Clan voaforona', 'success');
+        } else {
+            asehoToast(valiny.antony, 'error');
+        }
+    });
+}
+
+function miditraClan(id) {
+    lalao.socket.emit('miditraClan', {id: id});
+
+    lalao.socket.once('miditraClanValiny', (valiny) => {
+        if (valiny.vita) {
+            makaClanData();
+            asehoToast('Tafiditra clan', 'success');
+        }
+    });
+}
+
+function mialaClan() {
+    if (!confirm('Hiala amin ny clan?')) return;
+
+    lalao.socket.emit('mialaClan');
+
+    lalao.socket.once('mialaClanValiny', (valiny) => {
+        if (valiny.vita) {
+            clanData = {anarana: null, mpikambana: [], level: 1, xp: 0};
+            asehoClan();
+            asehoToast('Niala clan', 'info');
+        }
+    });
+}
+
+function mitahirySettingsRehetra() {
+    const settings = {
+        sensitivity: parseFloat(document.getElementById('sensitivitySlider').value),
+        aimSensitivity: parseFloat(document.getElementById('aimSensitivitySlider').value),
+        masterVolume: parseInt(document.getElementById('masterVolumeSlider').value),
+        musicVolume: parseInt(document.getElementById('musicVolumeSlider').value),
+        sfxVolume: parseInt(document.getElementById('sfxVolumeSlider').value),
+        graphics: document.getElementById('graphicsSelect').value,
+        fpsLimit: parseInt(document.getElementById('fpsSelect').value),
+        showFPS: document.getElementById('showFPSCheck').checked,
+        showPing: document.getElementById('showPingCheck').checked,
+        autoSprint: document.getElementById('autoSprintCheck').checked,
+        aimAssist: document.getElementById('aimAssistCheck').checked
     };
-});
 
-document.getElementById('fireCenterBtn').onclick = () => {
-    const player = gameState.players[socket.id];
-    if (player) {
-        socket.emit('shoot', { angle: player.angle });
+    mpilalao.settings = settings;
+    mitahiryData();
+
+    lalao.socket.emit('mitahirySettings', {settings: settings});
+
+    asehoToast('Settings voatahiry', 'success');
+    afenoPanel('settingsPanel');
+}
+
+function mamerinaSettings() {
+    if (!confirm('Averina default?')) return;
+
+    mpilalao.settings = {
+        sensitivity: 1.0,
+        aimSensitivity: 1.0,
+        masterVolume: 100,
+        musicVolume: 50,
+        sfxVolume: 100,
+        graphics: 'medium',
+        fpsLimit: 60,
+        showFPS: false,
+        showPing: true,
+        autoSprint: false,
+        aimAssist: true
+    };
+
+    mitahiryData();
+    mampiditraSettingsAminUI();
+    asehoToast('Naverina', 'info');
+}
+
+function mampiditraSettingsAminUI() {
+    const s = mpilalao.settings || {};
+
+    const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (el.type === 'checkbox') el.checked = value;
+            else el.value = value;
+        }
+    };
+
+    setValue('sensitivitySlider', s.sensitivity || 1.0);
+    setValue('aimSensitivitySlider', s.aimSensitivity || 1.0);
+    setValue('masterVolumeSlider', s.masterVolume || 100);
+    setValue('musicVolumeSlider', s.musicVolume || 50);
+    setValue('sfxVolumeSlider', s.sfxVolume || 100);
+    setValue('graphicsSelect', s.graphics || 'medium');
+    setValue('fpsSelect', s.fpsLimit || 60);
+    setValue('showFPSCheck', s.showFPS || false);
+    setValue('showPingCheck', s.showPing !== false);
+    setValue('autoSprintCheck', s.autoSprint || false);
+    setValue('aimAssistCheck', s.aimAssist !== false);
+}
+
+function manovaFeo() {
+    const master = parseInt(document.getElementById('masterVolumeSlider').value);
+    const music = parseInt(document.getElementById('musicVolumeSlider').value);
+    const sfx = parseInt(document.getElementById('sfxVolumeSlider').value);
+
+    document.getElementById('masterVolumeValue').textContent = master + '%';
+    document.getElementById('musicVolumeValue').textContent = music + '%';
+    document.getElementById('sfxVolumeValue').textContent = sfx + '%';
+
+    if (mpilalao.settings) {
+        mpilalao.settings.masterVolume = master;
+        mpilalao.settings.musicVolume = music;
+        mpilalao.settings.sfxVolume = sfx;
     }
+}
+
+function manovaSensitivity() {
+    const sens = parseFloat(document.getElementById('sensitivitySlider').value);
+    const aim = parseFloat(document.getElementById('aimSensitivitySlider').value);
+
+    document.getElementById('sensitivityValue').textContent = sens.toFixed(1);
+    document.getElementById('aimSensitivityValue').textContent = aim.toFixed(1);
+}
+
+let adminData = {
+    mpilalaoAnjara: [],
+    statistika: {},
+    fanarahaMaso: true
 };
 
-// ==================== GAME STATE UPDATE ====================
-socket.on('matchLaunched', (data) => {
-    document.getElementById('lobbyScreen').style.display = 'none';
-    document.getElementById('fireControls').style.display = 'block';
-    document.getElementById('healBtn').style.display = 'block';
-    gameSettings.selectedWeapon = data.startWeapon || 'pistol';
-});
+let dailyData = {
+    andro: 0,
+    nalaina: false,
+    valisoa: []
+};
 
-socket.on('gameState', (state) => {
-    gameState = state;
-    drawMinimap();
-    const aliveCount = Object.values(state.players).filter(p => p.hp > 0 &&!p.inLobby).length;
-    document.getElementById('playerCount').textContent = aliveCount;
-});
+let friendsData = {
+    namana: [],
+    fangatahana: [],
+    sosoKevi: []
+};
 
-// Aseho ny medkits rehefa maka loot
-socket.on('lootPickup', (data) => {
-    if (data.type === 'medkit') {
-        medkits++;
-        document.getElementById('healCount').textContent = medkits;
-        document.getElementById('healBtn').style.display = 'block';
+let clanData = {
+    anarana: null,
+    mpikambana: [],
+    level: 1,
+    xp: 0
+};
+
+function makaAdminData() {
+    if (!mpilalao.admin) return;
+
+    lalao.socket.emit('makaAdminData');
+
+    lalao.socket.once('adminValiny', (data) => {
+        adminData.statistika = data.statistika;
+        adminData.mpilalaoAnjara = data.mpilalao;
+        asehoAdminDashboard();
+    });
+}
+
+function asehoAdminDashboard() {
+    document.getElementById('adminTotalPlayers').textContent = adminData.statistika.totalMpilalao || 0;
+    document.getElementById('adminOnlinePlayers').textContent = adminData.statistika.mifandray || 0;
+    document.getElementById('adminTotalMatches').textContent = adminData.statistika.totalLalao || 0;
+    document.getElementById('adminActiveLobbies').textContent = adminData.statistika.lobbyMavitrika || 0;
+
+    const fito = document.getElementById('adminPlayersList');
+    if (!fito) return;
+
+    fito.innerHTML = '';
+
+    adminData.mpilalaoAnjara.forEach(p => {
+        const el = document.createElement('div');
+        el.className = 'admin-player-item';
+        el.innerHTML = `
+            <span>${p.anarana}</span>
+            <span>Lv.${p.level}</span>
+            <span>${p.mifandray? '🟢' : '⚫'}</span>
+            <button onclick="adminJereoMpilalao('${p.uid}')">Jereo</button>
+        `;
+        fito.appendChild(el);
+    });
+}
+
+function adminJereoMpilalao(uid) {
+    lalao.socket.emit('adminJereoMpilalao', {uid: uid});
+
+    lalao.socket.once('mpilalaoInfo', (data) => {
+        const info = `
+Anarana: ${data.anarana}
+Level: ${data.level}
+Vono: ${data.vono}
+Fandresena: ${data.fandresena}
+Volamena: ${data.volamena}
+Diamondra: ${data.diamondra}
+Niditra farany: ${new Date(data.niditraFarany).toLocaleString()}
+        `;
+        alert(info);
+    });
+}
+
+function adminAvoakaMpilalao(uid) {
+    if (!confirm('Avoaka ity mpilalao ity?')) return;
+
+    lalao.socket.emit('adminAvoaka', {uid: uid});
+
+    lalao.socket.once('avoakaValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Voavoaka', 'success');
+            makaAdminData();
+        }
+    });
+}
+
+function adminOmeVolamena(uid, isa) {
+    const vola = parseInt(prompt('Ohatrinona?'));
+    if (!vola || vola <= 0) return;
+
+    lalao.socket.emit('adminOmeVolamena', {uid: uid, isa: vola});
+
+    lalao.socket.once('omeValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Vita', 'success');
+        }
+    });
+}
+
+function adminBanMpilalao(uid) {
+    const antony = prompt('Antony ban?');
+    if (!antony) return;
+
+    if (!confirm('Ban ity mpilalao ity?')) return;
+
+    lalao.socket.emit('adminBan', {uid: uid, antony: antony});
+
+    lalao.socket.once('banValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Voaban', 'success');
+            makaAdminData();
+        }
+    });
+}
+
+function adminAlefaHafatra() {
+    const hafatra = document.getElementById('adminBroadcastMessage').value.trim();
+    if (!hafatra) return;
+
+    lalao.socket.emit('adminBroadcast', {hafatra: hafatra});
+
+    lalao.socket.once('broadcastValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Lasa ny hafatra', 'success');
+            document.getElementById('adminBroadcastMessage').value = '';
+        }
+    });
+}
+
+function adminAtsahatraServer() {
+    if (!confirm('Atsahatra ny server?')) return;
+    if (!confirm('Tena azo antoka?')) return;
+
+    lalao.socket.emit('adminAtsahatra');
+}
+
+function makaDailyReward() {
+    lalao.socket.emit('makaDaily');
+
+    lalao.socket.once('dailyValiny', (data) => {
+        dailyData = data;
+        asehoDailyReward();
+    });
+}
+
+function asehoDailyReward() {
+    const modal = document.getElementById('dailyRewardModal');
+    if (!modal) return;
+
+    const andro = document.getElementById('dailyDay');
+    const valisoa = document.getElementById('dailyRewardItem');
+    const bokotra = document.getElementById('dailyClaimBtn');
+
+    if (andro) andro.textContent = `Andro ${dailyData.andro + 1}`;
+    if (valisoa) valisoa.textContent = dailyData.valisoa[dailyData.andro]?.sary || '🎁';
+
+    if (bokotra) {
+        bokotra.disabled = dailyData.nalaina;
+        bokotra.textContent = dailyData.nalaina? 'Efa nalaina' : 'Alaina';
+        bokotra.onclick = makaDailyAnkehitriny;
     }
-});
+
+    modal.classList.remove('hidden');
+}
+
+function makaDailyAnkehitriny() {
+    if (dailyData.nalaina) return;
+
+    lalao.socket.emit('makaDailyAnkehitriny');
+
+    lalao.socket.once('dailyAlaValiny', (valiny) => {
+        if (valiny.vita) {
+            dailyData.nalaina = true;
+
+            if (valiny.karazana === 'volamena') {
+                mpilalao.volamena += valiny.isa;
+            } else if (valiny.karazana === 'diamondra') {
+                mpilalao.diamondra += valiny.isa;
+            }
+
+            mitahiryData();
+            havaozyUI();
+            asehoDailyReward();
+
+            asehoToast(`Nahazo ${valiny.isa} ${valiny.karazana}`, 'success');
+            alefaSon('valisoa');
+
+            setTimeout(() => {
+                document.getElementById('dailyRewardModal').classList.add('hidden');
+            }, 2000);
+        }
+    });
+}
+
+function afenoDailyReward() {
+    document.getElementById('dailyRewardModal').classList.add('hidden');
+}
+
+function makaFriendsData() {
+    lalao.socket.emit('makaNamana');
+
+    lalao.socket.once('namanaValiny', (data) => {
+        friendsData.namana = data.namana;
+        friendsData.fangatahana = data.fangatahana;
+        friendsData.sosoKevi = data.sosoKevi;
+        asehoFriends();
+    });
+}
+
+function asehoFriends() {
+    const fitoNamana = document.getElementById('friendsList');
+    const fitoFangatahana = document.getElementById('friendRequests');
+    const fitoSoso = document.getElementById('friendSuggestions');
+
+    if (fitoNamana) {
+        fitoNamana.innerHTML = '';
+
+        if (friendsData.namana.length === 0) {
+            fitoNamana.innerHTML = '<div class="empty">Tsy misy namana</div>';
+        } else {
+            friendsData.namana.forEach(n => {
+                const el = document.createElement('div');
+                el.className = 'friend-item';
+                el.innerHTML = `
+                    <div class="friend-info">
+                        <span class="friend-name">${n.anarana}</span>
+                        <span class="friend-level">Lv.${n.level}</span>
+                        <span class="friend-status">${n.mifandray? '🟢 Mifandray' : '⚫ Tsy mifandray'}</span>
+                    </div>
+                    <div class="friend-actions">
+                        <button onclick="manasaHilalao('${n.uid}')">Manasa</button>
+                        <button onclick="esoryNamana('${n.uid}')">Esory</button>
+                    </div>
+                `;
+                fitoNamana.appendChild(el);
+            });
+        }
+    }
+
+    if (fitoFangatahana) {
+        fitoFangatahana.innerHTML = '';
+
+        friendsData.fangatahana.forEach(f => {
+            const el = document.createElement('div');
+            el.className = 'friend-request';
+            el.innerHTML = `
+                <span>${f.anarana} (Lv.${f.level})</span>
+                <div>
+                    <button onclick="ekenaNamana('${f.uid}')">Ekena</button>
+                    <button onclick="lavinaNamana('${f.uid}')">Lavina</button>
+                </div>
+            `;
+            fitoFangatahana.appendChild(el);
+        });
+    }
+
+    if (fitoSoso) {
+        fitoSoso.innerHTML = '';
+
+        friendsData.sosoKevi.slice(0, 5).forEach(s => {
+            const el = document.createElement('div');
+            el.className = 'friend-suggestion';
+            el.innerHTML = `
+                <span>${s.anarana} (Lv.${s.level})</span>
+                <button onclick="angatahoNamana('${s.uid}')">Ampiana</button>
+            `;
+            fitoSoso.appendChild(el);
+        });
+    }
+}
+
+function angatahoNamana(uid) {
+    lalao.socket.emit('angatahoNamana', {uid: uid});
+
+    lalao.socket.once('fangatahanaValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Lasa ny fangatahana', 'success');
+            makaFriendsData();
+        } else {
+            asehoToast(valiny.antony || 'Tsy nety', 'error');
+        }
+    });
+}
+
+function ekenaNamana(uid) {
+    lalao.socket.emit('ekenaNamana', {uid: uid});
+
+    lalao.socket.once('ekenaValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Namana vaovao', 'success');
+            makaFriendsData();
+        }
+    });
+}
+
+function lavinaNamana(uid) {
+    lalao.socket.emit('lavinaNamana', {uid: uid});
+
+    lalao.socket.once('lavinaValiny', (valiny) => {
+        if (valiny.vita) {
+            makaFriendsData();
+        }
+    });
+}
+
+function esoryNamana(uid) {
+    if (!confirm('Esorina ity namana ity?')) return;
+
+    lalao.socket.emit('esoryNamana', {uid: uid});
+
+    lalao.socket.once('esoryValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Voafafa', 'info');
+            makaFriendsData();
+        }
+    });
+}
+
+function manasaHilalao(uid) {
+    if (!lobby.id) {
+        asehoToast('Mamorona lobby aloha', 'warning');
+        return;
+    }
+
+    lalao.socket.emit('manasaNamana', {uid: uid, lobbyId: lobby.id});
+
+    lalao.socket.once('fanasanaValiny', (valiny) => {
+        if (valiny.vita) {
+            asehoToast('Lasa ny fanasana', 'success');
+        }
+    });
+}
+
+function mitadyNamana() {
+    const anarana = document.getElementById('friendSearchInput').value.trim();
+    if (!anarana || anarana.length < 3) {
+        asehoToast('Soraty anarana', 'warning');
+        return;
+    }
+
+    lalao.socket.emit('mitadyNamana', {anarana: anarana});
+
+    lalao.socket.once('fikarohanaNamanaValiny', (data) => {
+        const fito = document.getElementById('friendSearchResults');
+        if (!fito) return;
+
+        fito.innerHTML = '';
+
+        if (data.vokatra.length === 0) {
+            fito.innerHTML = '<div class="empty">Tsy hita</div>';
+            return;
+        }
+
+        data.vokatra.forEach(p => {
+            const el = document.createElement('div');
+            el.className = 'search-result';
+            el.innerHTML = `
+                <span>${p.anarana} (Lv.${p.level})</span>
+                <button onclick="angatahoNamana('${p.uid}')">Ampiana</button>
+            `;
+            fito.appendChild(el);
+        });
+    });
+}
+
+function makaClanData() {
+    lalao.socket.emit('makaClan');
+
+    lalao.socket.once('clanValiny', (data) => {
+        clanData = data;
+        asehoClan();
+    });
+}
+
+function asehoClan() {
+    const anaranaEl = document.getElementById('clanName');
+    const levelEl = document.getElementById('clanLevel');
+    const mpikambanaEl = document.getElementById('clanMembers');
+
+    if (!clanData.anarana) {
+        document.getElementById('clanNoClan').style.display = 'block';
+        document.getElementById('clanHasClan').style.display = 'none';
+        return;
+    }
+
+    document.getElementById('clanNoClan').style.display = 'none';
+    document.getElementById('clanHasClan').style.display = 'block';
+
+    if (anaranaEl) anaranaEl.textContent = clanData.anarana;
+    if (levelEl) levelEl.textContent = 'Level ' + clanData.level;
+
+    if (mpikambanaEl) {
+        mpikambanaEl.innerHTML = '';
+        clanData.mpikambana.forEach(m => {
+            const el = document.createElement('div');
+            el.className = 'clan-member';
+            el.innerHTML = `
+                <span>${m.anarana} ${m.tompony? '👑' : ''}</span>
+                <span>Lv.${m.level}</span>
+                <span>${m.mifandray? '🟢' : '⚫'}</span>
+            `;
+            mpikambanaEl.appendChild(el);
+        });
+    }
+}
+
+function mamoronaClan() {
+    const anarana = prompt('Anaran ny clan:');
+    if (!anarana || anarana.length < 3 || anarana.length > 20) {
+        asehoToast('Anarana tsy mety', 'error');
+        return;
+    }
+
+    if (mpilalao.volamena < 5000) {
+        asehoToast('Mila 5000 volamena', 'error');
+        return;
+    }
+
+    lalao.socket.emit('mamoronaClan', {anarana: anarana});
+
+    lalao.socket.once('clanForonina', (valiny) => {
+        if (valiny.vita) {
+            mpilalao.volamena -= 5000;
+            mitahiryData();
+            havaozyUI();
+            makaClanData();
+            asehoToast('Clan voaforona', 'success');
+        } else {
+            asehoToast(valiny.antony, 'error');
+        }
+    });
+}
+
+function miditraClan(id) {
+    lalao.socket.emit('miditraClan', {id: id});
+
+    lalao.socket.once('miditraClanValiny', (valiny) => {
+        if (valiny.vita) {
+            makaClanData();
+            asehoToast('Tafiditra clan', 'success');
+        }
+    });
+}
+
+function mialaClan() {
+    if (!confirm('Hiala amin ny clan?')) return;
+
+    lalao.socket.emit('mialaClan');
+
+    lalao.socket.once('mialaClanValiny', (valiny) => {
+        if (valiny.vita) {
+            clanData = {anarana: null, mpikambana: [], level: 1, xp: 0};
+            asehoClan();
+            asehoToast('Niala clan', 'info');
+        }
+    });
+}
+
+function mitahirySettingsRehetra() {
+    const settings = {
+        sensitivity: parseFloat(document.getElementById('sensitivitySlider').value),
+        aimSensitivity: parseFloat(document.getElementById('aimSensitivitySlider').value),
+        masterVolume: parseInt(document.getElementById('masterVolumeSlider').value),
+        musicVolume: parseInt(document.getElementById('musicVolumeSlider').value),
+        sfxVolume: parseInt(document.getElementById('sfxVolumeSlider').value),
+        graphics: document.getElementById('graphicsSelect').value,
+        fpsLimit: parseInt(document.getElementById('fpsSelect').value),
+        showFPS: document.getElementById('showFPSCheck').checked,
+        showPing: document.getElementById('showPingCheck').checked,
+        autoSprint: document.getElementById('autoSprintCheck').checked,
+        aimAssist: document.getElementById('aimAssistCheck').checked
+    };
+
+    mpilalao.settings = settings;
+    mitahiryData();
+
+    lalao.socket.emit('mitahirySettings', {settings: settings});
+
+    asehoToast('Settings voatahiry', 'success');
+    afenoPanel('settingsPanel');
+}
+
+function mamerinaSettings() {
+    if (!confirm('Averina default?')) return;
+
+    mpilalao.settings = {
+        sensitivity: 1.0,
+        aimSensitivity: 1.0,
+        masterVolume: 100,
+        musicVolume: 50,
+        sfxVolume: 100,
+        graphics: 'medium',
+        fpsLimit: 60,
+        showFPS: false,
+        showPing: true,
+        autoSprint: false,
+        aimAssist: true
+    };
+
+    mitahiryData();
+    mampiditraSettingsAminUI();
+    asehoToast('Naverina', 'info');
+}
+
+function mampiditraSettingsAminUI() {
+    const s = mpilalao.settings || {};
+
+    const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (el.type === 'checkbox') el.checked = value;
+            else el.value = value;
+        }
+    };
+
+    setValue('sensitivitySlider', s.sensitivity || 1.0);
+    setValue('aimSensitivitySlider', s.aimSensitivity || 1.0);
+    setValue('masterVolumeSlider', s.masterVolume || 100);
+    setValue('musicVolumeSlider', s.musicVolume || 50);
+    setValue('sfxVolumeSlider', s.sfxVolume || 100);
+    setValue('graphicsSelect', s.graphics || 'medium');
+    setValue('fpsSelect', s.fpsLimit || 60);
+    setValue('showFPSCheck', s.showFPS || false);
+    setValue('showPingCheck', s.showPing !== false);
+    setValue('autoSprintCheck', s.autoSprint || false);
+    setValue('aimAssistCheck', s.aimAssist !== false);
+}
+
+function manovaFeo() {
+    const master = parseInt(document.getElementById('masterVolumeSlider').value);
+    const music = parseInt(document.getElementById('musicVolumeSlider').value);
+    const sfx = parseInt(document.getElementById('sfxVolumeSlider').value);
+
+    document.getElementById('masterVolumeValue').textContent = master + '%';
+    document.getElementById('musicVolumeValue').textContent = music + '%';
+    document.getElementById('sfxVolumeValue').textContent = sfx + '%';
+
+    if (mpilalao.settings) {
+        mpilalao.settings.masterVolume = master;
+        mpilalao.settings.musicVolume = music;
+        mpilalao.settings.sfxVolume = sfx;
+    }
+}
+
+function manovaSensitivity() {
+    const sens = parseFloat(document.getElementById('sensitivitySlider').value);
+    const aim = parseFloat(document.getElementById('aimSensitivitySlider').value);
+
+    document.getElementById('sensitivityValue').textContent = sens.toFixed(1);
+    document.getElementById('aimSensitivityValue').textContent = aim.toFixed(1);
+}
+
