@@ -19,7 +19,7 @@ const io = new Server(server, {
 });
 
 // ============================================
-// LOBBY + MATCH CONFIG
+// 1. CONFIG LOBBY + MATCH
 // ============================================
 const LOBBY_CONFIG = {
     MIN_REAL_PLAYERS: 2,
@@ -34,7 +34,7 @@ const MATCH_CONFIG = {
 };
 
 let lobby = {
-    state: 'waiting', // 'waiting', 'countdown', 'ingame'
+    state: 'waiting',
     realPlayers: [],
     bots: [],
     countdown: 20,
@@ -43,14 +43,14 @@ let lobby = {
 };
 
 // ============================================
-// ADMIN AUTHENTICATION
+// 2. ADMIN SYSTEM
 // ============================================
 const ADMIN_USERS = ['AdminMG', 'tony'];
 const ADMIN_IPS = [];
 const ADMIN_TOKENS = new Map();
 
 // ============================================
-// ANTI-CHEAT CONFIG
+// 3. ANTI-CHEAT
 // ============================================
 const ANTI_CHEAT = {
     MAX_MOVE_SPEED: 350,
@@ -58,9 +58,7 @@ const ANTI_CHEAT = {
     MAX_SHOOT_RATE: 20,
     MAX_GRENADES_SEC: 0.5,
     MAX_CHAT_RATE: 3,
-    MAX_JOIN_ROOM_RATE: 2,
-    TELEPORT_THRESHOLD: 500,
-    DAMAGE_VALIDATION: true
+    MAX_JOIN_ROOM_RATE: 2
 };
 
 const rateLimits = {
@@ -93,7 +91,7 @@ function clearRateLimits(socketId) {
 }
 
 // ============================================
-// LOAD MAP DATA
+// 4. LOAD MAP
 // ============================================
 let MAP_DATA = {
     width: 3000,
@@ -108,18 +106,13 @@ try {
     const mapPath = path.join(__dirname, 'map.json');
     if (fs.existsSync(mapPath)) {
         const rawMap = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-        if (!Array.isArray(rawMap)) throw new Error('Invalid map format');
         MAP_DATA.tiles = rawMap.filter(t => t && typeof t.x === 'number');
-        MAP_DATA.width = 3000;
-        MAP_DATA.height = 3000;
 
         MAP_DATA.tiles.forEach(tile => {
-            if (tile.collision && tile.x >= 0 && tile.y >= 0) {
+            if (tile.collision) {
                 MAP_DATA.walls.push({
-                    x: Math.max(0, tile.x),
-                    y: Math.max(0, tile.y),
-                    width: Math.min(tile.s || 32, 100),
-                    height: Math.min(tile.s || 32, 100)
+                    x: tile.x, y: tile.y,
+                    width: tile.s || 32, height: tile.s || 32
                 });
             }
             if (tile.swimmable) {
@@ -131,22 +124,19 @@ try {
         });
 
         for (let i = 0; i < 30; i++) {
-            let x, y, attempts = 0;
-            do {
-                x = Math.random() * (MAP_DATA.width - 200) + 100;
-                y = Math.random() * (MAP_DATA.height - 200) + 100;
-                attempts++;
-            } while (checkWallCollision(x, y, 25) && attempts < 100);
-            if (attempts < 100) MAP_DATA.spawnPoints.push({ x, y });
+            MAP_DATA.spawnPoints.push({
+                x: 1000 + Math.random() * 1000,
+                y: 1000 + Math.random() * 1000
+            });
         }
-        console.log('✅ Map loaded:', MAP_DATA.tiles.length, 'tiles');
+        console.log('✅ Map loaded');
     }
 } catch (err) {
     console.error('❌ Error loading map:', err.message);
 }
 
 // ============================================
-// LOAD SPRITE DATA
+// 5. LOAD SPRITES
 // ============================================
 let SPRITE_DATA = {
     tileSize: 50, tiles: {}, weapons: {}, characters: {}, items: {}
@@ -155,36 +145,25 @@ let SPRITE_DATA = {
 try {
     const spritePath = path.join(__dirname, 'sprite.json');
     if (fs.existsSync(spritePath)) {
-        const raw = JSON.parse(fs.readFileSync(spritePath, 'utf8'));
-        SPRITE_DATA = {
-            tileSize: Math.min(100, raw.tileSize || 50),
-            tiles: raw.tiles || {},
-            weapons: raw.weapons || {},
-            characters: raw.characters || {},
-            items: raw.items || {}
-        };
-        console.log('✅ Sprite.json loaded');
+        SPRITE_DATA = JSON.parse(fs.readFileSync(spritePath, 'utf8'));
+        console.log('✅ Sprite loaded');
     }
 } catch (err) {
-    console.error('❌ Error loading sprite.json:', err.message);
+    console.error('❌ Error loading sprite:', err.message);
 }
 
 // ============================================
-// CONFIG
+// 6. GAME CONFIG
 // ============================================
 const CONFIG = {
-    MAP_SIZE: MAP_DATA.width,
-    MAX_PLAYERS_PER_MATCH: 30,
+    MAP_SIZE: 3000,
     TICK_RATE: 20,
     PLAYER_SPEED: 200,
     PLAYER_SPRINT_SPEED: 320,
     PLAYER_SWIM_SPEED: 120,
     PLAYER_HP: 100,
     PLAYER_ARMOR_MAX: 100,
-    ZONE_SHRINK_INTERVAL: 45000,
     ZONE_DAMAGE: 5,
-    BULLET_SPEED: 800,
-    BULLET_LIFETIME: 2000,
     WEAPONS: {
         fist: { damage: 15, range: 50, fireRate: 500, ammo: Infinity, bulletSpeed: 0 },
         pistol: { damage: 25, range: 400, fireRate: 300, ammo: 12, bulletSpeed: 600 },
@@ -196,29 +175,26 @@ const CONFIG = {
     LOOT_SPAWN_COUNT: 50,
     VEHICLE_SPAWN_COUNT: 8,
     GRENADE_DAMAGE: 75,
-    GRENADE_RADIUS: 100,
-    GRENADE_THROW_FORCE: 400
+    GRENADE_RADIUS: 100
 };
 
 // ============================================
-// GLOBAL STATE
+// 7. GLOBAL STATE
 // ============================================
 let players = {};
 let matches = {};
 let rooms = {};
 
 // ============================================
-// COLLISION FUNCTIONS
+// 8. UTILS
 // ============================================
 function checkWallCollision(x, y, radius = 12) {
     if (typeof x!== 'number' || typeof y!== 'number') return true;
     x = Math.max(0, Math.min(MAP_DATA.width, x));
     y = Math.max(0, Math.min(MAP_DATA.height, y));
     for (const wall of MAP_DATA.walls) {
-        if (x + radius > wall.x &&
-            x - radius < wall.x + wall.width &&
-            y + radius > wall.y &&
-            y - radius < wall.y + wall.height) {
+        if (x + radius > wall.x && x - radius < wall.x + wall.width &&
+            y + radius > wall.y && y - radius < wall.y + wall.height) {
             return true;
         }
     }
@@ -241,20 +217,6 @@ function getDistance(x1, y1, x2, y2) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-function randomSpawnPosition() {
-    if (MAP_DATA.spawnPoints && MAP_DATA.spawnPoints.length > 0) {
-        const spawn = MAP_DATA.spawnPoints[Math.floor(Math.random() * MAP_DATA.spawnPoints.length)];
-        return { x: spawn.x, y: spawn.y };
-    }
-    return {
-        x: Math.random() * (CONFIG.MAP_SIZE - 200) + 100,
-        y: Math.random() * (CONFIG.MAP_SIZE - 200) + 100
-    };
-}
-
-// ============================================
-// SANITIZATION
-// ============================================
 function sanitizeString(str, maxLen = 50) {
     if (typeof str!== 'string') return '';
     return str.substring(0, maxLen).replace(/[<>'"]/g, '').trim();
@@ -265,18 +227,20 @@ function sanitizeUsername(username) {
 }
 
 // ============================================
-// GAME ENTITIES
+// 9. CREATE ENTITIES
 // ============================================
 function createPlayer(socketId, data) {
-    const pos = randomSpawnPosition();
     return {
         id: socketId,
         uid: data.uid || null,
         username: sanitizeUsername(data.username),
-        x: pos.x, y: pos.y, angle: 0,
+        x: 1500, y: 1500, angle: 0,
         hp: CONFIG.PLAYER_HP,
         armor: 0,
-        weapon: 'fist', ammo: Infinity, grenades: 0,
+        weapon: data.startWeapon || 'pistol',
+        ammo: CONFIG.WEAPONS[data.startWeapon || 'pistol'].ammo,
+        grenades: 2,
+        medkits: 0,
         kills: 0, damage: 0,
         level: Math.max(1, Math.min(100, data.level || 1)),
         xp: 0,
@@ -310,7 +274,7 @@ function createVehicle(x, y) {
 }
 
 // ============================================
-// LOBBY FUNCTIONS
+// 10. LOBBY FUNCTIONS
 // ============================================
 function startMatchCountdown() {
     lobby.state = 'countdown';
@@ -344,7 +308,8 @@ function startMatch() {
             hp: 100, armor: 0, weapon: 'fist', ammo: Infinity,
             skin: { color: '#888888', hat: 'none' }, level: 1,
             squadId: null, team: null, angle: 0, isMoving: false, isSprinting: false,
-            isBot: true, inLobby: false, kills: 0, xp: 0, matchId: lobby.matchId
+            isBot: true, inLobby: false, kills: 0, xp: 0, matchId: lobby.matchId,
+            grenades: 0, medkits: 0
         };
     }
 
@@ -359,7 +324,7 @@ function startMatch() {
         }
     });
 
-    // Zone: 10min BR na 5min CS
+    // Zone
     const shrinkDistance = cfg.ZONE_START - cfg.ZONE_END;
     const matchZone = {
         x: 1500, y: 1500,
@@ -490,7 +455,7 @@ function resetLobby() {
 }
 
 // ============================================
-// SOCKET HANDLERS
+// 11. SOCKET HANDLERS
 // ============================================
 io.on('connection', (socket) => {
     console.log('✅ Connected:', socket.id);
@@ -513,25 +478,6 @@ io.on('connection', (socket) => {
             socket.emit('adminAccessResult', { granted: false });
             console.log(`❌ ADMIN DENIED: ${player.username} (${clientIP})`);
         }
-    });
-
-    socket.on('adminAction', (data) => {
-        const player = players[socket.id];
-        if (!player) return;
-        const isAdmin = ADMIN_USERS.includes(player.username) && ADMIN_TOKENS.has(socket.id);
-        if (!isAdmin) {
-            console.log(`❌ ${player.username} tried admin without permission`);
-            socket.emit('adminError', { message: 'Access denied' });
-            return;
-        }
-        const tokenTime = ADMIN_TOKENS.get(socket.id);
-        if (Date.now() - tokenTime > 24 * 60 * 60 * 1000) {
-            ADMIN_TOKENS.delete(socket.id);
-            socket.emit('adminError', { message: 'Session expired' });
-            return;
-        }
-        console.log(`👑 ADMIN: ${player.username} → ${data.command}`);
-        //... admin commands eto
     });
 
     // JOIN GAME -> LOBBY
@@ -659,6 +605,16 @@ io.on('connection', (socket) => {
         }, 3000);
     });
 
+    // MEDKIT
+    socket.on('useMedkit', () => {
+        const player = players[socket.id];
+        if (!player || player.medkits <= 0 || player.hp >= 100) return;
+        player.medkits--;
+        player.hp = Math.min(100, player.hp + 75);
+        socket.emit('medkitUpdate', { count: player.medkits });
+        socket.emit('healEffect', { amount: 75 });
+    });
+
     // INTERACT
     socket.on('interact', () => {
         const player = players[socket.id];
@@ -699,8 +655,9 @@ io.on('connection', (socket) => {
             player.armor = Math.min(CONFIG.PLAYER_ARMOR_MAX, player.armor + 50);
             io.to(player.id).emit('lootPickup', { type: 'armor', amount: 50, playerId: player.id });
         } else if (loot.type === 'medkit') {
-            player.hp = Math.min(CONFIG.PLAYER_HP, player.hp + 75);
-            io.to(player.id).emit('lootPickup', { type: 'heal', amount: 75, playerId: player.id });
+            player.medkits = Math.min(5, (player.medkits || 0) + 1);
+            io.to(player.id).emit('medkitUpdate', { count: player.medkits });
+            io.to(player.id).emit('lootPickup', { type: 'medkit', amount: 1, playerId: player.id });
         } else if (loot.type === 'grenade') {
             player.grenades = Math.min(5, player.grenades + 1);
             io.to(player.id).emit('lootPickup', { type: 'grenade', amount: 1, playerId: player.id });
@@ -767,11 +724,7 @@ io.on('connection', (socket) => {
             message: sanitizeString(data.message, 200),
             timestamp: Date.now()
         };
-        if (data.type === 'lobby') {
-            io.emit('chatMessage', {...msg, type: 'lobby' });
-        } else if (data.type === 'room' && player.roomId) {
-            io.to(player.roomId).emit('chatMessage', {...msg, type: 'room' });
-        }
+        io.emit('chatMessage', {...msg, type: 'lobby' });
     });
 
     // DISCONNECT
@@ -797,111 +750,82 @@ io.on('connection', (socket) => {
 setInterval(() => {
     Object.values(matches).forEach(match => {
         if (match.state!== 'active') return;
-        updateMatch(match);
+
+        // Zone shrink
+        match.zone.timer -= 1000 / CONFIG.TICK_RATE;
+        if (match.zone.timer <= 0) {
+            match.zone.phase++;
+            match.zone.targetRadius = Math.max(100, match.zone.radius * 0.5);
+            match.zone.timer = 45000;
+            const angle = Math.random() * Math.PI * 2;
+            const dist = match.zone.radius * 0.3;
+            match.zone.x += Math.cos(angle) * dist;
+            match.zone.y += Math.sin(angle) * dist;
+            match.zone.x = Math.max(match.zone.targetRadius, Math.min(CONFIG.MAP_SIZE - match.zone.targetRadius, match.zone.x));
+            match.zone.y = Math.max(match.zone.targetRadius, Math.min(CONFIG.MAP_SIZE - match.zone.targetRadius, match.zone.y));
+        }
+        if (match.zone.radius > match.zone.targetRadius) match.zone.radius -= 2;
+
+        // Update bullets
+        match.bullets = match.bullets.filter(bullet => {
+            bullet.x += bullet.vx * (1 / CONFIG.TICK_RATE);
+            bullet.y += bullet.vy * (1 / CONFIG.TICK_RATE);
+            bullet.lifetime -= 1000 / CONFIG.TICK_RATE;
+            if (checkWallCollision(bullet.x, bullet.y, 3)) return false;
+            Object.values(match.players).forEach(player => {
+                if (player.id === bullet.ownerId || player.hp <= 0) return;
+                const dist = getDistance(bullet.x, bullet.y, player.x, player.y);
+                if (dist < 15) {
+                    let damage = bullet.damage;
+                    const headshot = dist < 8;
+                    if (headshot) damage *= 2;
+                    if (player.armor > 0) {
+                        const armorAbsorb = Math.min(player.armor, damage * 0.7);
+                        player.armor = Math.max(0, player.armor - armorAbsorb);
+                        damage -= armorAbsorb;
+                    }
+                    player.hp = Math.max(0, player.hp - damage);
+                    const owner = match.players[bullet.ownerId];
+                    if (owner) {
+                        owner.damage += damage;
+                        if (player.hp <= 0) {
+                            owner.kills++;
+                            io.to(match.id).emit('killFeed', {
+                                killer: owner.username, victim: player.username, weapon: owner.weapon
+                            });
+                        }
+                    }
+                    io.to(bullet.ownerId).emit('hitmarker');
+                    io.to(player.id).emit('damageNumber', {
+                        x: player.x, y: player.y, damage: Math.floor(damage), isHeadshot: headshot
+                    });
+                    bullet.lifetime = 0;
+                }
+            });
+            return bullet.lifetime > 0 && bullet.x > 0 && bullet.x < CONFIG.MAP_SIZE && bullet.y > 0 && bullet.y < CONFIG.MAP_SIZE;
+        });
+
+        // Zone damage + swim check
+        Object.values(match.players).forEach(player => {
+            if (player.hp <= 0) return;
+            const dist = getDistance(player.x, player.y, match.zone.x, match.zone.y);
+            if (dist > match.zone.radius) {
+                player.hp = Math.max(0, player.hp - CONFIG.ZONE_DAMAGE * (1 / CONFIG.TICK_RATE));
+            }
+            player.isSwimming = checkWaterTile(player.x, player.y);
+        });
+
+        // Broadcast
+        io.to(match.id).emit('gameUpdate', {
+            players: match.players,
+            bullets: match.bullets,
+            loot: match.loot,
+            vehicles: match.vehicles,
+            zone: match.zone,
+            aliveCount: Object.values(match.players).filter(p => p.hp > 0).length
+        });
     });
 }, 1000 / CONFIG.TICK_RATE);
-
-function updateMatch(match) {
-    // Zone shrink
-    match.zone.timer -= 1000 / CONFIG.TICK_RATE;
-    if (match.zone.timer <= 0) {
-        match.zone.phase++;
-        match.zone.targetRadius = Math.max(100, match.zone.radius * 0.5);
-        match.zone.timer = CONFIG.ZONE_SHRINK_INTERVAL;
-        const angle = Math.random() * Math.PI * 2;
-        const dist = match.zone.radius * 0.3;
-        match.zone.x += Math.cos(angle) * dist;
-        match.zone.y += Math.sin(angle) * dist;
-        match.zone.x = Math.max(match.zone.targetRadius, Math.min(CONFIG.MAP_SIZE - match.zone.targetRadius, match.zone.x));
-        match.zone.y = Math.max(match.zone.targetRadius, Math.min(CONFIG.MAP_SIZE - match.zone.targetRadius, match.zone.y));
-    }
-    if (match.zone.radius > match.zone.targetRadius) match.zone.radius -= 2;
-
-    // Update bullets
-    match.bullets = match.bullets.filter(bullet => {
-        bullet.x += bullet.vx * (1 / CONFIG.TICK_RATE);
-        bullet.y += bullet.vy * (1 / CONFIG.TICK_RATE);
-        bullet.lifetime -= 1000 / CONFIG.TICK_RATE;
-        if (checkWallCollision(bullet.x, bullet.y, 3)) return false;
-        Object.values(match.players).forEach(player => {
-            if (player.id === bullet.ownerId || player.hp <= 0) return;
-            const dist = getDistance(bullet.x, bullet.y, player.x, player.y);
-            if (dist < 15) {
-                let damage = bullet.damage;
-                const headshot = dist < 8;
-                if (headshot) damage *= 2;
-                if (player.armor > 0) {
-                    const armorAbsorb = Math.min(player.armor, damage * 0.7);
-                    player.armor = Math.max(0, player.armor - armorAbsorb);
-                    damage -= armorAbsorb;
-                }
-                player.hp = Math.max(0, player.hp - damage);
-                const owner = match.players[bullet.ownerId];
-                if (owner) {
-                    owner.damage += damage;
-                    if (player.hp <= 0) {
-                        owner.kills++;
-                        io.to(match.id).emit('killFeed', {
-                            killer: owner.username, victim: player.username, weapon: owner.weapon
-                        });
-                    }
-                }
-                io.to(bullet.ownerId).emit('hitmarker');
-                io.to(player.id).emit('damageNumber', {
-                    x: player.x, y: player.y, damage: Math.floor(damage), isHeadshot: headshot
-                });
-                bullet.lifetime = 0;
-            }
-        });
-        return bullet.lifetime > 0 && bullet.x > 0 && bullet.x < CONFIG.MAP_SIZE && bullet.y > 0 && bullet.y < CONFIG.MAP_SIZE;
-    });
-
-    // Zone damage + swim check
-    Object.values(match.players).forEach(player => {
-        if (player.hp <= 0) return;
-        const dist = getDistance(player.x, player.y, match.zone.x, match.zone.y);
-        if (dist > match.zone.radius) {
-            player.hp = Math.max(0, player.hp - CONFIG.ZONE_DAMAGE * (1 / CONFIG.TICK_RATE));
-        }
-        player.isSwimming = checkWaterTile(player.x, player.y);
-    });
-
-    // Broadcast game
-// ============================================
-// GAME LOOP - Tohiny
-// ============================================
-    // Broadcast game state
-    io.to(match.id).emit('gameUpdate', {
-        players: match.players,
-        bullets: match.bullets,
-        loot: match.loot,
-        vehicles: match.vehicles,
-        zone: match.zone,
-        aliveCount: Object.values(match.players).filter(p => p.hp > 0).length
-    });
-}
-
-function endMatch(matchId, winnerId) {
-    const match = matches[matchId];
-    if (!match) return;
-    match.state = 'ended';
-    Object.values(match.players).forEach(p => {
-        const isWinner = p.id === winnerId;
-        const coins = isWinner? 100 + p.kills * 20 : p.kills * 10;
-        const xp = isWinner? 200 + p.kills * 50 : p.kills * 25;
-        io.to(p.id).emit(isWinner? 'victory' : 'playerDied', {
-            kills: p.kills,
-            damage: Math.floor(p.damage),
-            survived: Math.floor((Date.now() - match.startTime) / 1000),
-            coins: coins,
-            xp: xp,
-            rank: match.aliveCount + 1
-        });
-        p.matchId = null;
-    });
-    setTimeout(() => { delete matches[matchId]; }, 5000);
-    console.log(`Match ${matchId} ended. Winner: ${winnerId}`);
-}
 
 // ============================================
 // EXPRESS ROUTES
@@ -940,14 +864,8 @@ app.get('/api/stats', (req, res) => {
 });
 
 // ============================================
-// START SERVER
+// START SERVER - Tohiny
 // ============================================
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`🔥 MG FIGHTER Server V5.0 - LOBBY + BOTS`);
-    console.log(`🎮 Max players: ${LOBBY_CONFIG.MAX_PLAYERS}`);
-    console.log(`⏱️ Lobby: ${LOBBY_CONFIG.COUNTDOWN_TIME}s`);
-    console.log(`⏱️ BR: ${MATCH_CONFIG.BR.TOTAL_TIME/60}min`);
     console.log(`⏱️ CS: ${MATCH_CONFIG.CS.TOTAL_TIME/60}min`);
     console.log(`🗺️ Map: ${CONFIG.MAP_SIZE}x${CONFIG.MAP_SIZE}`);
     console.log(`🧱 Walls: ${MAP_DATA.walls.length}`);
