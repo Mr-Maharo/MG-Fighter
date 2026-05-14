@@ -61,17 +61,17 @@
             </div>
             
             <div class="auth-buttons">
-                <button onclick="loginWithGoogle()" class="auth-btn google-btn">
+                <button onclick="hiditraGoogle()" class="auth-btn google-btn">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="btn-icon">
                     <span class="btn-text">Continuer avec Google</span>
                 </button>
                 
-                <button onclick="loginWithFacebook()" class="auth-btn facebook-btn">
+                <button onclick="hiditraFacebook()" class="auth-btn facebook-btn">
                     <span class="btn-icon">f</span>
                     <span class="btn-text">Login with Facebook</span>
                 </button>
                 
-                <button onclick="loginAnonymously()" class="auth-btn guest-btn">
+                <button onclick="hiditraAnonyme()" class="auth-btn guest-btn">
                     <span class="btn-icon">🎮</span>
                     <span class="btn-text">PLAY AS GUEST</span>
                 </button>
@@ -84,8 +84,8 @@
             <div class="auth-form">
                 <input type="email" id="emailInput" placeholder="Email" class="auth-input">
                 <input type="password" id="passwordInput" placeholder="Password" class="auth-input">
-                <button onclick="loginWithEmail()" class="auth-btn login-btn">LOGIN</button>
-                <button onclick="registerWithEmail()" class="auth-btn register-btn">REGISTER</button>
+                <button onclick="hiditraEmail()" class="auth-btn login-btn">LOGIN</button>
+                <button onclick="hisoratraEmail()" class="auth-btn register-btn">REGISTER</button>
             </div>
 
             <div class="auth-features">
@@ -228,7 +228,7 @@
     <div class="lobby-overlay"></div>
     
     <div class="lobby-header-bar">
-        <button class="back-btn" onclick="leaveLobby()">← BACK</button>
+        <button class="back-btn" onclick="mialaAminLobby()">← BACK</button>
         <div class="lobby-mode-display">
             <span class="mode-badge" id="lobbyModeDisplay">BATTLE ROYALE</span>
         </div>
@@ -247,7 +247,7 @@
             <div class="lobby-info-row">
                 <div class="info-label">PLAYERS</div>
                 <div class="info-value">
-                    <span id="lobbyCount" class="count-number">0</span>
+                    <span id="lobbyPlayerCount" class="count-number">0</span>
                     <span class="count-separator">/</span>
                     <span class="count-max">30</span>
                 </div>
@@ -275,7 +275,7 @@
                 <div class="box-badge">MODE</div>
             </div>
             <div class="mode-grid">
-                <button class="mode-select-btn selected" data-mode="BR">
+                <button class="mode-select-btn selected" data-mode="BR" onclick="manovaModeLobby('BR')">
                     <div class="mode-card-header">
                         <div class="mode-icon">🏆</div>
                         <div class="mode-badge-new">POPULAR</div>
@@ -287,7 +287,7 @@
                         <span class="stat-item">⏱️ 10 min</span>
                     </div>
                 </button>
-                <button class="mode-select-btn" data-mode="CS">
+                <button class="mode-select-btn" data-mode="CS" onclick="manovaModeLobby('CS')">
                     <div class="mode-card-header">
                         <div class="mode-icon">⚡</div>
                         <div class="mode-badge-new">FAST</div>
@@ -312,7 +312,7 @@
                 <div class="box-badge">LOADOUT</div>
             </div>
             <div class="weapon-grid">
-                <button class="weapon-select-btn selected" data-weapon="pistol">
+                <button class="weapon-select-btn selected" data-weapon="pistol" onclick="manovaFitaovanaLobby('pistol')">
                     <div class="weapon-icon">🔫</div>
                     <div class="weapon-name">Pistol</div>
                     <div class="weapon-stats">
@@ -320,7 +320,7 @@
                         <span class="stat">RNG: 400</span>
                     </div>
                 </button>
-                <button class="weapon-select-btn" data-weapon="shotgun">
+                <button class="weapon-select-btn" data-weapon="shotgun" onclick="manovaFitaovanaLobby('shotgun')">
                     <div class="weapon-icon">💥</div>
                     <div class="weapon-name">Shotgun</div>
                     <div class="weapon-stats">
@@ -328,7 +328,7 @@
                         <span class="stat">RNG: 150</span>
                     </div>
                 </button>
-                <button class="weapon-select-btn" data-weapon="smg">
+                <button class="weapon-select-btn" data-weapon="smg" onclick="manovaFitaovanaLobby('smg')">
                     <div class="weapon-icon">🔫</div>
                     <div class="weapon-name">SMG</div>
                     <div class="weapon-stats">
@@ -336,7 +336,7 @@
                         <span class="stat">RNG: 300</span>
                     </div>
                 </button>
-                <button class="weapon-select-btn" data-weapon="rifle">
+                <button class="weapon-select-btn" data-weapon="rifle" onclick="manovaFitaovanaLobby('rifle')">
                     <div class="weapon-icon">🎯</div>
                     <div class="weapon-name">Rifle</div>
                     <div class="weapon-stats">
@@ -344,7 +344,7 @@
                         <span class="stat">RNG: 600</span>
                     </div>
                 </button>
-                <button class="weapon-select-btn" data-weapon="sniper">
+                <button class="weapon-select-btn" data-weapon="sniper" onclick="manovaFitaovanaLobby('sniper')">
                     <div class="weapon-icon">🔭</div>
                     <div class="weapon-name">Sniper</div>
                     <div class="weapon-stats">
@@ -352,7 +352,7 @@
                         <span class="stat">RNG: 1000</span>
                     </div>
                 </button>
-                <button class="weapon-select-btn" data-weapon="fist">
+                <button class="weapon-select-btn" data-weapon="fist" onclick="manovaFitaovanaLobby('fist')">
                     <div class="weapon-icon">👊</div>
                     <div class="weapon-name">Fist</div>
                     <div class="weapon-stats">
@@ -383,8 +383,14 @@
             <div id="lobbyChatMessages" class="lobby-chat-messages"></div>
             <div class="lobby-chat-input">
                 <input type="text" id="lobbyChatInput" placeholder="Type message..." maxlength="200">
-                <button onclick="sendLobbyChat()">SEND</button>
+                <button id="lobbyChatSend" onclick="alefaChat()">SEND</button>
             </div>
+        </div>
+
+        <!-- READY BUTTON -->
+        <div class="lobby-actions">
+            <button class="ready-btn" id="readyButton" onclick="manovaVonona()">VONONA</button>
+            <button class="start-btn host-only" onclick="manombokaMatch()">MANOMBOKA</button>
         </div>
     </div>
 </div>
@@ -427,7 +433,7 @@
                 <span class="info-value">🇲🇬 Madagascar</span>
             </div>
         </div>
-        <button onclick="cancelMatchmaking()" class="cancel-btn">CANCEL SEARCH</button>
+        <button onclick="ajanonaMatchmaking()" class="cancel-btn">CANCEL SEARCH</button>
     </div>
 </div>
 
@@ -563,40 +569,40 @@
 </div>
 
 <!-- HEAL BUTTON -->
-<button id="healBtn" class="hud-element" title="Use Medkit">
+<button id="healBtn" class="hud-element" title="Use Medkit" onclick="alefaFitsaboana()">
     <span class="btn-icon">💊</span>
     <div id="healCount" class="btn-badge">0</div>
 </button>
 
 <!-- GRENADE BUTTON -->
-<button id="grenadeBtn" class="hud-element" title="Throw Grenade">
+<button id="grenadeBtn" class="hud-element" title="Throw Grenade" onclick="alefaGrenady()">
     <span class="btn-icon">💣</span>
     <div id="grenadeCount" class="btn-badge">0</div>
 </button>
 
 <!-- RELOAD BUTTON -->
-<button id="reloadBtn" class="hud-element" title="Reload">
+<button id="reloadBtn" class="hud-element" title="Reload" onclick="alefaReload()">
     <span class="btn-icon">🔄</span>
 </button>
 
 <!-- JUMP BUTTON -->
-<button id="jumpBtn" class="hud-element" title="Jump">
+<button id="jumpBtn" class="hud-element" title="Jump" onclick="alefaMitsambikina()">
     <span class="btn-icon">⬆️</span>
 </button>
 
 <!-- CROUCH BUTTON -->
-<button id="crouchBtn" class="hud-element" title="Crouch">
+<button id="crouchBtn" class="hud-element" title="Crouch" onclick="alefaMiondrika()">
     <span class="btn-icon">⬇️</span>
 </button>
 
 <!-- FIRE CONTROLS 4-DIRECTION -->
 <div id="fireControls" class="hud-element">
     <div class="fire-pad">
-        <button class="fire-dir fire-up" data-angle="270">↑</button>
-        <button class="fire-dir fire-right" data-angle="0">→</button>
-        <button class="fire-dir fire-down" data-angle="90">↓</button>
-        <button class="fire-dir fire-left" data-angle="180">←</button>
-        <button id="fireCenterBtn" class="fire-center">🔥</button>
+        <button class="fire-dir fire-up" data-angle="270" onclick="alefaTifitra()">↑</button>
+        <button class="fire-dir fire-right" data-angle="0" onclick="alefaTifitra()">→</button>
+        <button class="fire-dir fire-down" data-angle="90" onclick="alefaTifitra()">↓</button>
+        <button class="fire-dir fire-left" data-angle="180" onclick="alefaTifitra()">←</button>
+        <button id="fireCenterBtn" class="fire-center" onclick="alefaTifitra()">🔥</button>
     </div>
 </div>
 
@@ -756,7 +762,7 @@
             </div>
         </div>
         <div class="victory-actions">
-            <button class="victory-btn" onclick="returnToLobby()">RETURN TO LOBBY</button>
+            <button class="victory-btn" onclick="miverinaLobby()">RETURN TO LOBBY</button>
             <button class="victory-btn primary" onclick="playAgain()">PLAY AGAIN</button>
             <button class="victory-btn" onclick="shareVictory()">SHARE</button>
         </div>
@@ -794,7 +800,7 @@
             </div>
         <div class="death-actions">
             <button class="death-btn" onclick="spectate()">SPECTATE</button>
-            <button class="death-btn" onclick="returnToLobby()">RETURN TO LOBBY</button>
+            <button class="death-btn" onclick="miverinaLobby()">RETURN TO LOBBY</button>
             <button class="death-btn primary" onclick="playAgain()">PLAY AGAIN</button>
         </div>
     </div>
@@ -809,1198 +815,29 @@
     <div class="spectate-controls">
         <button class="spectate-btn" onclick="prevSpectate()">← PREV</button>
         <button class="spectate-btn" onclick="nextSpectate()">NEXT →</button>
-        <button class="spectate-btn danger" onclick="returnToLobby()">EXIT</button>
+        <button class="spectate-btn danger" onclick="miverinaLobby()">EXIT</button>
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- ALL MENUS - KEEP EXISTING CODE -->
-<!-- ============================================ -->
-
-<!-- ============================================ -->
-<!-- SKIN MENU - TOHINY -->
-<!-- ============================================ -->
-<div id="skinMenu" class="panel hidden">
-    <div class="panel-header">
-        <h2>👕 CUSTOMIZE</h2>
-        <button class="panel-close" onclick="closeSkinMenu()">✕</button>
-    </div>
-    
-    <div class="panel-tabs">
-        <button class="tab-btn active" onclick="showSkinTab('colors')">Colors</button>
-        <button class="tab-btn" onclick="showSkinTab('hats')">Hats</button>
-        <button class="tab-btn" onclick="showSkinTab('outfits')">Outfits</button>
-        <button class="tab-btn" onclick="showSkinTab('emotes')">Emotes</button>
-    </div>
-
-    <div id="skinColorsTab" class="tab-content">
-        <h3>Character Colors</h3>
-        <div class="skin-grid">
-            <div class="skin-item" style="background:#00ff00" onclick="changeSkinColor('#00ff00')" title="Green"></div>
-            <div class="skin-item" style="background:#ff0000" onclick="changeSkinColor('#ff0000')" title="Red"></div>
-            <div class="skin-item" style="background:#0088ff" onclick="changeSkinColor('#0088ff')" title="Blue"></div>
-            <div class="skin-item" style="background:#ffff00" onclick="changeSkinColor('#ffff00')" title="Yellow"></div>
-            <div class="skin-item" style="background:#ff00ff" onclick="changeSkinColor('#ff00ff')" title="Magenta"></div>
-            <div class="skin-item" style="background:#ff6600" onclick="changeSkinColor('#ff6600')" title="Orange"></div>
-            <div class="skin-item" style="background:#00ffff" onclick="changeSkinColor('#00ffff')" title="Cyan"></div>
-            <div class="skin-item" style="background:#ffffff" onclick="changeSkinColor('#ffffff')" title="White"></div>
-            <div class="skin-item" style="background:#000000" onclick="changeSkinColor('#000000')" title="Black"></div>
-            <div class="skin-item" style="background:#800080" onclick="changeSkinColor('#800080')" title="Purple"></div>
-            <div class="skin-item" style="background:#808080" onclick="changeSkinColor('#808080')" title="Gray"></div>
-            <div class="skin-item" style="background:#8B4513" onclick="changeSkinColor('#8B4513')" title="Brown"></div>
-            <div class="skin-item locked" style="background:#FFD700" onclick="buySkin('gold', 100)">
-                <span class="lock-icon">🔒</span>
-                <span class="price">100💰</span>
-            </div>
-            <div class="skin-item locked" style="background:#C0C0" onclick="buySkin('silver', 80)">
-                <span class="lock-icon">🔒</span>
-                <span class="price">80💰</span>
-            </div>
-            <div class="skin-item locked" style="background:#FF69B4" onclick="buySkin('pink', 50)">
-                <span class="lock-icon">🔒</span>
-                <span class="price">50💰</span>
-            </div>
-        </div>
-    </div>
-
-    <div id="skinHatsTab" class="tab-content hidden">
-        <h3>Hats & Accessories</h3>
-        <div class="skin-grid">
-            <button class="skin-btn" onclick="changeSkinHat('none')">
-                <span class="skin-emoji">❌</span>
-                <span class="skin-name">None</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('crown')">
-                <span class="skin-emoji">👑</span>
-                <span class="skin-name">Crown</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('helmet')">
-                <span class="skin-emoji">🪖</span>
-                <span class="skin-name">Helmet</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('cap')">
-                <span class="skin-emoji">🧢</span>
-                <span class="skin-name">Cap</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('tophat')">
-                <span class="skin-emoji">🎩</span>
-                <span class="skin-name">Top Hat</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('cowboy')">
-                <span class="skin-emoji">🤠</span>
-                <span class="skin-name">Cowboy</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('wizard')">
-                <span class="skin-emoji">🧙</span>
-                <span class="skin-name">Wizard</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('viking')">
-                <span class="skin-emoji">⚔️</span>
-                <span class="skin-name">Viking</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('pirate')">
-                <span class="skin-emoji">🏴‍☠️</span>
-                <span class="skin-name">Pirate</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('ninja')">
-                <span class="skin-emoji">🥷</span>
-                <span class="skin-name">Ninja</span>
-            </button>
-            <button class="skin-btn" onclick="changeSkinHat('samurai')">
-                <span class="skin-emoji">🗡️</span>
-                <span class="skin-name">Samurai</span>
-            </button>
-            <button class="skin-btn locked" onclick="buyHat('angel', 200)">
-                <span class="skin-emoji">👼</span>
-                <span class="skin-name">Angel</span>
-                <span class="price">200💰</span>
-            </button>
-        </div>
-    </div>
-
-    <div id="skinOutfitsTab" class="tab-content hidden">
-        <h3>Outfits</h3>
-        <div class="outfit-grid">
-            <div class="outfit-item" onclick="changeOutfit('default')">
-                <div class="outfit-preview">👤</div>
-                <span class="outfit-name">Default</span>
-                <span class="outfit-rarity common">Common</span>
-            </div>
-            <div class="outfit-item" onclick="changeOutfit('military')">
-                <div class="outfit-preview">🎖️</div>
-                <span class="outfit-name">Military</span>
-                <span class="outfit-rarity rare">Rare</span>
-            </div>
-            <div class="outfit-item" onclick="changeOutfit('ninja')">
-                <div class="outfit-preview">🥷</div>
-                <span class="outfit-name">Ninja</span>
-                <span class="outfit-rarity epic">Epic</span>
-            </div>
-            <div class="outfit-item" onclick="changeOutfit('samurai')">
-                <div class="outfit-preview">🗡️</div>
-                <span class="outfit-name">Samurai</span>
-                <span class="outfit-rarity epic">Epic</span>
-            </div>
-            <div class="outfit-item locked" onclick="buyOutfit('cyber', 500)">
-                <div class="outfit-preview">🤖</div>
-                <span class="outfit-name">Cyber</span>
-                <span class="outfit-rarity legendary">Legendary</span>
-                <span class="price">500💰</span>
-            </div>
-            <div class="outfit-item locked" onclick="buyOutfit('dragon', 800)">
-                <div class="outfit-preview">🐉</div>
-                <span class="outfit-name">Dragon</span>
-                <span class="outfit-rarity mythic">Mythic</span>
-                <span class="price">800💰</span>
-            </div>
-        </div>
-    </div>
-
-    <div id="skinEmotesTab" class="tab-content hidden">
-        <h3>Emotes</h3>
-        <div class="emote-grid">
-            <button class="emote-btn" onclick="useEmote('dance')">
-                <span class="emote-icon">💃</span>
-                <span class="emote-name">Dance</span>
-            </button>
-            <button class="emote-btn" onclick="useEmote('wave')">
-                <span class="emote-icon">👋</span>
-                <span class="emote-name">Wave</span>
-            </button>
-            <button class="emote-btn" onclick="useEmote('laugh')">
-                <span class="emote-icon">😂</span>
-                <span class="emote-name">Laugh</span>
-            </button>
-            <button class="emote-btn" onclick="useEmote('cry')">
-                <span class="emote-icon">😢</span>
-                <span class="emote-name">Cry</span>
-            </button>
-            <button class="emote-btn" onclick="useEmote('angry')">
-                <span class="emote-icon">😠</span>
-                <span class="emote-name">Angry</span>
-            </button>
-            <button class="emote-btn" onclick="useEmote('cool')">
-                <span class="emote-icon">😎</span>
-                <span class="emote-name">Cool</span>
-            </button>
-            <button class="emote-btn" onclick="useEmote('heart')">
-                <span class="emote-icon">❤️</span>
-                <span class="emote-name">Heart</span>
-            </button>
-            <button class="emote-btn" onclick="useEmote('thumbsup')">
-                <span class="emote-icon">👍</span>
-                <span class="emote-name">Thumbs Up</span>
-            </button>
-            <button class="emote-btn" onclick="useEmote('salute')">
-                <span class="emote-icon">🫡</span>
-                <span class="emote-name">Salute</span>
-            </button>
-            <button class="emote-btn locked" onclick="buyEmote('dab', 100)">
-                <span class="emote-icon">🤙</span>
-                <span class="emote-name">Dab</span>
-                <span class="price">100💰</span>
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- BATTLE PASS MENU -->
-<!-- ============================================ -->
-<div id="battlePassMenu" class="panel hidden">
-    <div class="panel-header">
-        <h2>🎫 BATTLE PASS SEASON 1</h2>
-        <button class="panel-close" onclick="closeBattlePass()">✕</button>
-    </div>
-    
-    <div class="bp-header">
-        <div class="bp-level-display">
-            <div class="bp-level-circle">
-                <span class="bp-level-number" id="bpLevelDisplay">1</span>
-                <span class="bp-level-text">LEVEL</span>
-            </div>
-            <div class="bp-progress-container">
-                <div class="bp-progress-bar">
-                    <div class="bp-progress-fill" id="bpXPBar" style="width:0%"></div>
-                </div>
-                <div class="bp-progress-text">
-                    <span id="bpCurrentXP">0</span> / <span id="bpRequiredXP">100</span> XP
-                </div>
-            </div>
-        <div class="bp-premium-section">
-            <div class="premium-badge">PREMIUM</div>
-            <h3>PREMIUM PASS</h3>
-            <p>Unlock exclusive rewards!</p>
-            <div class="premium-benefits">
-                <div class="benefit-item">✨ 50+ Exclusive Skins</div>
-                <div class="benefit-item">💎 1000 Diamonds Bonus</div>
-                <div class="benefit-item">🎁 Daily Rewards x2</div>
-            </div>
-            <button onclick="buyBattlePass()" class="premium-buy-btn">
-                <span class="btn-text">BUY FOR 500</span>
-                <span class="btn-icon">💎</span>
-            </button>
-        </div>
-    </div>
-
-    <div class="bp-rewards-container">
-        <div class="bp-rewards-track" id="bpRewards">
-            <!-- Generated by JS -->
-        </div>
-    </div>
-    
-    <div class="bp-footer">
-        <button class="bp-btn" onclick="claimAllBPRewards()">CLAIM ALL</button>
-        <button class="bp-btn" onclick="buyBPLevels()">BUY LEVELS</button>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- SHOP MENU -->
-<!-- ============================================ -->
-<div id="shopMenu" class="panel hidden">
-    <div class="panel-header">
-        <h2>🛒 SHOP</h2>
-        <button class="panel-close" onclick="closeShop()">✕</button>
-    </div>
-    
-    <div class="shop-tabs">
-        <button class="shop-tab active" onclick="showShopTab('featured')">Featured</button>
-        <button class="shop-tab" onclick="showShopTab('skins')">Skins</button>
-        <button class="shop-tab" onclick="showShopTab('weapons')">Weapons</button>
-        <button class="shop-tab" onclick="showShopTab('bundles')">Bundles</button>
-        <button class="shop-tab" onclick="showShopTab('currency')">Currency</button>
-    </div>
-
-    <div id="shopFeaturedTab" class="shop-tab-content">
-        <div class="shop-banner">
-            <h3>⭐ FEATURED ITEMS</h3>
-            <p class="shop-timer">Refreshes in: <span id="shopTimer">23:59:59</span></p>
-        </div>
-        <div class="shop-grid">
-            <div class="shop-item featured">
-                <div class="item-badge">HOT</div>
-                <div class="item-image">🎨</div>
-                <h4>Rainbow Skin</h4>
-                <p class="item-rarity legendary">Legendary</p>
-                <p class="item-desc">Colorful animated skin</p>
-                <div class="item-price">500 💰</div>
-                <button class="buy-btn" onclick="buyItem('rainbow_skin', 500)">BUY</button>
-            </div>
-            <div class="shop-item featured">
-                <div class="item-badge">NEW</div>
-                <div class="item-image">⚔️</div>
-                <h4>Golden AK-47</h4>
-                <p class="item-rarity epic">Epic</p>
-                <p class="item-desc">Golden weapon skin</p>
-                <div class="item-price">300 💰</div>
-                <button class="buy-btn" onclick="buyItem('golden_ak', 300)">BUY</button>
-            </div>
-            <div class="shop-item featured">
-                <div class="item-badge">LIMITED</div>
-                <div class="item-image">👑</div>
-                <h4>Royal Crown</h4>
-                <p class="item-rarity mythic">Mythic</p>
-                <p class="item-desc">Exclusive hat</p>
-                <div class="item-price">800 💎</div>
-                <button class="buy-btn" onclick="buyItem('royal_crown', 800)">BUY</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="shopSkinsTab" class="shop-tab-content hidden">
-        <h3>👕 CHARACTER SKINS</h3>
-        <div class="shop-filters">
-            <button class="filter-btn active" onclick="filterShopSkins('all')">All</button>
-            <button class="filter-btn" onclick="filterShopSkins('common')">Common</button>
-            <button class="filter-btn" onclick="filterShopSkins('rare')">Rare</button>
-            <button class="filter-btn" onclick="filterShopSkins('epic')">Epic</button>
-            <button class="filter-btn" onclick="filterShopSkins('legendary')">Legendary</button>
-        </div>
-        <div class="shop-grid" id="shopSkinsGrid"></div>
-    </div>
-
-    <div id="shopWeaponsTab" class="shop-tab-content hidden">
-        <h3>🔫 WEAPON SKINS</h3>
-        <div class="shop-grid" id="shopWeaponsGrid"></div>
-    </div>
-
-    <div id="shopBundlesTab" class="shop-tab-content hidden">
-        <h3>📦 BUNDLES</h3>
-        <div class="shop-grid" id="shopBundlesGrid">
-            <div class="shop-item bundle">
-                <div class="item-badge">SAVE 50%</div>
-                <div class="item-image">🎁</div>
-                <h4>Starter Pack</h4>
-                <p class="item-desc">5 Skins + 1000 Coins</p>
-                <div class="item-price-old">1000 💰</div>
-                <div class="item-price">500 💰</div>
-                <button class="buy-btn" onclick="buyBundle('starter', 500)">BUY</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="shopCurrencyTab" class="shop-tab-content hidden">
-        <h3>💎 BUY CURRENCY</h3>
-        <div class="shop-grid">
-            <div class="shop-item">
-                <div class="item-image">💎</div>
-                <h4>100 Diamonds</h4>
-                <div class="item-price">$0.99</div>
-                <button class="buy-btn" onclick="buyCurrency(100, 0.99)">BUY</button>
-            </div>
-            <div class="shop-item">
-                <div class="item-image">💎</div>
-                <h4>500 Diamonds</h4>
-                <div class="item-price">$4.99</div>
-                <button class="buy-btn" onclick="buyCurrency(500, 4.99)">BUY</button>
-            </div>
-            <div class="shop-item">
-                <div class="item-image">💎</div>
-                <h4>1000 Diamonds</h4>
-                <div class="item-price">$9.99</div>
-                <button class="buy-btn" onclick="buyCurrency(1000, 9.99)">BUY</button>
-            </div>
-            <div class="shop-item">
-                <div class="item-image">💎</div>
-                <h4>5000 Diamonds</h4>
-                <div class="item-price">$49.99</div>
-                <button class="buy-btn" onclick="buyCurrency(5000, 49.99)">BUY</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- INVENTORY MENU -->
-<!-- ============================================ -->
-<div id="inventoryMenu" class="panel hidden">
-    <div class="panel-header">
-        <h2>🎒 INVENTORY</h2>
-        <button class="panel-close" onclick="closeInventory()">✕</button>
-    </div>
-    
-    <div class="inventory-stats">
-        <div class="inv-stat">
-            <span class="stat-label">Total Items:</span>
-            <span class="stat-value" id="invTotalItems">0</span>
-        </div>
-        <div class="inv-stat">
-            <span class="stat-label">Skins:</span>
-            <span class="stat-value" id="invSkinsCount">0</span>
-        </div>
-        <div class="inv-stat">
-            <span class="stat-label">Weapons:</span>
-            <span class="stat-value" id="invWeaponsCount">0</span>
-        </div>
-    </div>
-    
-    <div class="inventory-tabs">
-        <button class="inv-tab active" onclick="showInvTab('all')">All</button>
-        <button class="inv-tab" onclick="showInvTab('skins')">Skins</button>
-        <button class="inv-tab" onclick="showInvTab('weapons')">Weapons</button>
-        <button class="inv-tab" onclick="showInvTab('emotes')">Emotes</button>
-        <button class="inv-tab" onclick="showInvTab('items')">Items</button>
-    </div>
-
-    <div class="inventory-search">
-        <input type="text" id="invSearchInput" placeholder="Search items..." oninput="searchInventory()">
-    </div>
-
-    <div id="invAllTab" class="inv-tab-content">
-        <div class="inventory-grid" id="invAllGrid"></div>
-    </div>
-
-    <div id="invSkinsTab" class="inv-tab-content hidden">
-        <div class="inventory-grid" id="invSkinsGrid"></div>
-    </div>
-
-    <div id="invWeaponsTab" class="inv-tab-content hidden">
-        <div class="inventory-grid" id="invWeaponsGrid"></div>
-    </div>
-
-    <div id="invEmotesTab" class="inv-tab-content hidden">
-        <div class="inventory-grid" id="invEmotesGrid"></div>
-    </div>
-
-    <div id="invItemsTab" class="inv-tab-content hidden">
-        <div class="inventory-grid" id="invItemsGrid"></div>
-    </div>
-    
-    <div class="inventory-actions">
-        <button class="inv-btn" onclick="equipAll()">EQUIP ALL</button>
-        <button class="inv-btn" onclick="sellDuplicates()">SELL DUPLICATES</button>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- SETTINGS MENU -->
-<!-- ============================================ -->
-<div id="settingsMenu" class="panel hidden">
-    <div class="panel-header">
-        <h2>⚙️ SETTINGS</h2>
-        <button class="panel-close" onclick="closeSettings()">✕</button>
-    </div>
-    
-    <div class="settings-tabs">
-        <button class="settings-tab active" onclick="showSettingsTab('gameplay')">Gameplay</button>
-        <button class="settings-tab" onclick="showSettingsTab('controls')">Controls</button>
-        <button class="settings-tab" onclick="showSettingsTab('graphics')">Graphics</button>
-        <button class="settings-tab" onclick="showSettingsTab('audio')">Audio</button>
-        <button class="settings-tab" onclick="showSettingsTab('account')">Account</button>
-    </div>
-    
-    <div class="settings-content">
-        <div id="settingsGameplayTab" class="settings-tab-content">
-            <div class="settings-section">
-                <h3>🎮 Gameplay</h3>
-                <div class="setting-item">
-                    <label>Sensitivity</label>
-                    <input type="range" id="sensitivitySlider" min="0.1" max="2" step="0.1" value="1">
-                    <span id="sensitivityValue">1.0</span>
-                </div>
-                <div class="setting-item">
-                    <label>Aim Sensitivity</label>
-                    <input type="range" id="aimSensitivitySlider" min="0.1" max="2" step="0.1" value="1">
-                    <span id="aimSensitivityValue">1.0</span>
-                </div>
-                <div class="setting-item">
-                    <label>Auto Sprint</label>
-                    <input type="checkbox" id="autoSprintToggle">
-                </div>
-                <div class="setting-item">
-                    <label>Aim Assist</label>
-                    <input type="checkbox" id="aimAssistToggle" checked>
-                </div>
-                <div class="setting-item">
-                    <label>Auto Pickup</label>
-                    <input type="checkbox" id="autoPickupToggle" checked>
-                </div>
-                <div class="setting-item">
-                    <label>Show Damage Numbers</label>
-                    <input type="checkbox" id="showDamageToggle" checked>
-                </div>
-            </div>
-        </div>
-
-        <div id="settingsControlsTab" class="settings-tab-content hidden">
-            <div class="settings-section">
-                <h3>⌨️ Keyboard Controls</h3>
-                <div class="controls-list">
-                    <div class="control-item">
-                        <span class="control-key">W/A/S/D</span>
-                        <span class="control-action">Move</span>
-                        <button class="control-edit" onclick="editControl('move')">EDIT</button>
-                    </div>
-                    <div class="control-item">
-                        <span class="control-key">SHIFT</span>
-                        <span class="control-action">Sprint</span>
-                        <button class="control-edit" onclick="editControl('sprint')">EDIT</button>
-                    </div>
-                    <div class="control-item">
-                        <span class="control-key">SPACE</span>
-                        <span class="control-action">Jump</span>
-                        <button class="control-edit" onclick="editControl('jump')">EDIT</button>
-                    </div>
-                    <div class="control-item">
-                        <span class="control-key">C</span>
-                        <span class="control-action">Crouch</span>
-                        <button class="control-edit" onclick="editControl('crouch')">EDIT</button>
-                    </div>
-                    <div class="control-item">
-                        <span class="control-key">R</span>
-                        <span class="control-action">Reload</span>
-                        <button class="control-edit" onclick="editControl('reload')">EDIT</button>
-                    </div>
-                    <div class="control-item">
-                        <span class="control-key">G</span>
-                        <span class="control-action">Grenade</span>
-                        <button class="control-edit" onclick="editControl('grenade')">EDIT</button>
-                    </div>
-                    <div class="control-item">
-                        <span class="control-key">F</span>
-                        <span class="control-action">Interact</span>
-                        <button class="control-edit" onclick="editControl('interact')">EDIT</button>
-                    </div>
-                    <div class="control-item">
-                        <span class="control-key">1-4</span>
-                        <span class="control-action">Weapons</span>
-                        <button class="control-edit" onclick="editControl('weapons')">EDIT</button>
-                    </div>
-                    <div class="control-item">
-                        <span class="control-key">TAB</span>
-                        <span class="control-action">Scoreboard</span>
-                        <button class="control-edit" onclick="editControl('scoreboard')">EDIT</button>
-                    </div>
-                    <div class="control-item">
-                        <span class="control-key">M</span>
-                        <span class="control-action">Map</span>
-                        <button class="control-edit" onclick="editControl('map')">EDIT</button>
-                    </div>
-                </div>
-                <button class="btn-secondary" onclick="resetControls()">RESET TO DEFAULT</button>
-            </div>
-        </div>
-
-        <div id="settingsGraphicsTab" class="settings-tab-content hidden">
-            <div class="settings-section">
-                <h3>📺 Graphics</h3>
-                <div class="setting-item">
-                    <label>Quality</label>
-                    <select id="graphicsQuality" class="select-input">
-                        <option value="low">Low</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="high">High</option>
-                        <option value="ultra">Ultra</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label>FPS Limit</label>
-                    <select id="fpsLimit" class="select-input">
-                        <option value="30">30 FPS</option>
-                        <option value="60" selected>60 FPS</option>
-                        <option value="120">120 FPS</option>
-                        <option value="unlimited">Unlimited</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label>Resolution</label>
-                    <select id="resolution" class="select-input">
-                        <option value="1920x1080" selected>1920x1080</option>
-                        <option value="1280x720">1280x720</option>
-                        <option value="2560x1440">2560x1440</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label><input type="checkbox" id="showFPSToggle"> Show FPS</label>
-                </div>
-                <div class="setting-item">
-                    <label><input type="checkbox" id="showPingToggle" checked> Show Ping</label>
-                </div>
-                <div class="setting-item">
-                    <label><input type="checkbox" id="vSyncToggle"> V-Sync</label>
-                </div>
-                <div class="setting-item">
-                    <label><input type="checkbox" id="fullscreenToggle"> Fullscreen</label>
-                </div>
-            </div>
-        </div>
-
-        <div id="settingsAudioTab" class="settings-tab-content hidden">
-            <div class="settings-section">
-                <h3>🔊 Audio</h3>
-                <div class="setting-item">
-                    <label>Master Volume: <span id="masterVolumeValue">100</span></label>
-                    <input type="range" id="masterVolume" min="0" max="100" value="100" class="slider">
-                </div>
-                <div class="setting-item">
-                    <label>Music Volume: <span id="musicVolumeValue">50</span></label>
-                    <input type="range" id="musicVolume" min="0" max="100" value="50" class="slider">
-                </div>
-                <div class="setting-item">
-                    <label>SFX Volume: <span id="sfxVolumeValue">100</span></label>
-                    <input type="range" id="sfxVolume" min="0" max="100" value="100" class="slider">
-                </div>
-                <div class="setting-item">
-                    <label>Voice Volume: <span id="voiceVolumeValue">100</span></label>
-                    <input type="range" id="voiceVolume" min="0" max="100" value="100" class="slider">
-                </div>
-                <div class="setting-item">
-                    <label><input type="checkbox" id="voiceChatToggle"> Voice Chat</label>
-                </div>
-                <div class="setting-item">
-                    <label><input type="checkbox" id="pushToTalkToggle"> Push to Talk</label>
-                </div>
-            </div>
-        </div>
-
-        <div id="settingsAccountTab" class="settings-tab-content hidden">
-            <div class="settings-section">
-                <h3>👤 Account</h3>
-                <div class="setting-item">
-                    <label>Username</label>
-                    <input type="text" id="accountUsername" class="text-input" maxlength="20">
-                    <button class="btn-small" onclick="saveUsername()">SAVE</button>
-                </div>
-                <div class="setting-item">
-                    <label>Email</label>
-                    <input type="email" id="accountEmail" class="text-input" disabled>
-                </div>
-                <div class="setting-item">
-                    <label>Account ID</label>
-                    <input type="text" id="accountId" class="text-input" disabled>
-                    <button class="btn-small" onclick="copyAccountId()">COPY</button>
-                </div>
-                <div class="setting-actions">
-                    <button class="btn-danger" onclick="logoutAccount()">LOGOUT</button>
-                    <button class="btn-danger" onclick="deleteAccount()">DELETE ACCOUNT</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="settings-footer">
-        <button onclick="saveSettings()" class="btn-primary">SAVE SETTINGS</button>
-        <button onclick="resetSettings()" class="btn-secondary">RESET ALL</button>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- PROFILE MENU -->
-<!-- ============================================ -->
-<div id="profileMenu" class="panel hidden">
-    <div class="panel-header">
-        <h2>👤 PROFILE</h2>
-        <button class="panel-close" onclick="closeProfile()">✕</button>
-    </div>
-    
-    <div class="panel-body">
-        <div class="profile-content">
-            <div class="profile-avatar-section">
-                <div class="profile-avatar-large" id="profileAvatarLarge"></div>
-                <button class="btn-secondary" onclick="changeAvatar()">CHANGE AVATAR</button>
-                <button class="btn-secondary" onclick="changeAvatarColor()">CHANGE COLOR</button>
-            </div>
-
-            <div class="profile-info-section">
-                <div class="info-row">
-                    <label>Username:</label>
-                    <input type="text" id="profileUsername" maxlength="20" class="text-input">
-                    <button class="btn-small" onclick="saveUsername()">SAVE</button>
-                </div>
-                <div class="info-row">
-                    <label>Level:</label>
-                    <span class="info-value" id="profileLevel">1</span>
-                    <div class="xp-bar">
-                        <div class="xp-fill" id="profileXPBar"></div>
-                    </div>
-                </div>
-                <div class="info-row">
-                    <label>Rank:</label>
-                    <span class="info-value rank-badge" id="profileRank">Bronze III</span>
-                </div>
-                <div class="info-row">
-                    <label>K/D Ratio:</label>
-                    <span class="info-value" id="profileKDR">0.00</span>
-                </div>
-                <div class="info-row">
-                    <label>Win Rate:</label>
-                    <span class="info-value" id="profileWinRate">0%</span>
-                </div>
-                <div class="info-row">
-                    <label>Member Since:</label>
-                    <span class="info-value" id="profileJoinDate">-</span>
-                </div>
-            </div>
-
-            <div class="profile-stats-section">
-                <h3>📊 STATISTICS</h3>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">🏆</div>
-                        <div class="stat-value" id="statWins">0</div>
-                        <div class="stat-label">Wins</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">💀</div>
-                        <div class="stat-value" id="statKills">0</div>
-                        <div class="stat-label">Kills</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">☠️</div>
-                        <div class="stat-value" id="statDeaths">0</div>
-                        <div class="stat-label">Deaths</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🎮</div>
-                        <div class="stat-value" id="statMatches">0</div>
-                        <div class="stat-label">Matches</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">💥</div>
-                        <div class="stat-value" id="statDamage">0</div>
-                        <div class="stat-label">Damage</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">⏱️</div>
-                        <div class="stat-value" id="statTime">0h</div>
-                        <div class="stat-label">Play Time</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🎯</div>
-                        <div class="stat-value" id="statHeadshots">0</div>
-                        <div class="stat-label">Headshots</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🔥</div>
-                        <div class="stat-value" id="statStreak">0</div>
-                        <div class="stat-label">Best Streak</div>
-                    </div>
-                     <div class="stat-card">
-                        <div class="stat-icon">🏅</div>
-                        <div class="stat-value" id="statTop10">0</div>
-                        <div class="stat-label">Top 10</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🎖️</div>
-                        <div class="stat-value" id="statRevives">0</div>
-                        <div class="stat-label">Revives</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">📦</div>
-                        <div class="stat-value" id="statLooted">0</div>
-                        <div class="stat-label">Items Looted</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🚗</div>
-                        <div class="stat-value" id="statVehicles">0</div>
-                        <div class="stat-label">Vehicles Used</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="profile-achievements">
-                <h3>🏆 ACHIEVEMENTS</h3>
-                <div class="achievements-filter">
-                    <button class="filter-btn active" onclick="filterAchievements('all')">All</button>
-                    <button class="filter-btn" onclick="filterAchievements('unlocked')">Unlocked</button>
-                    <button class="filter-btn" onclick="filterAchievements('locked')">Locked</button>
-                </div>
-                <div class="achievements-grid" id="achievementsGrid">
-                    <div class="achievement-item unlocked">
-                        <div class="achievement-icon">🎮</div>
-                        <div class="achievement-info">
-                            <div class="achievement-name">First Blood</div>
-                            <div class="achievement-desc">Get your first kill</div>
-                        </div>
-                        <div class="achievement-reward">+50 XP</div>
-                    </div>
-                    <div class="achievement-item unlocked">
-                        <div class="achievement-icon">🏆</div>
-                        <div class="achievement-info">
-                            <div class="achievement-name">Winner</div>
-                            <div class="achievement-desc">Win your first match</div>
-                        </div>
-                        <div class="achievement-reward">+200 XP</div>
-                    </div>
-                    <div class="achievement-item locked">
-                        <div class="achievement-icon">💀</div>
-                        <div class="achievement-info">
-                            <div class="achievement-name">Killing Machine</div>
-                            <div class="achievement-desc">Get 100 kills</div>
-                        </div>
-                        <div class="achievement-reward">+500 XP</div>
-                    </div>
-                    <div class="achievement-item locked">
-                        <div class="achievement-icon">🔥</div>
-                        <div class="achievement-info">
-                            <div class="achievement-name">Hot Streak</div>
-                            <div class="achievement-desc">Win 5 matches in a row</div>
-                        </div>
-                        <div class="achievement-reward">+1000 XP</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- MAIL MENU -->
-<!-- ============================================ -->
-<div id="mailMenu" class="panel hidden">
-    <div class="panel-header">
-        <h2>📧 MAIL</h2>
-        <button class="panel-close" onclick="closeMail()">✕</button>
-    </div>
-    
-    <div class="mail-tabs">
-        <button class="mail-tab active" onclick="showMailTab('inbox')">
-            Inbox <span class="tab-badge" id="inboxBadge">0</span>
-        </button>
-        <button class="mail-tab" onclick="showMailTab('sent')">Sent</button>
-        <button class="mail-tab" onclick="showMailTab('rewards')">
-            Rewards <span class="tab-badge" id="rewardsBadge">0</span>
-        </button>
-    </div>
-
-    <div id="mailInboxTab" class="mail-tab-content">
-        <div class="mail-list" id="mailInboxList">
-            <div class="mail-empty">No messages</div>
-        </div>
-    </div>
-
-    <div id="mailSentTab" class="mail-tab-content hidden">
-        <div class="mail-list" id="mailSentList">
-            <div class="mail-empty">No sent messages</div>
-        </div>
-    </div>
-
-    <div id="mailRewardsTab" class="mail-tab-content hidden">
-        <div class="mail-list" id="mailRewardsList">
-            <div class="mail-empty">No rewards available</div>
-        </div>
-    </div>
-
-    <div class="mail-actions">
-        <button class="mail-btn" onclick="claimAllMail()">CLAIM ALL</button>
-        <button class="mail-btn" onclick="deleteReadMail()">DELETE READ</button>
-        <button class="mail-btn" onclick="composeMail()">COMPOSE</button>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- FULL LEADERBOARD -->
-<!-- ============================================ -->
-<div id="fullLeaderboard" class="panel hidden">
-    <div class="panel-header">
-        <h2>🏆 GLOBAL LEADERBOARD</h2>
-        <button class="panel-close" onclick="closeFullLeaderboard()">✕</button>
-    </div>
-    
-    <div class="leaderboard-filters">
-        <button class="filter-btn active" onclick="filterLeaderboard('global')">Global</button>
-        <button class="filter-btn" onclick="filterLeaderboard('friends')">Friends</button>
-        <button class="filter-btn" onclick="filterLeaderboard('region')">Region</button>
-        <button class="filter-btn" onclick="filterLeaderboard('season')">Season</button>
-    </div>
-
-    <div class="leaderboard-search">
-        <input type="text" id="leaderboardSearch" placeholder="Search player..." oninput="searchLeaderboard()">
-    </div>
-
-    <div class="leaderboard-table-wrapper">
-        <table class="leaderboard-table">
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>Player</th>
-                    <th>Level</th>
-                    <th>Wins</th>
-                    <th>Kills</th>
-                    <th>K/D</th>
-                    <th>Score</th>
-                </tr>
-            </thead>
-            <tbody id="fullLeaderboardBody">
-                <tr>
-                    <td colspan="7" class="loading-cell">Loading...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="leaderboard-pagination">
-        <button class="page-btn" onclick="prevLeaderboardPage()">← PREV</button>
-        <span class="page-info" id="leaderboardPage">Page 1 of 1</span>
-        <button class="page-btn" onclick="nextLeaderboardPage()">NEXT →</button>
-    </div>
-    
-    <div class="my-rank-display">
-        <span class="my-rank-label">Your Rank:</span>
-        <span class="my-rank-value" id="myRankValue">#-</span>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- TERMS MODAL -->
-<!-- ============================================ -->
-<div id="termsModal" class="modal hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Terms of Service</h2>
-            <button class="modal-close" onclick="closeTerms()">✕</button>
-        </div>
-        <div class="modal-body">
-            <div class="terms-content">
-                <h3>1. Acceptance of Terms</h3>
-                <p>By playing MG FIGHTER, you agree to these terms and conditions. If you do not agree, please do not play the game.</p>
-                
-                <h3>2. User Conduct</h3>
-                <p>No cheating, hacking, exploiting bugs, or using unauthorized third-party software. Respect other players.</p>
-                
-                <h3>3. Account Security</h3>
-                <p>You are responsible for maintaining the security of your account. Do not share your login credentials.</p>
-                
-                <h3>4. Privacy</h3>
-                <p>We collect gameplay data, statistics, and device information to improve service and prevent cheating.</p>
-                
-                <h3>5. Virtual Items</h3>
-                <p>Virtual items have no real-world value. Purchases are final and non-refundable.</p>
-                
-                <h3>6. Termination</h3>
-                <p>We reserve the right to ban violators and terminate accounts without notice.</p>
-                
-                <h3>7. Changes to Terms</h3>
-                <p>We may update these terms at any time. Continued use constitutes acceptance of changes.</p>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button onclick="closeTerms()" class="btn-secondary">Cancel</button>
-            <button onclick="acceptTerms()" class="btn-primary">OK - Accept</button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- PRIVACY MODAL -->
-<!-- ============================================ -->
-<div id="privacyModal" class="modal hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Privacy Policy</h2>
-            <button class="modal-close" onclick="closePrivacy()">✕</button>
-        </div>
-        <div class="modal-body">
-            <div class="privacy-content">
-                <h3>1. Information We Collect</h3>
-                <p>We collect username, email address, gameplay statistics, device information, IP address, and game performance data.</p>
-                
-                <h3>2. How We Use Information</h3>
-                <p>Data is used to provide game services, improve gameplay experience, prevent cheating, and provide customer support.</p>
-                
-                <h3>3. Data Security</h3>
-                <p>We implement industry-standard security measures to protect your personal information from unauthorized access.</p>
-                
-                <h3>4. Third Parties</h3>
-                <p>We do not sell or share your personal data with third parties for marketing purposes. We may share data with service providers.</p>
-                
-                <h3>5. Your Rights</h3>
-                <p>You can request access, correction, or deletion of your account and associated data at any time by contacting support.</p>
-                
-                <h3>6. Cookies</h3>
-                <p>We use cookies and similar technologies to enhance your experience and analyze game performance.</p>
-                
-                <h3>7. Children's Privacy</h3>
-                <p>Our game is not intended for children under 13. We do not knowingly collect data from children.</p>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button onclick="closePrivacy()" class="btn-primary">OK</button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- CREDITS SCREEN -->
-<!-- ============================================ -->
-<div id="creditsScreen" class="screen hidden">
-    <div class="credits-background"></div>
-    <div class="credits-content">
-        <div class="credits-header">
-            <h1>MG FIGHTER</h1>
-            <h2>Version 4.0.0</h2>
-        </div>
-        
-        <div class="credits-scroller">
-            <div class="credits-section">
-                <h3>Development Team</h3>
-                <p>Lead Developer: MG Studios</p>
-                <p>Game Design: Battle Team</p>
-                <p>Art & Animation: Creative Squad</p>
-                <p>Sound Design: Audio Forge</p>
-                <p>QA Testing: Test Warriors</p>
-            </div>
-
-            <div class="credits-section">
-                <h3>Special Thanks</h3>
-                <p>To all beta testers</p>
-                <p>Community contributors</p>
-                <p>Firebase & Socket.io</p>
-                <p>Our amazing players</p>
-            </div>
-
-            <div class="credits-section">
-                <h3>Technologies</h3>
-                <p>HTML5 Canvas</p>
-                <p>Node.js & Express</p>
-                <p>Firebase & Firestore</p>
-                <p>Socket.io</p>
-                <p>WebGL</p>
-            </div>
-
-            <div class="credits-section">
-                <h3>Music & Sound</h3>
-                <p>Background Music: Epic Orchestra</p>
-                <p>SFX: Game Audio Studio</p>
-            </div>
-
-            <div class="credits-section">
-                <h3>Copyright</h3>
-                <p>© 2024 MG Studios</p>
-                <p>All Rights Reserved</p>
-            </div>
-        </div>
-
-        <button class="credits-btn" onclick="closeCredits()">BACK TO MENU</button>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- ADMIN PAGE - MIAFINA -->
-<!-- ============================================ -->
-<div id="adminPage" class="screen hidden">
-    <div class="admin-container">
-        <div class="admin-header">
-            <h1>👑 ADMIN CONTROL CENTER</h1>
-            <button class="admin-logout-btn" onclick="AdminPage.logout()">LOGOUT</button>
-        </div>
-
-        <div class="admin-stats-grid">
-            <div class="admin-stat-card">
-                <div class="stat-label">Online Players</div>
-                <div class="stat-value" id="adminOnlineCount">0</div>
-                <div class="stat-icon">👥</div>
-            </div>
-            <div class="admin-stat-card">
-                <div class="stat-label">Total Bans</div>
-                <div class="stat-value" id="adminBanCount">0</div>
-                <div class="stat-icon">🚫</div>
-            </div>
-            <div class="admin-stat-card">
-                <div class="stat-label">Active Games</div>
-                <div class="stat-value" id="adminGameCount">0</div>
-                <div class="stat-icon">🎮</div>
-            </div>
-            <div class="admin-stat-card">
-                <div class="stat-label">Server Uptime</div>
-                <div class="stat-value" id="adminUptime">0h</div>
-                <div class="stat-icon">⏱️</div>
-            </div>
-        </div>
-
-        <div class="admin-content">
-            <div class="admin-panel">
-                <div class="panel-title">👤 PLAYER MANAGEMENT</div>
-                
-                <div class="admin-search">
-                    <input id="adminPlayerSearch" type="text" placeholder="Search username..." oninput="AdminPage.searchPlayer()">
-                    <button onclick="AdminPage.refreshPlayerList()">🔄</button>
-                </div>
-
-                <div id="adminPlayerList" class="admin-player-list"></div>
-
-                <div class="admin-controls-grid">
-                    <button class="admin-btn" onclick="AdminPage.giveDiamonds(1000)">💎 +1K</button>
-                    <button class="admin-btn" onclick="AdminPage.giveDiamonds(10000)">💎 +10K</button>
-                    <button class="admin-btn" onclick="AdminPage.giveCoins(5000)">💰 +5K</button>
-                    <button class="admin-btn" onclick="AdminPage.giveCoins(50000)">💰 +50K</button>
-                    <button class="admin-btn" onclick="AdminPage.giveLevel(10)">⭐ +10 LVL</button>
-                    <button class="admin-btn" onclick="AdminPage.giveBP()">🎫 MAX BP</button>
-                    <button class="admin-btn" onclick="AdminPage.healPlayer()">❤️ HEAL</button>
-                    <button class="admin-btn danger" onclick="AdminPage.killPlayer()">💀 KILL</button>
-                    <button class="admin-btn danger" onclick="AdminPage.banPlayer()">🚫 BAN</button>
-                    <button class="admin-btn" onclick="AdminPage.unbanPlayer()">✅ UNBAN</button>
-                    <button class="admin-btn" onclick="AdminPage.mutePlayer()">🔇 MUTE</button>
-                    <button class="admin-btn" onclick="AdminPage.resetPlayer()">🔄 RESET</button>
-                </div>
-            </div>
-
-            <div class="admin-panel">
-                <div class="panel-title">🌍 SERVER CONTROL</div>
-                
-                <div class="admin-broadcast">
-                    <textarea id="adminBroadcast" placeholder="Broadcast message to all players..."></textarea>
-                    <button class="admin-btn primary" onclick="AdminPage.broadcast()">📢 SEND BROADCAST</button>
-                </div>
-
-                <div class="admin-controls-grid">
-                    <button class="admin-btn" onclick="AdminPage.spawnLoot()">🎁 SPAWN LOOT</button>
-                    <button class="admin-btn" onclick="AdminPage.spawnVehicle()">🚗 SPAWN CAR</button>
-                    <button class="admin-btn" onclick="AdminPage.forceZone()">⭕ FORCE ZONE</button>
-                    <button class="admin-btn" onclick="AdminPage.spawnBots(10)">🤖 SPAWN BOTS</button>
-                    <button class="admin-btn" onclick="AdminPage.clearLoot()">🗑️ CLEAR LOOT</button>
-                    <button class="admin-btn danger" onclick="AdminPage.kickAll()">👢 KICK ALL</button>
-                    <button class="admin-btn danger" onclick="AdminPage.restartServer()">🔄 RESTART</button>
-                    <button class="admin-btn danger" onclick="AdminPage.shutdownServer()">⚠️ SHUTDOWN</button>
-                </div>
-
-                <div class="admin-console">
-                    <div class="console-header">SERVER CONSOLE</div>
-                    <div id="adminConsole" class="console-output"></div>
-                    <div class="console-input">
-                        <input type="text" id="consoleCommand" placeholder="Enter command..." onkeypress="if(event.key==='Enter')AdminPage.executeCommand()">
-                        <button onclick="AdminPage.executeCommand()">EXEC</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="admin-panel full-width">
-            <div class="panel-title">👑 GIVE COSMETICS</div>
-            <div class="cosmetics-grid">
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('crown')">👑 Crown</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('viking')">🪖 Viking</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('wizard')">🧙 Wizard</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('ninja')">🥷 Ninja</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('samurai')">🗡️ Samurai</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('pirate')">🏴‍☠️ Pirate</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('angel')">👼 Angel</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('demon')">😈 Demon</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('gold_skin')">✨ Gold</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('pink_skin')">💖 Pink</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('purple_skin')">💜 Purple</button>
-                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('rainbow_skin')">🌈 Rainbow</button>
-            </div>
-        </div>
-
-        <div class="admin-panel full-width">
-            <div class="panel-title">📊 SERVER STATISTICS</div>
-            <div class="stats-detailed">
-                <div class="stat-row">
-                    <span class="stat-name">Total Players Registered:</span>
-                    <span class="stat-value" id="statTotalPlayers">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-name">Matches Played Today:</span>
-                    <span class="stat-value" id="statMatchesToday">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-name">Peak Players Today:</span>
-                    <span class="stat-value" id="statPeakPlayers">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-name">Total Kills:</span>
-                    <span class="stat-value" id="statTotalKills">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-name">Revenue Today:</span>
-                    <span class="stat-value" id="statRevenue">$0.00</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- NOTIFICATION SYSTEM -->
-<!-- ============================================ -->
-<div id="notificationContainer"></div>
-
-<!-- ============================================ -->
 <!-- CONFIRM DIALOG -->
-<!-- ============================================ -->
-<div id="confirmDialog" class="modal hidden">
-    <div class="modal-content confirm-dialog">
-        <div class="confirm-icon">⚠️</div>
-        <h3 id="confirmTitle">Confirm Action</h3>
+<div id="confirmDialog" class="panel hidden">
+    <div class="panel-header">
+        <h2 id="confirmTitle">Confirm</h2>
+    </div>
+    <div class="panel-body">
         <p id="confirmMessage">Are you sure?</p>
-        <div class="confirm-actions">
-            <button onclick="confirmYes()" class="confirm-btn yes">YES</button>
-            <button onclick="confirmNo()" class="confirm-btn no">NO</button>
+        <div class="button-group">
+            <button id="confirmOkBtn" class="btn-primary">Yes</button>
+            <button id="confirmCancelBtn" class="btn-secondary">No</button>
         </div>
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- TOAST MESSAGES -->
-<!-- ============================================ -->
-<div id="toastContainer"></div>
+<!-- TOAST & NOTIFICATION CONTAINERS -->
+<div id="toastContainer" class="toast-container"></div>
+<div id="notificationContainer" class="notification-container"></div>
 
-<!-- ============================================ -->
-<!-- SCRIPTS -->
-<!-- ============================================ -->
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <script src="script.js"></script>
 
 </body>
