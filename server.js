@@ -2,894 +2,664 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { v4: uuidv4 } = require('uuid');
-const path = require('path');
-const fs = require('fs');
+const admin = require('firebase-admin');
 
 const app = express();
-app.use(express.static(__dirname));
 app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] },
-    pingTimeout: 60000,
-    pingInterval: 25000
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST']
+    },
+    transports: ['websocket', 'polling']
 });
 
-// ============================================
-// 1. CONFIG LOBBY + MATCH
-// ============================================
-const LOBBY_CONFIG = {
-    MIN_REAL_PLAYERS: 2,
-    MAX_PLAYERS: 30,
-    COUNTDOWN_TIME: 20, // 20s salle
-    MAP_SIZE: 3000
+const serviceAccount = require('./firebase-key.json');
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+const db = admin.firestore();
+
+const PORT = process.env.PORT || 3000;
+
+let lobbies = new Map();
+let mpilalao = new Map();
+let matchmaking = new Map();
+let lalaoMavitrika = new Map();
+
+const CONFIG = {
+    maxMpilalaoLobby: 100,
+    countdownLobby: 60,
+    faritraVoalohany: 5000,
+    faritraFarany: 500,
+    fotoanaFaritra: 300000
 };
 
-const MATCH_CONFIG = {
-    BR: { ZONE_START: 2900, ZONE_END: 500, TOTAL_TIME: 600 }, // 10min
-    CS: { ZONE_START: 2400, ZONE_END: 800, TOTAL_TIME: 300 } // 5min
-};
+io.on('connection', (socket) => {
+    console.log('Mpilalao niditra:', socket.id);
 
-let lobby = {
-    state: 'waiting',
-    realPlayers: [],
-    bots: [],
-    countdown: 20,
-    matchId: null,
-    mode: 'BR'
-};
-
-// ============================================
-// 2. ADMIN SYSTEM
-// ============================================
-const ADMIN_USERS = ['AdminMG', 'tony'];
-const ADMIN_IPS = [];
-const ADMIN_TOKENS = new Map();
-
-// ============================================
-// 3. ANTI-CHEAT
-// ============================================
-const ANTI_CHEAT = {
-    MAX_MOVE_SPEED: 350,
-    MAX_MOVE_TOLERANCE: 1.5,
-    MAX_SHOOT_RATE: 20,
-    MAX_GRENADES_SEC: 0.5,
-    MAX_CHAT_RATE: 3,
-    MAX_JOIN_ROOM_RATE: 2
-};
-
-const rateLimits = {
-    move: new Map(),
-    shoot: new Map(),
-    grenade: new Map(),
-    chat: new Map(),
-    joinRoom: new Map()
-};
-
-function checkRateLimit(socketId, type, maxPerSec) {
-    const now = Date.now();
-    if (!rateLimits[type].has(socketId)) {
-        rateLimits[type].set(socketId, []);
-    }
-    const timestamps = rateLimits[type].get(socketId);
-    const oneSecAgo = now - 1000;
-    while (timestamps.length > 0 && timestamps[0] < oneSecAgo) {
-        timestamps.shift();
-    }
-    if (timestamps.length >= maxPerSec) return false;
-    timestamps.push(now);
-    return true;
-}
-
-function clearRateLimits(socketId) {
-    Object.keys(rateLimits).forEach(type => {
-        rateLimits[type].delete(socketId);
+    mpilalao.set(socket.id, {
+        id: socket.id,
+        uid: null,
+        anarana: 'Vahiny',
+        level: 1,
+        mifandray: true,
+        lobby: null,
+        lalao: null,
+        fotoana: Date.now()
     });
-}
 
-// ============================================
-// 4. LOAD MAP
-// ============================================
-let MAP_DATA = {
-    width: 3000,
-    height: 3000,
-    tiles: [],
-    walls: [],
-    waterTiles: [],
-    spawnPoints: []
-};
+    socket.on('authenticate', async (data) => {
+        const p = mpilalao.get(socket.id);
+        if (p) {
+            p.uid = data.uid;
+            p.anarana = data.username;
+            p.level = data.level;
+            mpilalao.set(socket.id, p);
+        }
+    });
 
-try {
-    const mapPath = path.join(__dirname, 'map.json');
-    if (fs.existsSync(mapPath)) {
-        const rawMap = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-        MAP_DATA.tiles = rawMap.filter(t => t && typeof t.x === 'number');
+    socket.on('mamoronaLobby', (data) => {
+        const id = mamoronaId();
+        const lobby = {
+            id: id,
+            tompony: socket.id,
+            mpilalao: [],
+            mode: data.mode || 'battle_royale',
+            max: CONFIG.maxMpilalaoLobby,
+            countdown: CONFIG.countdownLobby,
+            mandeha: false,
+            noforonina: Date.now()
+        };
 
-        MAP_DATA.tiles.forEach(tile => {
-            if (tile.collision) {
-                MAP_DATA.walls.push({
-                    x: tile.x, y: tile.y,
-                    width: tile.s || 32, height: tile.s || 32
-                });
-            }
-            if (tile.swimmable) {
-                MAP_DATA.waterTiles.push({
-                    x: tile.x, y: tile.y,
-                    width: tile.s || 32, height: tile.s || 32
-                });
-            }
+        const p = mpilalao.get(socket.id);
+        const mpilalaoLobby = {
+            id: socket.id,
+            uid: p.uid,
+            anarana: data.mpilalao.anarana,
+            level: data.mpilalao.level,
+            hoditra: data.mpilalao.hoditra,
+            tompony: true,
+            vonona: false
+        };
+
+        lobby.mpilalao.push(mpilalaoLobby);
+        lobbies.set(id, lobby);
+
+        p.lobby = id;
+        mpilalao.set(socket.id, p);
+
+        socket.join(id);
+        socket.emit('lobbyNoforonina', {
+            id: id,
+            mpilalao: lobby.mpilalao,
+            mode: lobby.mode
         });
 
-        for (let i = 0; i < 30; i++) {
-            MAP_DATA.spawnPoints.push({
-                x: 1000 + Math.random() * 1000,
-                y: 1000 + Math.random() * 1000
+        manombokaCountdownLobby(id);
+    });
+
+    socket.on('miditraLobby', (data) => {
+        const lobby = lobbies.get(data.id);
+        if (!lobby) {
+            socket.emit('hadisoana', {hafatra: 'Lobby tsy hita'});
+            return;
+        }
+
+        if (lobby.mpilalao.length >= lobby.max) {
+            socket.emit('hadisoana', {hafatra: 'Feno'});
+            return;
+        }
+
+        const p = mpilalao.get(socket.id);
+        const mpilalaoLobby = {
+            id: socket.id,
+            uid: p.uid,
+            anarana: data.mpilalao.anarana,
+            level: data.mpilalao.level,
+            hoditra: data.mpilalao.hoditra,
+            tompony: false,
+            vonona: false
+        };
+
+        lobby.mpilalao.push(mpilalaoLobby);
+        lobbies.set(data.id, lobby);
+
+        p.lobby = data.id;
+        mpilalao.set(socket.id, p);
+
+        socket.join(data.id);
+        socket.emit('lobbyNiditra', {
+            id: data.id,
+            mpilalao: lobby.mpilalao,
+            mode: lobby.mode,
+            tompony: false,
+            countdownMandeha: lobby.mandeha,
+            countdown: lobby.countdown
+        });
+
+        socket.to(data.id).emit('mpilalaoNiditra', {
+            mpilalao: mpilalaoLobby
+        });
+    });
+
+    socket.on('mialaLobby', (data) => {
+        mialaLobby(socket);
+    });
+
+    socket.on('manovaVonona', (data) => {
+        const lobby = lobbies.get(data.id);
+        if (!lobby) return;
+
+        const mp = lobby.mpilalao.find(m => m.id === socket.id);
+        if (mp) {
+            mp.vonona = data.vonona;
+            io.to(data.id).emit('vononaNohavaozina', {
+                uid: mp.uid,
+                vonona: data.vonona
             });
         }
-        console.log('✅ Map loaded');
-    }
-} catch (err) {
-    console.error('❌ Error loading map:', err.message);
-}
+    });
 
-// ============================================
-// 5. LOAD SPRITES
-// ============================================
-let SPRITE_DATA = {
-    tileSize: 50, tiles: {}, weapons: {}, characters: {}, items: {}
-};
+    socket.on('alefaChat', (data) => {
+        const p = mpilalao.get(socket.id);
+        io.to(data.id).emit('chatLobby', {
+            uid: p.uid,
+            anarana: p.anarana,
+            hafatra: data.hafatra.substring(0, 200),
+            fotoana: Date.now()
+        });
+    });
 
-try {
-    const spritePath = path.join(__dirname, 'sprite.json');
-    if (fs.existsSync(spritePath)) {
-        SPRITE_DATA = JSON.parse(fs.readFileSync(spritePath, 'utf8'));
-        console.log('✅ Sprite loaded');
-    }
-} catch (err) {
-    console.error('❌ Error loading sprite:', err.message);
-}
+    socket.on('manombokaMatch', (data) => {
+        const lobby = lobbies.get(data.id);
+        if (!lobby || lobby.tompony!== socket.id) return;
 
-// ============================================
-// 6. GAME CONFIG
-// ============================================
-const CONFIG = {
-    MAP_SIZE: 3000,
-    TICK_RATE: 20,
-    PLAYER_SPEED: 200,
-    PLAYER_SPRINT_SPEED: 320,
-    PLAYER_SWIM_SPEED: 120,
-    PLAYER_HP: 100,
-    PLAYER_ARMOR_MAX: 100,
-    ZONE_DAMAGE: 5,
-    WEAPONS: {
-        fist: { damage: 15, range: 50, fireRate: 500, ammo: Infinity, bulletSpeed: 0 },
-        pistol: { damage: 25, range: 400, fireRate: 300, ammo: 12, bulletSpeed: 600 },
-        shotgun: { damage: 16, range: 150, fireRate: 800, ammo: 8, pellets: 5, bulletSpeed: 400, spread: 0.3 },
-        smg: { damage: 18, range: 300, fireRate: 100, ammo: 30, bulletSpeed: 700 },
-        rifle: { damage: 35, range: 600, fireRate: 150, ammo: 30, bulletSpeed: 900 },
-        sniper: { damage: 90, range: 1000, fireRate: 1200, ammo: 5, bulletSpeed: 1200 }
-    },
-    LOOT_SPAWN_COUNT: 50,
-    VEHICLE_SPAWN_COUNT: 8,
-    GRENADE_DAMAGE: 75,
-    GRENADE_RADIUS: 100
-};
+        manombokaLalao(lobby);
+    });
 
-// ============================================
-// 7. GLOBAL STATE
-// ============================================
-let players = {};
-let matches = {};
-let rooms = {};
+    socket.on('mitadyMatch', (data) => {
+        const fangatahana = {
+            socketId: socket.id,
+            mode: data.mode,
+            mpilalao: data.mpilalao,
+            fotoana: Date.now()
+        };
 
-// ============================================
-// 8. UTILS
-// ============================================
-function checkWallCollision(x, y, radius = 12) {
-    if (typeof x!== 'number' || typeof y!== 'number') return true;
-    x = Math.max(0, Math.min(MAP_DATA.width, x));
-    y = Math.max(0, Math.min(MAP_DATA.height, y));
-    for (const wall of MAP_DATA.walls) {
-        if (x + radius > wall.x && x - radius < wall.x + wall.width &&
-            y + radius > wall.y && y - radius < wall.y + wall.height) {
-            return true;
+        matchmaking.set(socket.id, fangatahana);
+        socket.emit('matchmakingStarted', {});
+
+        mitadyMpifanandrina(data.mode);
+    });
+
+    socket.on('ajanonaMitady', () => {
+        matchmaking.delete(socket.id);
+    });
+
+    socket.on('manaikyMatch', (data) => {
+        const lalao = lalaoMavitrika.get(data.id);
+        if (lalao) {
+            lalao.nanaiky.add(socket.id);
+            if (lalao.nanaiky.size === lalao.mpilalao.length) {
+                manombokaLalaoAvyMatchmaking(lalao);
+            }
         }
-    }
-    return false;
-}
+    });
 
-function checkWaterTile(x, y) {
-    for (const water of MAP_DATA.waterTiles) {
-        if (x > water.x && x < water.x + water.width &&
-            y > water.y && y < water.y + water.height) {
-            return true;
+    socket.on('hetsika', (data) => {
+        const p = mpilalao.get(socket.id);
+        if (!p ||!p.lalao) return;
+
+        const lalao = lalaoMavitrika.get(p.lalao);
+        if (!lalao) return;
+
+        const mp = lalao.state.mpilalao.find(m => m.id === socket.id);
+        if (mp) {
+            mp.hetsika = data;
         }
+    });
+
+    socket.on('tifitra', (data) => {
+        const p = mpilalao.get(socket.id);
+        if (!p ||!p.lalao) return;
+
+        const lalao = lalaoMavitrika.get(p.lalao);
+        if (!lalao) return;
+
+        const mp = lalao.state.mpilalao.find(m => m.id === socket.id);
+        if (mp && mp.bala > 0) {
+            mp.bala--;
+            mp.mitifitra = true;
+            mp.zoro = data.zoro;
+
+            const bala = {
+                id: mamoronaId(),
+                x: mp.x,
+                y: mp.y,
+                zoro: data.zoro,
+                tompony: socket.id,
+                fahasimbana: 25
+            };
+
+            lalao.state.bala.push(bala);
+            io.to(p.lalao).emit('vibration', {laharana: [30]});
+        }
+    });
+
+    socket.on('ajanonaTifitra', () => {
+        const p = mpilalao.get(socket.id);
+        if (!p ||!p.lalao) return;
+
+        const lalao = lalaoMavitrika.get(p.lalao);
+        if (!lalao) return;
+
+        const mp = lalao.state.mpilalao.find(m => m.id === socket.id);
+        if (mp) mp.mitifitra = false;
+    });
+
+    socket.on('reload', () => {
+        const p = mpilalao.get(socket.id);
+        if (!p ||!p.lalao) return;
+
+        const lalao = lalaoMavitrika.get(p.lalao);
+        if (!lalao) return;
+
+        const mp = lalao.state.mpilalao.find(m => m.id === socket.id);
+        if (mp) {
+            setTimeout(() => {
+                mp.bala = mp.balaMax || 30;
+                socket.emit('balaLany', {});
+            }, 2000);
+        }
+    });
+
+    socket.on('manodina', (data) => {
+        const p = mpilalao.get(socket.id);
+        if (!p ||!p.lalao) return;
+
+        const lalao = lalaoMavitrika.get(p.lalao);
+        if (!lalao) return;
+
+        const mp = lalao.state.mpilalao.find(m => m.id === socket.id);
+        if (mp) mp.zoro = data.zoro;
+    });
+
+    socket.on('makaShop', async () => {
+        const shop = await makaShopAvyFirebase();
+        socket.emit('shopValiny', shop);
+    });
+
+    socket.on('mividyZavatra', async (data) => {
+        const p = mpilalao.get(socket.id);
+        if (!p ||!p.uid) return;
+
+        const valiny = await mividyZavatra(p.uid, data.id);
+        socket.emit('fividiananaValiny', valiny);
+    });
+
+    socket.on('makaStatistika', async () => {
+        const p = mpilalao.get(socket.id);
+        if (!p ||!p.uid) return;
+
+        const statistika = await makaStatistikaAvyFirebase(p.uid);
+        socket.emit('statistikaValiny', statistika);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Mpilalao niala:', socket.id);
+        mialaLobby(socket);
+        matchmaking.delete(socket.id);
+        mpilalao.delete(socket.id);
+    });
+
+    socket.emit('mifandray', {id: socket.id});
+});
+
+function mialaLobby(socket) {
+    const p = mpilalao.get(socket.id);
+    if (!p ||!p.lobby) return;
+
+    const lobby = lobbies.get(p.lobby);
+    if (!lobby) return;
+
+    lobby.mpilalao = lobby.mpilalao.filter(m => m.id!== socket.id);
+
+    socket.leave(p.lobby);
+    socket.to(p.lobby).emit('mpilalaoNiala', {uid: p.uid});
+
+    if (lobby.mpilalao.length === 0) {
+        lobbies.delete(p.lobby);
+    } else if (lobby.tompony === socket.id) {
+        lobby.tompony = lobby.mpilalao[0].id;
+        lobby.mpilalao[0].tompony = true;
+        io.to(p.lobby).emit('tomponyNiova', {
+            uidVaovao: lobby.mpilalao[0].uid,
+            anarana: lobby.mpilalao[0].anarana
+        });
     }
-    return false;
+
+    p.lobby = null;
+    mpilalao.set(socket.id, p);
 }
 
-function getDistance(x1, y1, x2, y2) {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    return Math.sqrt(dx * dx + dy * dy);
-}
+function manombokaCountdownLobby(id) {
+    const lobby = lobbies.get(id);
+    if (!lobby) return;
 
-function sanitizeString(str, maxLen = 50) {
-    if (typeof str!== 'string') return '';
-    return str.substring(0, maxLen).replace(/[<>'"]/g, '').trim();
-}
+    lobby.mandeha = true;
+    let fotoana = lobby.countdown;
 
-function sanitizeUsername(username) {
-    return sanitizeString(username, 20).replace(/[^a-zA-Z0-9_]/g, '') || 'Player';
-}
+    const interval = setInterval(() => {
+        fotoana--;
+        lobby.countdown = fotoana;
 
-// ============================================
-// 9. CREATE ENTITIES
-// ============================================
-function createPlayer(socketId, data) {
-    return {
-        id: socketId,
-        uid: data.uid || null,
-        username: sanitizeUsername(data.username),
-        x: 1500, y: 1500, angle: 0,
-        hp: CONFIG.PLAYER_HP,
-        armor: 0,
-        weapon: data.startWeapon || 'pistol',
-        ammo: CONFIG.WEAPONS[data.startWeapon || 'pistol'].ammo,
-        grenades: 2,
-        medkits: 0,
-        kills: 0, damage: 0,
-        level: Math.max(1, Math.min(100, data.level || 1)),
-        xp: 0,
-        skin: {
-            color: /^#[0-9A-F]{6}$/i.test(data.skin?.color)? data.skin.color : '#00ff00',
-            hat: ['none','cap','helmet','crown'].includes(data.skin?.hat)? data.skin.hat : 'none'
-        },
-        matchId: null, roomId: null, inVehicle: null,
-        isScoping: false, isSwimming: false,
-        lastShot: 0, lastMove: Date.now(), lastGrenade: 0,
-        velocity: { x: 0, y: 0 },
-        isSprinting: false,
-        friends: [],
-        isBot: false,
-        inLobby: true
-    };
-}
+        io.to(id).emit('countdownNohavaozina', {
+            mandeha: true,
+            fotoana: fotoana
+        });
 
-function createLoot(x, y) {
-    const types = ['weapon_pistol', 'weapon_shotgun', 'weapon_smg', 'weapon_rifle', 'weapon_sniper',
-                   'ammo_light', 'ammo_heavy', 'armor', 'medkit', 'grenade'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    return { id: uuidv4(), type: type, x: x, y: y, picked: false };
-}
+        if (fotoana <= 0 || lobby.mpilalao.length === 0) {
+            clearInterval(interval);
+            lobby.mandeha = false;
 
-function createVehicle(x, y) {
-    return {
-        id: uuidv4(), x: x, y: y, angle: 0, speed: 0,
-        hp: 200, driver: null, passengers: [], type: 'motorcycle'
-    };
-}
-
-// ============================================
-// 10. LOBBY FUNCTIONS
-// ============================================
-function startMatchCountdown() {
-    lobby.state = 'countdown';
-    lobby.countdown = LOBBY_CONFIG.COUNTDOWN_TIME;
-    lobby.matchId = Date.now().toString();
-
-    const countdownInterval = setInterval(() => {
-        lobby.countdown--;
-        io.emit('lobbyCountdown', { time: lobby.countdown });
-        if (lobby.countdown <= 0) {
-            clearInterval(countdownInterval);
-            startMatch();
+            if (lobby.mpilalao.length >= 2) {
+                manombokaLalao(lobby);
+            }
         }
     }, 1000);
 }
 
-function startMatch() {
-    lobby.state = 'ingame';
-    const hasSquads = lobby.realPlayers.some(id => players[id]?.squadId);
-    lobby.mode = hasSquads? 'CS' : 'BR';
-    const cfg = MATCH_CONFIG[lobby.mode];
+function manombokaLalao(lobby) {
+    const id = mamoronaId();
+    const lalao = {
+        id: id,
+        lobbyId: lobby.id,
+        mpilalao: lobby.mpilalao.map(m => m.id),
+        nanaiky: new Set(),
+        state: {
+            mpilalao: [],
+            bala: [],
+            grenady: [],
+            loot: []
+        },
+        faritra: {
+            x: 0,
+            y: 0,
+            radius: CONFIG.faritraVoalohany
+        },
+        manomboka: Date.now()
+    };
 
-    // Fenoina bots ho 30
-    const botsNeeded = LOBBY_CONFIG.MAX_PLAYERS - lobby.realPlayers.length;
-    for (let i = 0; i < botsNeeded; i++) {
-        const botId = 'bot_' + i + '_' + Date.now();
-        lobby.bots.push(botId);
-        players[botId] = {
-            id: botId, uid: botId, username: 'BOT_' + (i + 1),
-            x: 1000 + Math.random() * 1000, y: 1000 + Math.random() * 1000,
-            hp: 100, armor: 0, weapon: 'fist', ammo: Infinity,
-            skin: { color: '#888888', hat: 'none' }, level: 1,
-            squadId: null, team: null, angle: 0, isMoving: false, isSprinting: false,
-            isBot: true, inLobby: false, kills: 0, xp: 0, matchId: lobby.matchId,
-            grenades: 0, medkits: 0
-        };
-    }
+    lobby.mpilalao.forEach((m, i) => {
+        const angle = (i / lobby.mpilalao.length) * Math.PI * 2;
+        const radius = 1000;
 
-    // Teleport vraie players
-    lobby.realPlayers.forEach(playerId => {
-        const p = players[playerId];
+        lalao.state.mpilalao.push({
+            id: m.id,
+            uid: m.uid,
+            anarana: m.anarana,
+            x: Math.cos(angle) * radius,
+            y: Math.sin(angle) * radius,
+            zoro: 0,
+            fahasalamana: 100,
+            bala: 30,
+            balaMax: 30,
+            vono: 0,
+            velona: true,
+            hetsika: {}
+        });
+
+        const p = mpilalao.get(m.id);
         if (p) {
-            p.inLobby = false;
-            p.matchId = lobby.matchId;
-            p.x = 1200 + Math.random() * 600;
-            p.y = 1200 + Math.random() * 600;
+            p.lalao = id;
+            p.lobby = null;
+            mpilalao.set(m.id, p);
         }
     });
 
-    // Zone
-    const shrinkDistance = cfg.ZONE_START - cfg.ZONE_END;
-    const matchZone = {
-        x: 1500, y: 1500,
-        radius: cfg.ZONE_START,
-        targetRadius: cfg.ZONE_END,
-        shrinkSpeed: shrinkDistance / cfg.TOTAL_TIME,
-        isActive: true,
-        startTime: Date.now(),
-        totalTime: cfg.TOTAL_TIME
-    };
-
-    matches[lobby.matchId] = {
-        id: lobby.matchId,
-        players: players,
-        zone: matchZone,
-        bullets: [],
-        loot: [],
-        vehicles: [],
-        state: 'active'
-    };
-
-    // Spawn loot + vehicles
-    for (let i = 0; i < CONFIG.LOOT_SPAWN_COUNT; i++) {
-        let x, y, attempts = 0;
-        do {
-            x = Math.random() * CONFIG.MAP_SIZE;
-            y = Math.random() * CONFIG.MAP_SIZE;
-            attempts++;
-        } while (checkWallCollision(x, y, 10) && attempts < 50);
-        if (attempts < 50) matches[lobby.matchId].loot.push(createLoot(x, y));
+    for (let i = 0; i < 50; i++) {
+        lalao.state.loot.push({
+            id: mamoronaId(),
+            x: (Math.random() - 0.5) * 8000,
+            y: (Math.random() - 0.5) * 8000,
+            karazana: 'bala'
+        });
     }
 
-    for (let i = 0; i < CONFIG.VEHICLE_SPAWN_COUNT; i++) {
-        let x, y, attempts = 0;
-        do {
-            x = Math.random() * CONFIG.MAP_SIZE;
-            y = Math.random() * CONFIG.MAP_SIZE;
-            attempts++;
-        } while (checkWallCollision(x, y, 30) && attempts < 50);
-        if (attempts < 50) matches[lobby.matchId].vehicles.push(createVehicle(x, y));
-    }
+    lalaoMavitrika.set(id, lalao);
+    lobbies.delete(lobby.id);
 
-    io.emit('matchLaunched', {
-        mode: lobby.mode,
-        totalPlayers: 30,
-        realPlayers: lobby.realPlayers.length,
-        zoneTime: cfg.TOTAL_TIME
+    io.to(lobby.id).emit('matchManomboka', {
+        id: id,
+        state: lalao.state,
+        faritra: lalao.faritra
     });
 
-    startBotAI();
-    startZoneTimer();
+    lobby.mpilalao.forEach(m => {
+        const sock = io.sockets.sockets.get(m.id);
+        if (sock) {
+            sock.join(id);
+            sock.leave(lobby.id);
+        }
+    });
+
+    manombokaLoopLalao(id);
 }
 
-function startBotAI() {
-    setInterval(() => {
-        if (lobby.state!== 'ingame') return;
-        lobby.bots.forEach(botId => {
-            const bot = players[botId];
-            if (!bot || bot.hp <= 0 || bot.inLobby) return;
-            if (Math.random() < 0.3) {
-                bot.angle = Math.random() * Math.PI * 2;
-                bot.isMoving = true;
-                bot.x += Math.cos(bot.angle) * 3;
-                bot.y += Math.sin(bot.angle) * 3;
-                bot.x = Math.max(50, Math.min(2950, bot.x));
-                bot.y = Math.max(50, Math.min(2950, bot.y));
-            }
-            const match = matches[lobby.matchId];
-            if (!match) return;
-            const distToZone = getDistance(bot.x, bot.y, match.zone.x, match.zone.y);
-            if (distToZone > match.zone.radius) {
-                bot.hp -= 1;
-                if (bot.hp <= 0) io.emit('playerDied', { id: botId, reason: 'zone' });
-            }
+function manombokaLoopLalao(id) {
+    const lalao = lalaoMavitrika.get(id);
+    if (!lalao) return;
+
+    const interval = setInterval(() => {
+        havaozyLalao(lalao);
+
+        io.to(id).emit('fanavaozanaLalao', {
+            state: lalao.state,
+            fotoana: Date.now() - lalao.manomboka,
+            faritra: lalao.faritra
         });
-    }, 200);
+
+        const velona = lalao.state.mpilalao.filter(m => m.velona);
+        if (velona.length <= 1) {
+            clearInterval(interval);
+            faranoLalao(lalao, velona[0]);
+        }
+    }, 1000 / 30);
 }
 
-function startZoneTimer() {
-    const zoneInterval = setInterval(() => {
-        const match = matches[lobby.matchId];
-        if (lobby.state!== 'ingame' ||!match) {
-            clearInterval(zoneInterval);
-            return;
-        }
-        const elapsed = (Date.now() - match.zone.startTime) / 1000;
-        const timeLeft = Math.max(0, match.zone.totalTime - elapsed);
-        if (match.zone.radius > match.zone.targetRadius) {
-            match.zone.radius -= match.zone.shrinkSpeed / 10;
-        }
-        io.emit('zoneUpdate', { timeLeft: Math.floor(timeLeft), radius: Math.floor(match.zone.radius) });
-        Object.values(players).forEach(p => {
-            if (p.hp > 0 &&!p.inLobby &&!p.isBot && p.matchId === lobby.matchId) {
-                const dist = getDistance(p.x, p.y, match.zone.x, match.zone.y);
-                if (dist > match.zone.radius) {
-                    p.hp -= 0.5;
-                    if (p.hp <= 0) io.emit('playerDied', { id: p.id, reason: 'zone' });
-                }
-            }
-        });
-        checkMatchEnd();
-    }, 100);
-}
+function havaozyLalao(lalao) {
+    lalao.state.mpilalao.forEach(mp => {
+        if (!mp.velona) return;
 
-function checkMatchEnd() {
-    const alivePlayers = Object.values(players).filter(p => p.hp > 0 &&!p.inLobby && p.matchId === lobby.matchId);
-    const aliveReal = alivePlayers.filter(p =>!p.isBot);
-    if (aliveReal.length <= 1 && lobby.state === 'ingame') {
-        io.emit('matchEnd', { winner: alivePlayers[0]?.username || 'Nobody', isBot: alivePlayers[0]?.isBot || false });
-        setTimeout(() => resetLobby(), 5000);
-    }
-}
+        const h = mp.hetsika || {};
+        const haingana = h.sprint? 5 : 3;
 
-function resetLobby() {
-    lobby = { state: 'waiting', realPlayers: [], bots: [], countdown: 20, matchId: null, mode: 'BR' };
-    Object.keys(players).forEach(id => {
-        if (players[id].isBot) delete players[id];
-        else {
-            players[id].inLobby = true;
-            players[id].matchId = null;
-            players[id].hp = CONFIG.PLAYER_HP;
-            players[id].armor = 0;
-            players[id].kills = 0;
-        }
-    });
-    if (matches[lobby.matchId]) delete matches[lobby.matchId];
-    io.emit('returnToLobby', { message: 'Match tapitra. Miandry players vaovao.' });
-}
+        if (h.ambony) mp.y -= haingana;
+        if (h.ambany) mp.y += haingana;
+        if (h.ankavia) mp.x -= haingana;
+        if (h.ankavanana) mp.x += haingana;
 
-// ============================================
-// 11. SOCKET HANDLERS
-// ============================================
-io.on('connection', (socket) => {
-    console.log('✅ Connected:', socket.id);
+        mp.x = Math.max(-5000, Math.min(5000, mp.x));
+        mp.y = Math.max(-5000, Math.min(5000, mp.y));
 
-    // ADMIN
-    socket.on('requestAdminAccess', (data) => {
-        const player = players[socket.id];
-        if (!player) {
-            socket.emit('adminAccessResult', { granted: false });
-            return;
-        }
-        const isAdminUser = ADMIN_USERS.includes(player.username);
-        const clientIP = socket.handshake.address;
-        const isAdminIP = ADMIN_IPS.length === 0 || ADMIN_IPS.includes(clientIP);
-        if (isAdminUser && isAdminIP) {
-            ADMIN_TOKENS.set(socket.id, Date.now());
-            socket.emit('adminAccessResult', { granted: true });
-            console.log(`👑 ADMIN GRANTED: ${player.username} (${clientIP})`);
-        } else {
-            socket.emit('adminAccessResult', { granted: false });
-            console.log(`❌ ADMIN DENIED: ${player.username} (${clientIP})`);
-        }
-    });
-
-    // JOIN GAME -> LOBBY
-    socket.on("joinGame", (data) => {
-        if (lobby.state === 'ingame') {
-            socket.emit('matchInProgress', { message: 'Efa nanomboka. Andraso ny manaraka.' });
-            return;
-        }
-        lobby.realPlayers.push(socket.id);
-        players[socket.id] = createPlayer(socket.id, data);
-        socket.emit('joinedLobby', {
-            players: lobby.realPlayers.length,
-            maxPlayers: LOBBY_CONFIG.MAX_PLAYERS,
-            countdown: lobby.countdown
-        });
-        io.emit('lobbyUpdate', {
-            realPlayers: lobby.realPlayers.length,
-            totalPlayers: lobby.realPlayers.length + lobby.bots.length,
-            players: Object.values(players).filter(p => p.inLobby)
-        });
-        if (lobby.realPlayers.length >= LOBBY_CONFIG.MIN_REAL_PLAYERS && lobby.state === 'waiting') {
-            startMatchCountdown();
-        }
-        io.emit("gameState", { players: players });
-        io.emit('onlineCount', Object.keys(players).filter(id =>!players[id].isBot).length);
-    });
-
-    // MOVEMENT
-    socket.on('move', (data) => {
-        const player = players[socket.id];
-        if (!player || player.hp <= 0 || player.inLobby) return;
-        if (!checkRateLimit(socket.id, 'move', 30)) return;
-        if (typeof data.x!== 'number' || typeof data.y!== 'number') return;
-        data.x = Math.max(-1, Math.min(1, data.x));
-        data.y = Math.max(-1, Math.min(1, data.y));
-        data.angle = typeof data.angle === 'number'? data.angle : player.angle;
-        data.sprint = Boolean(data.sprint);
-        const now = Date.now();
-        if (!player.lastMove) player.lastMove = now;
-        const dt = (now - player.lastMove) / 1000;
-        if (dt < 0.01 || dt > 0.5) { player.lastMove = now; return; }
-        const dist = getDistance(player.x, player.y, player.x + data.x * 10, player.y + data.y * 10);
-        const maxSpeed = player.isSwimming? CONFIG.PLAYER_SWIM_SPEED : (data.sprint? CONFIG.PLAYER_SPRINT_SPEED : CONFIG.PLAYER_SPEED);
-        const maxDist = maxSpeed * dt * ANTI_CHEAT.MAX_MOVE_TOLERANCE;
-        if (dist > maxDist) return;
-        const speed = maxSpeed;
-        const newX = player.x + data.x * speed * dt;
-        const newY = player.y + data.y * speed * dt;
-        if (!checkWallCollision(newX, player.y, 12)) player.x = newX;
-        if (!checkWallCollision(player.x, newY, 12)) player.y = newY;
-        player.angle = data.angle;
-        player.isSprinting = data.sprint;
-        player.x = Math.max(20, Math.min(CONFIG.MAP_SIZE - 20, player.x));
-        player.y = Math.max(20, Math.min(CONFIG.MAP_SIZE - 20, player.y));
-        player.lastMove = now;
-        player.isSwimming = checkWaterTile(player.x, player.y);
-    });
-
-    // SHOOT
-    socket.on('shoot', (data) => {
-        const player = players[socket.id];
-        if (!player || player.hp <= 0 || player.inLobby) return;
-        if (!checkRateLimit(socket.id, 'shoot', ANTI_CHEAT.MAX_SHOOT_RATE)) return;
-        const weapon = CONFIG.WEAPONS[player.weapon];
-        const now = Date.now();
-        if (now - player.lastShot < weapon.fireRate) return;
-        if (weapon.ammo!== Infinity && player.ammo <= 0) return;
-        if (typeof data.angle!== 'number') return;
-        player.lastShot = now;
-        if (weapon.ammo!== Infinity) player.ammo--;
-        const bullets = weapon.pellets || 1;
-        const match = matches[player.matchId];
-        if (!match) return;
-        for (let i = 0; i < bullets; i++) {
-            const spread = weapon.spread || 0;
-            const angle = data.angle + (Math.random() - 0.5) * spread;
-            match.bullets.push({
-                id: uuidv4(),
-                ownerId: socket.id,
-                x: player.x, y: player.y,
-                vx: Math.cos(angle) * weapon.bulletSpeed,
-                vy: Math.sin(angle) * weapon.bulletSpeed,
-                damage: weapon.damage,
-                lifetime: weapon.range / weapon.bulletSpeed * 1000
-            });
-        }
-    });
-
-    socket.on('scope', (isScoping) => {
-        const player = players[socket.id];
-        if (player) player.isScoping = Boolean(isScoping);
-    });
-
-    socket.on('reload', () => {
-        const player = players[socket.id];
-        if (!player) return;
-        const weapon = CONFIG.WEAPONS[player.weapon];
-        if (weapon && weapon.ammo!== Infinity) {
-            player.ammo = weapon.ammo;
-        }
-    });
-
-    // GRENADE
-    socket.on('grenade', (data) => {
-        const player = players[socket.id];
-        if (!player || player.grenades <= 0 || player.inLobby) return;
-        if (!checkRateLimit(socket.id, 'grenade', ANTI_CHEAT.MAX_GRENADES_SEC)) return;
-        if (typeof data.angle!== 'number') return;
-        player.grenades--;
-        const grenadeX = player.x + Math.cos(data.angle) * 150;
-        const grenadeY = player.y + Math.sin(data.angle) * 150;
-        const finalX = Math.max(0, Math.min(CONFIG.MAP_SIZE, grenadeX));
-        const finalY = Math.max(0, Math.min(CONFIG.MAP_SIZE, grenadeY));
-        setTimeout(() => {
-            io.emit('explosion', { x: finalX, y: finalY });
-            Object.values(players).forEach(p => {
-                if (p.hp <= 0 || p.inLobby) return;
-                const dist = getDistance(finalX, finalY, p.x, p.y);
-                if (dist < CONFIG.GRENADE_RADIUS) {
-                    const damage = CONFIG.GRENADE_DAMAGE * (1 - dist / CONFIG.GRENADE_RADIUS);
-                    p.hp = Math.max(0, p.hp - damage);
-                    if (p.hp <= 0 && p.id!== socket.id) player.kills++;
-                }
-            });
-        }, 3000);
-    });
-
-    // MEDKIT
-    socket.on('useMedkit', () => {
-        const player = players[socket.id];
-        if (!player || player.medkits <= 0 || player.hp >= 100) return;
-        player.medkits--;
-        player.hp = Math.min(100, player.hp + 75);
-        socket.emit('medkitUpdate', { count: player.medkits });
-        socket.emit('healEffect', { amount: 75 });
-    });
-
-    // INTERACT
-    socket.on('interact', () => {
-        const player = players[socket.id];
-        if (!player || player.inLobby) return;
-        const match = matches[player.matchId];
-        if (!match) return;
-        let nearestLoot = null;
-        let nearestDist = 60;
-        match.loot.forEach(loot => {
-            if (loot.picked) return;
-            const dist = getDistance(player.x, player.y, loot.x, loot.y);
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearestLoot = loot;
-            }
-        });
-        if (nearestLoot) {
-            nearestLoot.picked = true;
-            handleLootPickup(player, nearestLoot, match);
-        }
-    });
-
-    function handleLootPickup(player, loot, match) {
-        const lootData = loot.type.split('_');
-        const category = lootData[0];
-        const item = lootData[1];
-        if (category === 'weapon') {
-            if (CONFIG.WEAPONS[item]) {
-                player.weapon = item;
-                player.ammo = CONFIG.WEAPONS[item].ammo;
-                io.to(player.id).emit('lootPickup', { type: 'weapon', item: item, playerId: player.id });
-            }
-        } else if (category === 'ammo') {
-            const amount = item === 'light'? 30 : 20;
-            player.ammo += amount;
-            io.to(player.id).emit('lootPickup', { type: 'ammo', amount: amount, playerId: player.id });
-        } else if (loot.type === 'armor') {
-            player.armor = Math.min(CONFIG.PLAYER_ARMOR_MAX, player.armor + 50);
-            io.to(player.id).emit('lootPickup', { type: 'armor', amount: 50, playerId: player.id });
-        } else if (loot.type === 'medkit') {
-            player.medkits = Math.min(5, (player.medkits || 0) + 1);
-            io.to(player.id).emit('medkitUpdate', { count: player.medkits });
-            io.to(player.id).emit('lootPickup', { type: 'medkit', amount: 1, playerId: player.id });
-        } else if (loot.type === 'grenade') {
-            player.grenades = Math.min(5, player.grenades + 1);
-            io.to(player.id).emit('lootPickup', { type: 'grenade', amount: 1, playerId: player.id });
-        }
-        io.to(player.id).emit('soundEvent', 'pickup');
-        match.loot = match.loot.filter(l => l.id!== loot.id);
-    }
-
-    // VEHICLE
-    socket.on('enterVehicle', () => {
-        const player = players[socket.id];
-        if (!player || player.inLobby) return;
-        const match = matches[player.matchId];
-        if (!match) return;
-        if (player.inVehicle) {
-            const vehicle = match.vehicles.find(v => v.id === player.inVehicle);
-            if (vehicle) {
-                vehicle.driver = null;
-                player.inVehicle = null;
-            }
-        } else {
-            let nearestVehicle = null;
-            let nearestDist = 60;
-            match.vehicles.forEach(v => {
-                if (v.driver) return;
-                const dist = getDistance(player.x, player.y, v.x, v.y);
-                if (dist < nearestDist) {
-                    nearestDist = dist;
-                    nearestVehicle = v;
-                }
-            });
-            if (nearestVehicle) {
-                nearestVehicle.driver = socket.id;
-                player.inVehicle = nearestVehicle.id;
+        const halavirana = Math.sqrt(mp.x * mp.x + mp.y * mp.y);
+        if (halavirana > lalao.faritra.radius) {
+            mp.fahasalamana -= 0.5;
+            if (mp.fahasalamana <= 0) {
+                mp.velona = false;
+                mp.fahasalamana = 0;
             }
         }
     });
 
-    // WEAPON SWITCH
-    socket.on('switchWeapon', (weaponName) => {
-        const player = players[socket.id];
-        if (!player ||!CONFIG.WEAPONS[weaponName]) return;
-        player.weapon = weaponName;
-        player.ammo = CONFIG.WEAPONS[weaponName].ammo;
-    });
+    lalao.state.bala = lalao.state.bala.filter(b => {
+        b.x += Math.cos(b.zoro) * 15;
+        b.y += Math.sin(b.zoro) * 15;
 
-    // SKIN CHANGE
-    socket.on('changeSkin', (skin) => {
-        const player = players[socket.id];
-        if (!player ||!skin) return;
-        player.skin = {
-            color: /^#[0-9A-F]{6}$/i.test(skin.color)? skin.color : '#00ff00',
-            hat: ['none','cap','helmet','crown','viking','wizard','cowboy','tophat'].includes(skin.hat)? skin.hat : 'none'
-        };
-    });
+        let voa = false;
+        lalao.state.mpilalao.forEach(mp => {
+            if (mp.id!== b.tompony && mp.velona) {
+                const dist = Math.sqrt((mp.x - b.x) ** 2 + (mp.y - b.y) ** 2);
+                if (dist < 25) {
+                    mp.fahasalamana -= b.fahasimbana;
+                    voa = true;
 
-    // CHAT
-    socket.on('chatMessage', (data) => {
-        if (!checkRateLimit(socket.id, 'chat', ANTI_CHEAT.MAX_CHAT_RATE)) return;
-        const player = players[socket.id];
-        if (!player ||!data ||!data.message) return;
-        const msg = {
-            username: player.username,
-            message: sanitizeString(data.message, 200),
-            timestamp: Date.now()
-        };
-        io.emit('chatMessage', {...msg, type: 'lobby' });
-    });
-
-    // DISCONNECT
-    socket.on('disconnect', () => {
-        console.log('Player disconnected:', socket.id);
-        const player = players[socket.id];
-        if (player) {
-            lobby.realPlayers = lobby.realPlayers.filter(id => id!== socket.id);
-            if (lobby.realPlayers.length === 0 && lobby.state!== 'waiting') {
-                resetLobby();
-            }
-            delete players[socket.id];
-        }
-        ADMIN_TOKENS.delete(socket.id);
-        clearRateLimits(socket.id);
-        io.emit('onlineCount', Object.keys(players).filter(id =>!players[id].isBot).length);
-    });
-});
-
-// ============================================
-// GAME LOOP
-// ============================================
-setInterval(() => {
-    Object.values(matches).forEach(match => {
-        if (match.state!== 'active') return;
-
-        // Zone shrink
-        match.zone.timer -= 1000 / CONFIG.TICK_RATE;
-        if (match.zone.timer <= 0) {
-            match.zone.phase++;
-            match.zone.targetRadius = Math.max(100, match.zone.radius * 0.5);
-            match.zone.timer = 45000;
-            const angle = Math.random() * Math.PI * 2;
-            const dist = match.zone.radius * 0.3;
-            match.zone.x += Math.cos(angle) * dist;
-            match.zone.y += Math.sin(angle) * dist;
-            match.zone.x = Math.max(match.zone.targetRadius, Math.min(CONFIG.MAP_SIZE - match.zone.targetRadius, match.zone.x));
-            match.zone.y = Math.max(match.zone.targetRadius, Math.min(CONFIG.MAP_SIZE - match.zone.targetRadius, match.zone.y));
-        }
-        if (match.zone.radius > match.zone.targetRadius) match.zone.radius -= 2;
-
-        // Update bullets
-        match.bullets = match.bullets.filter(bullet => {
-            bullet.x += bullet.vx * (1 / CONFIG.TICK_RATE);
-            bullet.y += bullet.vy * (1 / CONFIG.TICK_RATE);
-            bullet.lifetime -= 1000 / CONFIG.TICK_RATE;
-            if (checkWallCollision(bullet.x, bullet.y, 3)) return false;
-            Object.values(match.players).forEach(player => {
-                if (player.id === bullet.ownerId || player.hp <= 0) return;
-                const dist = getDistance(bullet.x, bullet.y, player.x, player.y);
-                if (dist < 15) {
-                    let damage = bullet.damage;
-                    const headshot = dist < 8;
-                    if (headshot) damage *= 2;
-                    if (player.armor > 0) {
-                        const armorAbsorb = Math.min(player.armor, damage * 0.7);
-                        player.armor = Math.max(0, player.armor - armorAbsorb);
-                        damage -= armorAbsorb;
+                    const tompony = lalao.state.mpilalao.find(m => m.id === b.tompony);
+                    if (tompony) {
+                        io.to(b.tompony).emit('fahasimbana', {
+                            isa: b.fahasimbana,
+                            avyAmin: mp.id
+                        });
                     }
-                    player.hp = Math.max(0, player.hp - damage);
-                    const owner = match.players[bullet.ownerId];
-                    if (owner) {
-                        owner.damage += damage;
-                        if (player.hp <= 0) {
-                            owner.kills++;
-                            io.to(match.id).emit('killFeed', {
-                                killer: owner.username, victim: player.username, weapon: owner.weapon
-                            });
-                        }
+
+                    if (mp.fahasalamana <= 0) {
+                        mp.velona = false;
+                        mp.fahasalamana = 0;
+                        if (tompony) tompony.vono++;
+
+                        io.to(mp.id).emit('mpilalaoMaty', {
+                            vono: mp.vono,
+                            laharana: lalao.state.mpilalao.filter(m => m.velona).length + 1
+                        });
                     }
-                    io.to(bullet.ownerId).emit('hitmarker');
-                    io.to(player.id).emit('damageNumber', {
-                        x: player.x, y: player.y, damage: Math.floor(damage), isHeadshot: headshot
-                    });
-                    bullet.lifetime = 0;
                 }
-            });
-            return bullet.lifetime > 0 && bullet.x > 0 && bullet.x < CONFIG.MAP_SIZE && bullet.y > 0 && bullet.y < CONFIG.MAP_SIZE;
-        });
-
-        // Zone damage + swim check
-        Object.values(match.players).forEach(player => {
-            if (player.hp <= 0) return;
-            const dist = getDistance(player.x, player.y, match.zone.x, match.zone.y);
-            if (dist > match.zone.radius) {
-                player.hp = Math.max(0, player.hp - CONFIG.ZONE_DAMAGE * (1 / CONFIG.TICK_RATE));
             }
-            player.isSwimming = checkWaterTile(player.x, player.y);
         });
 
-        // Broadcast
-        io.to(match.id).emit('gameUpdate', {
-            players: match.players,
-            bullets: match.bullets,
-            loot: match.loot,
-            vehicles: match.vehicles,
-            zone: match.zone,
-            aliveCount: Object.values(match.players).filter(p => p.hp > 0).length
-        });
+        return!voa && Math.abs(b.x) < 6000 && Math.abs(b.y) < 6000;
     });
-}, 1000 / CONFIG.TICK_RATE);
 
-// ============================================
-// EXPRESS ROUTES
-// ============================================
+    const fotoana = Date.now() - lalao.manomboka;
+    const fandrosoana = Math.min(1, fotoana / CONFIG.fotoanaFaritra);
+    lalao.faritra.radius = CONFIG.faritraVoalohany - (CONFIG.faritraVoalohany - CONFIG.faritraFarany) * fandrosoana;
+}
+
+function faranoLalao(lalao, mpandresy) {
+    lalao.state.mpilalao.forEach(mp => {
+        const sock = io.sockets.sockets.get(mp.id);
+        if (sock) {
+            sock.leave(lalao.id);
+            const p = mpilalao.get(mp.id);
+            if (p) {
+                p.lalao = null;
+                mpilalao.set(mp.id, p);
+            }
+        }
+
+        if (mp.id === mpandresy?.id) {
+            io.to(mp.id).emit('mpilalaoNandresy', {
+                vono: mp.vono
+            });
+        }
+    });
+
+    lalaoMavitrika.delete(lalao.id);
+}
+
+function mitadyMpifanandrina(mode) {
+    const miandry = Array.from(matchmaking.values()).filter(m => m.mode === mode);
+
+    if (miandry.length >= 2) {
+        const vondrona = miandry.slice(0, Math.min(100, miandry.length));
+        const id = mamoronaId();
+
+        const lalao = {
+            id: id,
+            mpilalao: vondrona.map(v => v.socketId),
+            nanaiky: new Set()
+        };
+
+        lalaoMavitrika.set(id, lalao);
+
+        vondrona.forEach(v => {
+            matchmaking.delete(v.socketId);
+            io.to(v.socketId).emit('matchHita', {
+                id: id,
+                isa: vondrona.length,
+                max: 100,
+                sarintany: 'Madagascar'
+            });
+        });
+    }
+}
+
+function mamoronaId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+async function makaShopAvyFirebase() {
+    const snapshot = await db.collection('shop').get();
+    const zavatra = [];
+    snapshot.forEach(doc => {
+        zavatra.push({id: doc.id,...doc.data()});
+    });
+    return {
+        zavatra: zavatra,
+        fotoanaMiverina: Date.now() + 86400000
+    };
+}
+
+async function mividyZavatra(uid, zavatraId) {
+    const userRef = db.collection('mpilalao').doc(uid);
+    const user = await userRef.get();
+
+    if (!user.exists) return {vita: false, antony: 'Tsy hita'};
+
+    const data = user.data();
+    const zavatra = await db.collection('shop').doc(zavatraId).get();
+
+    if (!zavatra.exists) return {vita: false, antony: 'Zavatra tsy hita'};
+
+    const z = zavatra.data();
+    const vidiny = z.vidinyFihena || z.vidiny;
+    const vola = z.vola === 'diamondra'? data.diamondra : data.volamena;
+
+    if (vola < vidiny) return {vita: false, antony: 'Tsy ampy vola'};
+
+    if (data.hoditra && data.hoditra.includes(zavatraId)) {
+        return {vita: false, antony: 'Efa manana'};
+    }
+
+    const fanavaozana = {};
+    if (z.vola === 'diamondra') {
+        fanavaozana.diamondra = admin.firestore.FieldValue.increment(-vidiny);
+    } else {
+        fanavaozana.volamena = admin.firestore.FieldValue.increment(-vidiny);
+    }
+    fanavaozana.hoditra = admin.firestore.FieldValue.arrayUnion(zavatraId);
+
+    await userRef.update(fanavaozana);
+
+    return {vita: true};
+}
+
+async function makaStatistikaAvyFirebase(uid) {
+    const doc = await db.collection('statistika').doc(uid).get();
+    return doc.exists? doc.data() : {ankapobeny: {}, fitaovana: {}, sarintany: {}};
+}
+
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/api/map', (req, res) => {
     res.json({
-        width: MAP_DATA.width,
-        height: MAP_DATA.height,
-        walls: MAP_DATA.walls,
-        waterTiles: MAP_DATA.waterTiles
+        anarana: 'MG Fighter Server',
+        version: '4.0.0',
+        mpilalao: mpilalao.size,
+        lobbies: lobbies.size,
+        lalao: lalaoMavitrika.size
     });
 });
 
-app.get('/api/sprites', (req, res) => {
-    res.json(SPRITE_DATA);
+app.get('/health', (req, res) => {
+    res.json({status: 'ok', fotoana: Date.now()});
 });
 
-app.get('/api/stats', (req, res) => {
-    res.json({
-        players: Object.keys(players).filter(id =>!players[id].isBot).length,
-        matches: Object.keys(matches).map(id => ({
-            id,
-            players: Object.keys(matches[id].players).length,
-            state: matches[id].state
-        })),
-        lobby: {
-            state: lobby.state,
-            realPlayers: lobby.realPlayers.length,
-            bots: lobby.bots.length
-        }
-    });
+server.listen(PORT, () => {
+    console.log(`Server mandeha amin'ny port ${PORT}`);
+    console.log(`Mpilalao: 0`);
 });
 
-// ============================================
-// START SERVER - Tohiny
-// ============================================
-    console.log(`⏱️ CS: ${MATCH_CONFIG.CS.TOTAL_TIME/60}min`);
-    console.log(`🗺️ Map: ${CONFIG.MAP_SIZE}x${CONFIG.MAP_SIZE}`);
-    console.log(`🧱 Walls: ${MAP_DATA.walls.length}`);
-    console.log(`🛡️ Anti-Cheat: ENABLED`);
-    console.log(`📁 Static: ${__dirname}`);
-});
-
-// ============================================
-// GRACEFUL SHUTDOWN
-// ============================================
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, closing server...');
-    io.emit('serverMessage', { text: 'Server restarting...', type: 'info' });
-    server.close(() => {
-        console.log('Server closed');
-        Object.keys(rateLimits).forEach(type => rateLimits[type].clear());
-        process.exit(0);
-    });
-});
-
-process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
-});
-
-process.on('unhandledRejection', (err) => {
-    console.error('Unhandled Rejection:', err);
-});
+setInterval(() => {
+    console.log(`Stats - Mpilalao: ${mpilalao.size}, Lobbies: ${lobbies.size}, Lalao: ${lalaoMavitrika.size}`);
+}, 60000);
