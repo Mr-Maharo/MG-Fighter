@@ -13,162 +13,139 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-    <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
-        authDomain: "mgfigther-b3760.firebaseapp.com",
-        projectId: "mgfigther-b3760",
-        storageBucket: "mgfigther-b3760.firebasestorage.app",
-        messagingSenderId: "829325634031",
-        appId: "1:829325634031:web:b9c13b78ffec75a372ee1a",
-        measurementId: "G-30QH3M5E9Z"
-      };
-      firebase.initializeApp(firebaseConfig);
-    </script>
 </head>
 <body>
-<!-- MINIMAP -->
-<div id="minimap" style="position:fixed;top:10px;left:10px;width:200px;height:200px;background:rgba(0,0,0,0.7);border:2px solid #00ff00;border-radius:10px;overflow:hidden;z-index:100;">
-    <canvas id="minimapCanvas" width="200" height="200"></canvas>
-    <div style="position:absolute;bottom:5px;left:5px;color:#00ff00;font-size:10px;font-weight:bold;">ZONE</div>
-</div>
 
-<!-- PARAMETRE BUTTON -->
-<button id="settingsBtn" style="position:fixed;top:10px;right:220px;width:45px;height:45px;background:rgba(0,0,0,0.7);border:2px solid #fff;border-radius:50%;color:#fff;font-size:20px;z-index:100;">⚙️</button>
-
-<!-- SETTINGS PANEL -->
-<div id="settingsPanel" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.95);padding:30px;border:2px solid #00ff00;border-radius:15px;color:#fff;z-index:9999;display:none;min-width:300px;">
-    <h2 style="color:#00ff00;margin:0 0 20px 0;">PARAMETRE</h2>
-    <div style="margin:15px 0;">
-        <label>Sensitivity: <span id="sensVal">50</span></label><br>
-        <input type="range" id="sensitivity" min="10" max="100" value="50" style="width:100%;">
-    </div>
-    <div style="margin:15px 0;">
-        <label>Volume: <span id="volVal">50</span></label><br>
-        <input type="range" id="volume" min="0" max="100" value="50" style="width:100%;">
-    </div>
-    <div style="margin:15px 0;">
-        <label><input type="checkbox" id="autoShoot"> Auto Shoot</label>
-    </div>
-    <button onclick="document.getElementById('settingsPanel').style.display='none'" style="width:100%;padding:10px;background:#00ff00;color:#000;border:none;border-radius:5px;font-weight:bold;margin-top:10px;">AKATONA</button>
-</div>
-
-<!-- HEAL BUTTON -->
-<button id="healBtn" style="position:fixed;bottom:80px;right:20px;width:70px;height:70px;background:rgba(0,255,0,0.3);border:3px solid #00ff00;border-radius:50%;color:#fff;font-size:30px;z-index:100;display:none;">
-    💊<div id="healCount" style="position:absolute;top:-5px;right:-5px;background:#ff0000;border-radius:50%;width:25px;height:25px;font-size:14px;line-height:25px;">0</div>
-</button>
-
-<!-- FIRE BUTTONS 4 DIRECTIONS -->
-<div id="fireControls" style="position:fixed;bottom:20px;right:20px;z-index:100;display:none;">
-    <div style="position:relative;width:150px;height:150px;">
-        <button class="fireDirBtn" data-angle="270" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:50px;height:50px;background:rgba(255,0,0,0.4);border:2px solid #ff0000;border-radius:50%;color:#fff;font-size:20px;">↑</button>
-        <button class="fireDirBtn" data-angle="0" style="position:absolute;top:50%;right:0;transform:translateY(-50%);width:50px;height:50px;background:rgba(255,0,0,0.4);border:2px solid #ff0000;border-radius:50%;color:#fff;font-size:20px;">→</button>
-        <button class="fireDirBtn" data-angle="90" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:50px;height:50px;background:rgba(255,0,0,0.4);border:2px solid #ff0000;border-radius:50%;color:#fff;font-size:20px;">↓</button>
-        <button class="fireDirBtn" data-angle="180" style="position:absolute;top:50%;left:0;transform:translateY(-50%);width:50px;height:50px;background:rgba(255,0,0,0.4);border:2px solid #ff0000;border-radius:50%;color:#fff;font-size:20px;">←</button>
-        <button id="fireCenterBtn" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;background:rgba(255,0,0,0.7);border:3px solid #ff0000;border-radius:50%;color:#fff;font-size:24px;font-weight:bold;">🔥</button>
-    </div>
-</div>
-
-<!-- WEAPON SELECT @ LOBBY - Ampio ao @ #lobbyScreen -->
-<div style="background:rgba(0,0,0,0.6);padding:20px;border-radius:15px;border:2px solid #00ff00;margin:20px;">
-    <h3 style="color:#00ff00;margin:0 0 15px 0;">FIDIO NY FIADIANA</h3>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-        <button class="weaponSelectBtn" data-weapon="pistol" style="padding:15px;background:rgba(0,255,0,0.2);border:2px solid #00ff00;border-radius:8px;color:#fff;cursor:pointer;">🔫<br>Pistol</button>
-        <button class="weaponSelectBtn" data-weapon="shotgun" style="padding:15px;background:rgba(0,0,0,0.4);border:2px solid #666;border-radius:8px;color:#fff;cursor:pointer;">💥<br>Shotgun</button>
-        <button class="weaponSelectBtn" data-weapon="smg" style="padding:15px;background:rgba(0,0,0,0.4);border:2px solid #666;border-radius:8px;color:#fff;cursor:pointer;">🔫<br>SMG</button>
-        <button class="weaponSelectBtn" data-weapon="rifle" style="padding:15px;background:rgba(0,0,0,0.4);border:2px solid #666;border-radius:8px;color:#fff;cursor:pointer;">🎯<br>Rifle</button>
-        <button class="weaponSelectBtn" data-weapon="sniper" style="padding:15px;background:rgba(0,0,0,0.4);border:2px solid #666;border-radius:8px;color:#fff;cursor:pointer;">🔭<br>Sniper</button>
-        <button class="weaponSelectBtn" data-weapon="fist" style="padding:15px;background:rgba(0,0,0,0.4);border:2px solid #666;border-radius:8px;color:#fff;cursor:pointer;">👊<br>Fist</button>
-    </div>
-    <div style="margin-top:15px;color:#aaa;font-size:12px;">Selected: <span id="selectedWeapon" style="color:#00ff00;">Pistol</span></div>
-</div>
+<!-- ============================================ -->
 <!-- LOADING SCREEN -->
+<!-- ============================================ -->
 <div id="loadingScreen" class="screen">
-    <div class="loading-box">
-        <h1>MG FIGHTER</h1>
-        <div class="loading-spinner"></div>
-        <p id="loadingText">Initializing game assets...</p>
-    </div>
-</div>
-<!-- SALLE D'ATTENTE AMIN'NY SARY -->
-<div id="lobbyScreen" style="position:fixed;inset:0;z-index:9999;display:none;background:#000;">
-    <img src="assets/lobby.jpg" style="position:absolute;width:100%;height:100%;object-fit:cover;opacity:0.6;">
-    <div style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.8));"></div>
-    <div style="position:relative;z-index:10;width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:Arial;text-align:center;">
-        <h1 style="color:#00ff00;font-size:64px;margin:0;text-shadow:0 0 20px #00ff00;">MG FIGHTER</h1>
-        <div style="background:rgba(0,0,0,0.6);padding:30px 50px;border-radius:15px;border:2px solid #00ff00;margin:30px;backdrop-filter:blur(10px);">
-            <div style="font-size:28px;margin-bottom:15px;">PLAYERS: <span id="lobbyCount" style="color:#00ff00;font-weight:bold;">0</span>/30</div>
-            <div style="color:#ffff00;font-size:40px;font-weight:bold;text-shadow:0 0 10px #ffff00;" id="lobbyCountdown">Miandry players... (2 minimum)</div>
-            <div style="color:#aaa;margin-top:20px;font-size:16px;">Ho fenoina bots automatique ho 30 rehefa lancer</div>
+    <div class="loading-container">
+        <div class="loading-logo">
+            <h1 class="game-logo">MG FIGHTER</h1>
+            <div class="logo-glow"></div>
         </div>
-        <div id="lobbyPlayersList" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:600px;"></div>
+        <div class="loading-spinner-wrapper">
+            <div class="loading-spinner"></div>
+            <div class="loading-spinner-inner"></div>
+        </div>
+        <p id="loadingText" class="loading-text">Initializing game assets...</p>
+        <div class="loading-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="loadingProgress"></div>
+            </div>
+            <div class="progress-percent" id="loadingPercent">0%</div>
+        </div>
+        <div class="loading-tips">
+            <p class="tip">💡 Tip: Use headphones for better experience</p>
+        </div>
     </div>
 </div>
 
-<!-- MATCH INFO -->
-<div id="matchInfo" style="position:fixed;top:10px;right:10px;background:rgba(0,0,0,0.7);padding:12px 18px;color:#fff;border-radius:8px;font-size:14px;border:1px solid #00ff00;backdrop-filter:blur(5px);">
-    <div>Players: <span id="playerCount" style="color:#00ff00;font-weight:bold;">0</span>/30</div>
-    <div>Mode: <span id="gameMode" style="color:#00aaff;font-weight:bold;">-</span></div>
-    <div>Zone: <span id="zoneTime" style="color:#ffff00;font-weight:bold;">--:--</span></div>
-</div>
+<!-- ============================================ -->
 <!-- AUTH SCREEN -->
+<!-- ============================================ -->
 <div id="authScreen" class="screen hidden">
-    <div class="auth-box">
-        <h1>MG FIGHTER</h1>
-        <p class="subtitle">BATTLE ROYALE AURA</p>
-        <p class="version">Version 4.0.0</p>
-        
-        <div class="auth-buttons">
-            <button onclick="loginWithGoogle()" class="auth-btn google-btn">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="height:24px;">
-                <span>Continuer avec Google</span>
-            </button>
+    <div class="auth-background">
+        <video autoplay muted loop class="auth-video">
+            <source src="assets/intro.mp4" type="video/mp4">
+        </video>
+        <div class="auth-overlay"></div>
+    </div>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1 class="auth-title">MG FIGHTER</h1>
+                <p class="auth-subtitle">BATTLE ROYALE AURA</p>
+                <p class="auth-version">Version 4.0.0</p>
+            </div>
             
-            <button onclick="loginAnonymously()" class="auth-btn guest-btn">
-                <span>🎮 PLAY AS GUEST</span>
-            </button>
-        </div>
+            <div class="auth-buttons">
+                <button onclick="loginWithGoogle()" class="auth-btn google-btn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="btn-icon">
+                    <span class="btn-text">Continuer avec Google</span>
+                </button>
+                
+                <button onclick="loginWithFacebook()" class="auth-btn facebook-btn">
+                    <span class="btn-icon">f</span>
+                    <span class="btn-text">Login with Facebook</span>
+                </button>
+                
+                <button onclick="loginAnonymously()" class="auth-btn guest-btn">
+                    <span class="btn-icon">🎮</span>
+                    <span class="btn-text">PLAY AS GUEST</span>
+                </button>
+            </div>
 
-        <div class="auth-info">
-            <p>🔥 100 Players Battle Royale</p>
-            <p>⚡ Real-time Multiplayer</p>
-            <p>🎯 Skill-based Matchmaking</p>
-        </div>
+            <div class="auth-divider">
+                <span>OR</span>
+            </div>
 
-        <p id="authError"></p>
-        
-        <div class="auth-footer">
-            <a href="#" onclick="showTerms()">Terms of Service</a>
-            <span>•</span>
-            <a href="#" onclick="showPrivacy()">Privacy Policy</a>
+            <div class="auth-form">
+                <input type="email" id="emailInput" placeholder="Email" class="auth-input">
+                <input type="password" id="passwordInput" placeholder="Password" class="auth-input">
+                <button onclick="loginWithEmail()" class="auth-btn login-btn">LOGIN</button>
+                <button onclick="registerWithEmail()" class="auth-btn register-btn">REGISTER</button>
+            </div>
+
+            <div class="auth-features">
+                <div class="feature-item">
+                    <span class="feature-icon">🔥</span>
+                    <span class="feature-text">30 Players Battle Royale</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">⚡</span>
+                    <span class="feature-text">Real-time Multiplayer</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎯</span>
+                    <span class="feature-text">Skill-based Matchmaking</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎁</span>
+                    <span class="feature-text">Daily Rewards</span>
+                </div>
+            </div>
+
+            <p id="authError" class="auth-error"></p>
+            
+            <div class="auth-footer">
+                <a href="#" onclick="showTerms()">Terms of Service</a>
+                <span class="separator">•</span>
+                <a href="#" onclick="showPrivacy()">Privacy Policy</a>
+                <span class="separator">•</span>
+                <a href="#" onclick="showCredits()">Credits</a>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- LOBBY SCREEN -->
-<div id="lobbyScreen" class="screen hidden">
-    <div class="lobby-header">
-        <div class="profile">
-            <div class="avatar" id="playerAvatar" onclick="openProfile()"></div>
-            <div class="profile-info">
-                <h3 id="playerName">Player</h3>
-                <div class="profile-stats">
-                    <div class="stat" title="Level">
-                        <span>⭐ LV</span> <span id="playerLevel">1</span>
-                    </div>
-                    <div class="stat" title="Coins">
-                        <span>💰</span> <span id="playerCoins">100</span>
-                    </div>
-                    <div class="stat" title="Wins">
-                        <span>🏆</span> <span id="playerWins">0</span>
-                    </div>
-                    <div class="stat" title="Kills">
-                        <span>💀</span> <span id="playerKills">0</span>
-                    </div>
-                    <div class="stat" title="Rank">
-                        <span>📊</span> <span id="playerRank">Bronze</span>
-                    </div>
-                </div>
+<!-- ============================================ -->
+<!-- MAIN MENU -->
+<!-- ============================================ -->
+<div id="mainMenu" class="screen hidden">
+    <div class="menu-background">
+        <img src="assets/menu-bg.jpg" alt="Menu Background" class="menu-bg-image">
+        <div class="menu-bg-overlay"></div>
+    </div>
+    
+    <div class="menu-header">
+        <div class="player-profile-mini" onclick="openProfile()">
+            <div class="avatar-mini" id="playerAvatarMini"></div>
+            <div class="profile-info-mini">
+                <div class="player-name-mini" id="playerNameMini">Player</div>
+                <div class="player-level-mini">LV <span id="playerLevelMini">1</span></div>
+            </div>
+        </div>
+        
+        <div class="header-resources">
+            <div class="resource-item">
+                <span class="resource-icon">💰</span>
+                <span class="resource-value" id="playerCoins">100</span>
+            </div>
+            <div class="resource-item">
+                <span class="resource-icon">💎</span>
+                <span class="resource-value" id="playerDiamonds">0</span>
             </div>
         </div>
         
@@ -176,297 +153,560 @@
             <button class="header-btn" onclick="openSettings()" title="Settings">⚙️</button>
             <button class="header-btn" onclick="openShop()" title="Shop">🛒</button>
             <button class="header-btn" onclick="openInventory()" title="Inventory">🎒</button>
-            <button class="header-btn" onclick="openMail()" title="Mail">📧 <span id="mailBadge" class="badge hidden">0</span></button>
-            <div class="online-count">
-                <span id="onlineCount">0</span> ONLINE
-            </div>
+            <button class="header-btn" onclick="openMail()" title="Mail">
+                📧 <span id="mailBadge" class="badge hidden">0</span>
+            </button>
         </div>
     </div>
-
-    <div class="lobby-content">
-        <!-- LEFT PANEL -->
-        <div class="lobby-panel left-panel">
-            <h2>🎮 GAME MODES</h2>
+    
+    <div class="menu-content">
+        <div class="game-logo-container">
+            <h1 class="game-title">MG FIGHTER</h1>
+            <div class="game-subtitle">BATTLE ROYALE AURA</div>
+        </div>
+        
+        <div class="menu-buttons-container">
+            <button class="menu-btn play-btn-large" id="btnSolo">
+                <span class="btn-icon-large">🎮</span>
+                <span class="btn-text-large">START GAME</span>
+                <span class="btn-subtext">SOLO • 30 PLAYERS</span>
+            </button>
             
-            <div class="mode-section">
-                <h3>BATTLE ROYALE</h3>
-                <button class="play-btn solo-btn" onclick="findMatch('solo')">
-                    <span class="btn-icon">👤</span>
-                    <span class="btn-text">SOLO</span>
-                    <span class="btn-players">1v99</span>
-                </button>
-                <button class="play-btn duo-btn" onclick="findMatch('duo')">
+            <div class="menu-buttons-row">
+                <button class="menu-btn" id="btnSquad">
                     <span class="btn-icon">👥</span>
-                    <span class="btn-text">DUO</span>
-                    <span class="btn-players">2v98</span>
-                </button>
-                <button class="play-btn squad-btn" onclick="findMatch('squad')">
-                    <span class="btn-icon">👨‍👩‍👧‍👦</span>
                     <span class="btn-text">SQUAD</span>
-                    <span class="btn-players">4v96</span>
+                </button>
+                <button class="menu-btn" onclick="openBattlePass()">
+                    <span class="btn-icon">🎫</span>
+                    <span class="btn-text">PASS</span>
+                </button>
+                <button class="menu-btn" onclick="openLeaderboard()">
+                    <span class="btn-icon">🏆</span>
+                    <span class="btn-text">RANK</span>
                 </button>
             </div>
-
-            <div class="mode-section">
-                <h3>🔥 SPECIAL MODES</h3>
-                <button class="special-btn" onclick="findMatch('snipers')">🎯 SNIPERS ONLY</button>
-                <button class="special-btn" onclick="findMatch('melee')">⚔️ MELEE ONLY</button>
-                <button class="special-btn" onclick="findMatch('zone')">💨 FAST ZONE</button>
+        </div>
+        
+        <div class="menu-bottom-info">
+            <div class="online-counter">
+                <span class="online-dot"></span>
+                <span id="onlineCount">0</span> PLAYERS ONLINE
             </div>
+            <div class="server-region">
+                <span class="region-flag">🇲🇬</span>
+                <span class="region-name">Madagascar</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="menu-sidebar">
+        <button class="sidebar-btn" onclick="openEvents()">
+            <span class="sidebar-icon">🎉</span>
+            <span class="sidebar-text">EVENTS</span>
+        </button>
+        <button class="sidebar-btn" onclick="openFriends()">
+            <span class="sidebar-icon">👥</span>
+            <span class="sidebar-text">FRIENDS</span>
+        </button>
+        <button class="sidebar-btn" onclick="openClan()">
+            <span class="sidebar-icon">🛡️</span>
+            <span class="sidebar-text">CLAN</span>
+        </button>
+        <button class="sidebar-btn" onclick="openMissions()">
+            <span class="sidebar-icon">🎯</span>
+            <span class="sidebar-text">MISSIONS</span>
+        </button>
+    </div>
+</div>
 
-            <div class="mode-section">
-                <h3>🏠 CUSTOM ROOM</h3>
-                <button class="custom-btn" onclick="createRoom()">➕ CREATE ROOM</button>
-                <div class="join-room">
-                    <input id="roomCode" type="text" placeholder="ROOM CODE" maxlength="6">
-                    <button onclick="joinRoom()">JOIN</button>
+<!-- ============================================ -->
+<!-- LOBBY SCREEN - SALLE D'ATTENTE -->
+<!-- ============================================ -->
+<div id="lobbyScreen" class="screen hidden">
+    <img src="assets/lobby.jpg" class="lobby-bg">
+    <div class="lobby-overlay"></div>
+    
+    <div class="lobby-header-bar">
+        <button class="back-btn" onclick="leaveLobby()">← BACK</button>
+        <div class="lobby-mode-display">
+            <span class="mode-badge" id="lobbyModeDisplay">BATTLE ROYALE</span>
+        </div>
+        <div class="lobby-room-id">
+            Room: <span id="lobbyRoomId">------</span>
+        </div>
+    </div>
+    
+    <div class="lobby-content">
+        <div class="lobby-title-section">
+            <h1 class="lobby-title">MG FIGHTER</h1>
+            <div class="lobby-subtitle">WAITING ROOM</div>
+        </div>
+        
+        <div class="lobby-info-box">
+            <div class="lobby-info-row">
+                <div class="info-label">PLAYERS</div>
+                <div class="info-value">
+                    <span id="lobbyCount" class="count-number">0</span>
+                    <span class="count-separator">/</span>
+                    <span class="count-max">30</span>
                 </div>
             </div>
-
-            <div class="mode-section">
-                <h3>🎫 BATTLE PASS</h3>
-                <div class="bp-preview">
-                    <div class="bp-level-info">
-                        <span>Level <span id="bpLevel">1</span></span>
-                        <span id="bpXPText">0/100 XP</span>
-                    </div>
-                    <div class="stat-bar">
-                        <div class="stat-fill bp-fill" id="bpXP" style="width:0%"></div>
-                    </div>
+            
+            <div class="lobby-countdown-container">
+                <div class="lobby-countdown" id="lobbyCountdown">
+                    Miandry players... (2 minimum)
                 </div>
-                <button onclick="openBattlePass()">VIEW REWARDS</button>
-                <button onclick="buyBattlePass()" class="premium-btn">BUY PREMIUM</button>
+                <div class="countdown-bar">
+                    <div class="countdown-fill" id="countdownFill"></div>
+                </div>
+            </div>
+            
+            <div class="lobby-hint">
+                <span class="hint-icon">ℹ️</span>
+                <span class="hint-text">Ho fenoina bots automatique ho 30 rehefa lancer</span>
             </div>
         </div>
 
-        <!-- CENTER PANEL -->
-        <div class="lobby-panel center-panel">
-            <div id="roomScreen" class="hidden">
-                <div class="room-header">
-                    <h2>🏠 ROOM</h2>
-                    <p id="roomIdDisplay" class="room-id"></p>
-                    <p id="roomCount" class="room-count">0/4</p>
-                    <button class="close-room" onclick="leaveRoom()">✕</button>
-                </div>
-                
-                <div class="room-settings">
-                    <div class="setting-item">
-                        <label>Mode:</label>
-                        <select id="roomMode">
-                            <option value="solo">Solo</option>
-                            <option value="duo">Duo</option>
-                            <option value="squad">Squad</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <label>Map:</label>
-                        <select id="roomMap">
-                            <option value="default">Default</option>
-                            <option value="desert">Desert</option>
-                            <option value="snow">Snow</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="roomPlayers" class="room-players"></div>
-                
-                <div class="room-actions">
-                    <button id="readyBtn" onclick="ready()" class="ready-btn">READY</button>
-                    <button onclick="startMatch()" id="startMatchBtn" class="start-btn hidden">START MATCH</button>
-                    <button onclick="leaveRoom()" class="leave-btn">LEAVE ROOM</button>
-                </div>
-
-                <div class="room-chat">
-                    <h3>💬 ROOM CHAT</h3>
-                    <div id="roomChatMessages" class="chat-messages"></div>
-                    <div class="chat-input-wrapper">
-                        <input id="roomChatInput" type="text" placeholder="Type message..." onkeypress="if(event.key==='Enter')sendRoomChat()">
-                        <button onclick="sendRoomChat()">📤</button>
-                    </div>
-                </div>
+        <!-- GAME MODE SELECT -->
+        <div class="mode-select-box">
+            <div class="box-header">
+                <h3 class="box-title">FIDIO NY MODE</h3>
+                <div class="box-badge">MODE</div>
             </div>
-
-            <div id="newsScreen">
-                <h2>📰 NEWS & EVENTS</h2>
-                
-                <div class="news-banner">
-                    <h3>🎉 SEASON 1 LAUNCHED!</h3>
-                    <p>New weapons, skins, and battle pass available now!</p>
-                    <button onclick="openBattlePass()">VIEW BATTLE PASS</button>
-                </div>
-
-                <div class="events-list">
-                    <h3>⚡ ACTIVE EVENTS</h3>
-                    <div class="event-item">
-                        <div class="event-icon">🔥</div>
-                        <div class="event-info">
-                            <h4>Double XP Weekend</h4>
-                            <p>Earn 2x XP in all matches</p>
-                            <span class="event-timer">Ends in: 2d 5h</span>
-                        </div>
+            <div class="mode-grid">
+                <button class="mode-select-btn selected" data-mode="BR">
+                    <div class="mode-card-header">
+                        <div class="mode-icon">🏆</div>
+                        <div class="mode-badge-new">POPULAR</div>
                     </div>
-                    <div class="event-item">
-                        <div class="event-icon">💰</div>
-                        <div class="event-info">
-                            <h4>Coin Rush</h4>
-                            <p>+50% coins from matches</p>
-                            <span class="event-timer">Ends in: 1d 12h</span>
-                        </div>
+                    <div class="mode-name">BATTLE ROYALE</div>
+                    <div class="mode-desc">10 min • Zone 2900→500</div>
+                    <div class="mode-stats">
+                        <span class="stat-item">👥 30 Players</span>
+                        <span class="stat-item">⏱️ 10 min</span>
                     </div>
-                </div>
-
-                <div class="daily-challenges">
-                    <h3>🎯 DAILY CHALLENGES</h3>
-                    <div class="challenge-item">
-                        <span class="challenge-text">Play 3 matches</span>
-                        <span class="challenge-progress">1/3</span>
-                        <span class="challenge-reward">+50 XP</span>
+                </button>
+                <button class="mode-select-btn" data-mode="CS">
+                    <div class="mode-card-header">
+                        <div class="mode-icon">⚡</div>
+                        <div class="mode-badge-new">FAST</div>
                     </div>
-                    <div class="challenge-item">
-                        <span class="challenge-text">Get 5 kills</span>
-                        <span class="challenge-progress">2/5</span>
-                        <span class="challenge-reward">+100 Coins</span>
+                    <div class="mode-name">CLASH SQUAD</div>
+                    <div class="mode-desc">5 min • Zone 2400→800</div>
+                    <div class="mode-stats">
+                        <span class="stat-item">👥 4v4 Teams</span>
+                        <span class="stat-item">⏱️ 5 min</span>
                     </div>
-                    <div class="challenge-item">
-                        <span class="challenge-text">Win 1 match</span>
-                        <span class="challenge-progress">0/1</span>
-                        <span class="challenge-reward">+200 XP</span>
-                    </div>
-                </div>
-
-                <div class="leaderboard-preview">
-                    <h3>🏆 TOP PLAYERS</h3>
-                    <ol id="topPlayersList">
-                        <li><span class="rank">1</span> <span class="name">ProGamer</span> <span class="score">5000</span></li>
-                        <li><span class="rank">2</span> <span class="name">EliteSniper</span> <span class="score">4800</span></li>
-                        <li><span class="rank">3</span> <span class="name">KingSlayer</span> <span class="score">4600</span></li>
-                    </ol>
-                    <button onclick="openFullLeaderboard()">VIEW FULL LEADERBOARD</button>
-                </div>
+                </button>
+            </div>
+            <div class="selected-mode-text">
+                Selected: <span id="selectedMode">BATTLE ROYALE</span>
             </div>
         </div>
 
-        <!-- RIGHT PANEL -->
-        <div class="lobby-panel right-panel">
-            <h3>👥 FRIENDS</h3>
-            <div class="friends-tabs">
-                <button class="tab-btn active" onclick="showFriendsTab('online')">Online</button>
-                <button class="tab-btn" onclick="showFriendsTab('all')">All</button>
-                <button class="tab-btn" onclick="showFriendsTab('requests')">Requests</button>
+        <!-- WEAPON SELECT -->
+        <div class="weapon-select-box">
+            <div class="box-header">
+                <h3 class="box-title">FIDIO NY FIADIANA</h3>
+                <div class="box-badge">LOADOUT</div>
             </div>
-            <div id="friendsList" class="friends-list"></div>
-            <div class="add-friend">
-                <input id="addFriendInput" type="text" placeholder="Add friend username">
-                <button onclick="addFriend()">ADD</button>
+            <div class="weapon-grid">
+                <button class="weapon-select-btn selected" data-weapon="pistol">
+                    <div class="weapon-icon">🔫</div>
+                    <div class="weapon-name">Pistol</div>
+                    <div class="weapon-stats">
+                        <span class="stat">DMG: 25</span>
+                        <span class="stat">RNG: 400</span>
+                    </div>
+                </button>
+                <button class="weapon-select-btn" data-weapon="shotgun">
+                    <div class="weapon-icon">💥</div>
+                    <div class="weapon-name">Shotgun</div>
+                    <div class="weapon-stats">
+                        <span class="stat">DMG: 80</span>
+                        <span class="stat">RNG: 150</span>
+                    </div>
+                </button>
+                <button class="weapon-select-btn" data-weapon="smg">
+                    <div class="weapon-icon">🔫</div>
+                    <div class="weapon-name">SMG</div>
+                    <div class="weapon-stats">
+                        <span class="stat">DMG: 18</span>
+                        <span class="stat">RNG: 300</span>
+                    </div>
+                </button>
+                <button class="weapon-select-btn" data-weapon="rifle">
+                    <div class="weapon-icon">🎯</div>
+                    <div class="weapon-name">Rifle</div>
+                    <div class="weapon-stats">
+                        <span class="stat">DMG: 35</span>
+                        <span class="stat">RNG: 600</span>
+                    </div>
+                </button>
+                <button class="weapon-select-btn" data-weapon="sniper">
+                    <div class="weapon-icon">🔭</div>
+                    <div class="weapon-name">Sniper</div>
+                    <div class="weapon-stats">
+                        <span class="stat">DMG: 90</span>
+                        <span class="stat">RNG: 1000</span>
+                    </div>
+                </button>
+                <button class="weapon-select-btn" data-weapon="fist">
+                    <div class="weapon-icon">👊</div>
+                    <div class="weapon-name">Fist</div>
+                    <div class="weapon-stats">
+                        <span class="stat">DMG: 15</span>
+                        <span class="stat">RNG: 50</span>
+                    </div>
+                </button>
             </div>
+            <div class="selected-weapon-text">
+                Selected: <span id="selectedWeapon">Pistol</span>
+            </div>
+        </div>
 
-            <h3>💬 LOBBY CHAT</h3>
-            <div class="chat-tabs">
-                <button class="chat-tab active" onclick="switchChat('global')">Global</button>
-                <button class="chat-tab" onclick="switchChat('team')">Team</button>
+        <!-- PLAYERS LIST -->
+        <div class="lobby-players-container">
+            <div class="players-header">
+                <span class="players-title">PLAYERS IN LOBBY</span>
+                <span class="players-count" id="lobbyPlayersCount">0/30</span>
             </div>
-            <div id="lobbyChatMessages" class="chat-messages"></div>
-            <div class="chat-input-wrapper">
-                <input id="lobbyChatInput" type="text" placeholder="Type message..." onkeypress="if(event.key==='Enter')sendLobbyChat()">
-                <button onclick="sendLobbyChat()">📤</button>
+            <div id="lobbyPlayersList" class="lobby-players-list"></div>
+        </div>
+        
+        <!-- LOBBY CHAT -->
+        <div class="lobby-chat-container">
+            <div class="chat-header">
+                <span class="chat-title">💬 LOBBY CHAT</span>
             </div>
-
-            <h3>🎁 DAILY REWARDS</h3>
-            <div class="daily-reward-box">
-                <div class="reward-day">
-                    <span class="day-num">Day 1</span>
-                    <span class="day-reward">💰 50</span>
-                    <button onclick="claimDailyReward(1)">CLAIM</button>
-                </div>
+            <div id="lobbyChatMessages" class="lobby-chat-messages"></div>
+            <div class="lobby-chat-input">
+                <input type="text" id="lobbyChatInput" placeholder="Type message..." maxlength="200">
+                <button onclick="sendLobbyChat()">SEND</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- ============================================ -->
 <!-- MATCHMAKING SCREEN -->
+<!-- ============================================ -->
 <div id="matchmakingScreen" class="screen hidden">
-    <div class="auth-box">
-        <h1>FINDING MATCH</h1>
-        <p class="subtitle" id="matchmakingMode">SOLO</p>
-        <div class="loading-spinner"></div>
-        <p style="margin-top:20px;" id="matchmakingStatus">Searching players...</p>
-        <div class="matchmaking-info">
-            <p>Players Found: <span id="playersFound">0</span>/100</p>
-            <p>Estimated Time: <span id="estimatedTime">0:30</span></p>
+    <div class="matchmaking-background">
+        <div class="matchmaking-particles"></div>
+    </div>
+    <div class="matchmaking-content">
+        <div class="matchmaking-header">
+            <h1>FINDING MATCH</h1>
+            <p class="matchmaking-mode" id="matchmakingMode">SOLO</p>
         </div>
-        <button onclick="cancelMatchmaking()" style="margin-top:30px;background:#ff4444;">CANCEL</button>
+        <div class="matchmaking-animation">
+            <div class="radar-sweep"></div>
+            <div class="radar-dot"></div>
+            <div class="radar-dot"></div>
+            <div class="radar-dot"></div>
+        </div>
+        <div class="matchmaking-status">
+            <p id="matchmakingStatus">Searching players...</p>
+            <div class="matchmaking-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="matchmaking-info">
+            <div class="info-item">
+                <span class="info-label">Players Found:</span>
+                <span class="info-value"><span id="playersFound">0</span>/30</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Estimated Time:</span>
+                <span class="info-value" id="estimatedTime">0:30</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Region:</span>
+                <span class="info-value">🇲🇬 Madagascar</span>
+            </div>
+        </div>
+        <button onclick="cancelMatchmaking()" class="cancel-btn">CANCEL SEARCH</button>
     </div>
 </div>
 
-<!-- GAME SCREEN -->
-<div id="gameScreen" class="screen hidden">
-    <canvas id="game"></canvas>
+<!-- ============================================ -->
+<!-- GAME CANVAS -->
+<!-- ============================================ -->
+<canvas id="gameCanvas" class="hidden"></canvas>
 
-    <div id="ui">
-        <div class="ui-row">
-            <div class="ui-label">HP:</div>
-            <div class="ui-value"><span id="hp">100</span>/100</div>
-        </div>
-        <div class="stat-bar"><div class="stat-fill" id="hpBar" style="width:100%"></div></div>
-        
-        <div class="ui-row">
-            <div class="ui-label">Armor:</div>
-            <div class="ui-value"><span id="armor">0</span>/100</div>
-        </div>
-        <div class="stat-bar"><div class="stat-fill" id="armorBar" style="width:0%"></div></div>
-        
-        <div class="ui-divider"></div>
-        
-        <div class="ui-row">
-            <div class="ui-label">Weapon:</div>
-            <div class="ui-value" id="weapon">Fist</div>
-        </div>
-        <div class="ui-row">
-            <div class="ui-label">Ammo:</div>
-            <div class="ui-value"><span id="ammo">∞</span></div>
-        </div>
-        <div class="ui-row">
-            <div class="ui-label">Grenades:</div>
-            <div class="ui-value">💣<span id="grenades">0</span></div>
-        </div>
-        
-        <div class="ui-divider"></div>
-        
-        <div class="ui-row">
-            <div class="ui-label">Kills:</div>
-            <div class="ui-value"><span id="kills">0</span></div>
-        </div>
-        <div class="ui-row">
-            <div class="ui-label">Level:</div>
-            <div class="ui-value"><span id="level">1</span></div>
-        </div>
-        <div class="ui-row">
-            <div class="ui-label">XP:</div>
-            <div class="ui-value"><span id="xp">0/100</span></div>
-        </div>
-        
-        <div class="ui-divider"></div>
-        
-        <div id="zoneTimer" class="zone-timer">ZONE: 0s</div>
-        <div id="playersAlive" class="players-alive">Alive: <span id="aliveCount">100</span></div>
+<!-- ============================================ -->
+<!-- GAME UI - HUD ELEMENTS -->
+<!-- ============================================ -->
+
+<!-- MINIMAP -->
+<div id="minimap" class="hud-element">
+    <div class="minimap-header">
+        <span class="minimap-title">MAP</span>
+        <button class="minimap-expand" onclick="expandMinimap()">⛶</button>
     </div>
-
-    <canvas id="minimap" width="200" height="200"></canvas>
-    <div id="killFeed"></div>
-    <div id="damageNumbers"></div>
-    <div id="zoneWarning" class="hidden">⚠️ OUT OF ZONE!</div>
-    <div id="scope" class="hidden"><div class="scope-lines"></div></div>
-    <div id="hitmarker" class="hidden"></div>
-
-    <div id="leaderboard">
-        <h3>🏆 TOP 10</h3>
-        <ol id="lbList"></ol>
-        <div style="margin-top:10px;text-align:center;font-size:14px;">Alive: <span id="aliveCountLB">0</span></div>
+    <canvas id="minimapCanvas" width="200" height="200"></canvas>
+    <div class="minimap-label">ZONE</div>
+    <div class="minimap-compass">
+        <span class="compass-n">N</span>
+        <span class="compass-e">E</span>
+        <span class="compass-s">S</span>
+        <span class="compass-w">W</span>
     </div>
+</div>
 
-    <div id="scoreboard" class="hidden">
+<!-- MATCH INFO -->
+<div id="matchInfo" class="hud-element">
+    <div class="match-info-header">
+        <span class="info-title">MATCH INFO</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Players:</span>
+        <span class="info-value"><span id="playerCount">0</span>/30</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Mode:</span>
+        <span class="info-value" id="gameMode">-</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Zone:</span>
+        <span class="info-value zone-time" id="zoneTime">--:--</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Kills:</span>
+        <span class="info-value" id="playerKills">0</span>
+    </div>
+</div>
+
+<!-- PARAMETRE BUTTON -->
+<button id="settingsBtn" class="hud-element" title="Settings">
+    <span class="btn-icon">⚙️</span>
+</button>
+
+<!-- SETTINGS PANEL -->
+<div id="settingsPanel" class="panel">
+    <div class="panel-header">
+        <h2>PARAMETRE</h2>
+        <button class="panel-close" onclick="document.getElementById('settingsPanel').style.display='none'">✕</button>
+    </div>
+    <div class="panel-body">
+        <div class="settings-tabs">
+            <button class="tab-btn active" onclick="showSettingsTab('controls')">Controls</button>
+            <button class="tab-btn" onclick="showSettingsTab('graphics')">Graphics</button>
+            <button class="tab-btn" onclick="showSettingsTab('audio')">Audio</button>
+        </div>
+        
+        <div id="settingsControlsTab" class="settings-tab-content">
+            <div class="setting-row">
+                <label>Sensitivity: <span id="sensVal">50</span></label>
+                <input type="range" id="sensitivity" min="10" max="100" value="50" class="slider">
+            </div>
+            <div class="setting-row">
+                <label>Aim Sensitivity: <span id="aimSensVal">50</span></label>
+                <input type="range" id="aimSensitivity" min="10" max="100" value="50" class="slider">
+            </div>
+            <div class="setting-row">
+                <label><input type="checkbox" id="autoShoot"> Auto Shoot</label>
+            </div>
+            <div class="setting-row">
+                <label><input type="checkbox" id="autoPickup"> Auto Pickup</label>
+            </div>
+            <div class="setting-row">
+                <label><input type="checkbox" id="leftHanded"> Left Handed Mode</label>
+            </div>
+        </div>
+        
+        <div id="settingsGraphicsTab" class="settings-tab-content hidden">
+            <div class="setting-row">
+                <label>Graphics Quality</label>
+                <select id="graphicsQuality" class="select-input">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                    <option value="ultra">Ultra</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>FPS Limit</label>
+                <select id="fpsLimit" class="select-input">
+                    <option value="30">30 FPS</option>
+                    <option value="60" selected>60 FPS</option>
+                    <option value="120">120 FPS</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label><input type="checkbox" id="showFPS"> Show FPS</label>
+            </div>
+        </div>
+        
+        <div id="settingsAudioTab" class="settings-tab-content hidden">
+            <div class="setting-row">
+                <label>Master Volume: <span id="masterVolVal">100</span></label>
+                <input type="range" id="masterVolume" min="0" max="100" value="100" class="slider">
+            </div>
+            <div class="setting-row">
+                <label>Music Volume: <span id="musicVolVal">50</span></label>
+                <input type="range" id="musicVolume" min="0" max="100" value="50" class="slider">
+            </div>
+            <div class="setting-row">
+                <label>SFX Volume: <span id="sfxVolVal">100</span></label>
+                <input type="range" id="sfxVolume" min="0" max="100" value="100" class="slider">
+            </div>
+            <div class="setting-row">
+                <label><input type="checkbox" id="voiceChat"> Voice Chat</label>
+            </div>
+        </div>
+        
+        <button class="btn-primary" onclick="saveSettings()">SAVE SETTINGS</button>
+    </div>
+</div>
+
+<!-- HEAL BUTTON -->
+<button id="healBtn" class="hud-element" title="Use Medkit">
+    <span class="btn-icon">💊</span>
+    <div id="healCount" class="btn-badge">0</div>
+</button>
+
+<!-- GRENADE BUTTON -->
+<button id="grenadeBtn" class="hud-element" title="Throw Grenade">
+    <span class="btn-icon">💣</span>
+    <div id="grenadeCount" class="btn-badge">0</div>
+</button>
+
+<!-- RELOAD BUTTON -->
+<button id="reloadBtn" class="hud-element" title="Reload">
+    <span class="btn-icon">🔄</span>
+</button>
+
+<!-- JUMP BUTTON -->
+<button id="jumpBtn" class="hud-element" title="Jump">
+    <span class="btn-icon">⬆️</span>
+</button>
+
+<!-- CROUCH BUTTON -->
+<button id="crouchBtn" class="hud-element" title="Crouch">
+    <span class="btn-icon">⬇️</span>
+</button>
+
+<!-- FIRE CONTROLS 4-DIRECTION -->
+<div id="fireControls" class="hud-element">
+    <div class="fire-pad">
+        <button class="fire-dir fire-up" data-angle="270">↑</button>
+        <button class="fire-dir fire-right" data-angle="0">→</button>
+        <button class="fire-dir fire-down" data-angle="90">↓</button>
+        <button class="fire-dir fire-left" data-angle="180">←</button>
+        <button id="fireCenterBtn" class="fire-center">🔥</button>
+    </div>
+</div>
+
+<!-- MOVEMENT JOYSTICK -->
+<div id="movementJoystick" class="hud-element">
+    <div class="joystick-base">
+        <div class="joystick-knob" id="joystickKnob"></div>
+    </div>
+</div>
+
+<!-- MOBILE HUD - HP/ARMOR -->
+<div id="mobileHUD" class="hud-element">
+    <div class="hud-bars">
+        <div class="hud-bar hp-bar">
+            <div class="bar-icon">❤️</div>
+            <div class="bar-bg">
+                <div id="hpBarFill" class="bar-fill hp-fill" style="width:100%"></div>
+            </div>
+            <div class="bar-text"><span id="hpText">100</span>/100</div>
+        </div>
+        <div class="hud-bar armor-bar">
+            <div class="bar-icon">🛡️</div>
+            <div class="bar-bg">
+                <div id="armorBarFill" class="bar-fill armor-fill" style="width:0%"></div>
+            </div>
+            <div class="bar-text"><span id="armorText">0</span>/100</div>
+        </div>
+    </div>
+</div>
+
+<!-- WEAPON HUD -->
+<div id="weaponHUD" class="hud-element">
+    <div class="weapon-info">
+        <div class="weapon-name" id="weaponName">PISTOL</div>
+        <div class="weapon-ammo">
+            <span class="ammo-current" id="ammoCurrent">12</span>
+            <span class="ammo-separator">/</span>
+            <span class="ammo-total" id="ammoTotal">60</span>
+        </div>
+    </div>
+    <div class="weapon-fire-mode" id="fireMode">AUTO</div>
+</div>
+
+<!-- WEAPON SELECTOR -->
+<div id="weaponSelector" class="hud-element">
+    <button class="weapon-slot" data-slot="1" onclick="selectWeapon(1)">
+        <span class="slot-number">1</span>
+        <span class="slot-icon">🔫</span>
+    </button>
+    <button class="weapon-slot" data-slot="2" onclick="selectWeapon(2)">
+        <span class="slot-number">2</span>
+        <span class="slot-icon">🎯</span>
+    </button>
+    <button class="weapon-slot" data-slot="3" onclick="selectWeapon(3)">
+        <span class="slot-number">3</span>
+        <span class="slot-icon">💣</span>
+    </button>
+    <button class="weapon-slot" data-slot="4" onclick="selectWeapon(4)">
+        <span class="slot-number">4</span>
+        <span class="slot-icon">👊</span>
+    </button>
+</div>
+
+<!-- KILL FEED -->
+<div id="killFeed" class="hud-element"></div>
+
+<!-- DAMAGE NUMBERS -->
+<div id="damageNumbers" class="hud-element"></div>
+
+<!-- ZONE WARNING -->
+<div id="zoneWarning" class="hud-element hidden">
+    <div class="warning-icon">⚠️</div>
+    <div class="warning-text">OUT OF ZONE!</div>
+    <div class="warning-subtext">Return to safe zone</div>
+</div>
+
+<!-- SCOPE -->
+<div id="scope" class="hud-element hidden">
+    <div class="scope-overlay">
+        <div class="scope-crosshair"></div>
+        <div class="scope-lines"></div>
+    </div>
+</div>
+
+<!-- HITMARKER -->
+<div id="hitmarker" class="hud-element hidden">
+    <div class="hitmarker-cross"></div>
+</div>
+
+<!-- LEADERBOARD -->
+<div id="leaderboard" class="hud-element">
+    <div class="leaderboard-header">
+        <span class="leaderboard-title">🏆 TOP 10</span>
+        <button class="leaderboard-toggle" onclick="toggleLeaderboard()">📊</button>
+    </div>
+    <ol id="lbList" class="leaderboard-list"></ol>
+    <div class="leaderboard-footer">
+        <span class="alive-text">Alive:</span>
+        <span class="alive-count" id="aliveCountLB">0</span>
+    </div>
+</div>
+
+<!-- SCOREBOARD -->
+<div id="scoreboard" class="panel hidden">
+    <div class="panel-header">
         <h2>SCOREBOARD</h2>
-        <table>
+        <button class="panel-close" onclick="closeScoreboard()">✕</button>
+    </div>
+    <div class="panel-body">
+        <table class="scoreboard-table">
             <thead>
                 <tr>
                     <th>#</th>
@@ -479,173 +719,349 @@
             </thead>
             <tbody id="scoreboardBody"></tbody>
         </table>
-        <p style="text-align:center;margin-top:15px;color:#666;">Press TAB to close</p>
+        <p class="scoreboard-hint">Press TAB to close</p>
     </div>
+</div>
 
-    <div id="mobileControls" class="hidden">
-        <div id="joystick"><div id="joystickKnob"></div></div>
-        <div id="rightControls">
-            <button class="mobile-btn" id="scopeBtn" title="Scope">🔍</button>
-            <button class="mobile-btn" id="lootBtn" title="Loot">📦</button>
-            <button class="mobile-btn" id="sprintBtn" title="Sprint">🏃</button>
-            <button class="mobile-btn" id="grenadeBtn" title="Grenade">💣</button>
-            <button class="mobile-btn" id="vehicleBtn" title="Vehicle">🏍️</button>
-            <button class="mobile-btn" id="reloadBtn" title="Reload">🔄</button>
-            <button class="mobile-btn" id="shootBtn" title="Shoot">🔫</button>
-        </div>
-        <div id="weaponSelector">
-            <button class="weapon-slot" onclick="selectWeapon(1)">1</button>
-            <button class="weapon-slot" onclick="selectWeapon(2)">2</button>
-            <button class="weapon-slot" onclick="selectWeapon(3)">3</button>
-            <button class="weapon-slot" onclick="selectWeapon(4)">4</button>
-        </div>
+<!-- VICTORY SCREEN -->
+<div id="victoryScreen" class="screen hidden">
+    <div class="victory-background">
+        <div class="victory-particles"></div>
     </div>
-
-    <div id="victoryScreen" class="hidden">
-        <h1>VICTORY ROYALE!</h1>
-        <div class="end-stats">
-            <p>Kills: <span id="victoryKills">0</span></p>
-            <p>Damage Dealt: <span id="victoryDamage">0</span></p>
-            <p>Survival Time: <span id="victoryTime">0:00</span></p>
-            <p>Reward: <span id="victoryReward">+100 Coins +200 XP</span></p>
+    <div class="victory-content">
+        <div class="victory-header">
+            <h1 class="victory-title">VICTORY ROYALE!</h1>
+            <div class="victory-subtitle">WINNER WINNER CHICKEN DINNER</div>
         </div>
-        <div class="end-actions">
-            <button class="return-btn" onclick="returnToLobby()">RETURN TO LOBBY</button>
-            <button class="return-btn" onclick="playAgain()">PLAY AGAIN</button>
+        <div class="victory-stats">
+            <div class="stat-row">
+                <span class="stat-label">Rank:</span>
+                <span class="stat-value">#1</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Kills:</span>
+                <span class="stat-value" id="victoryKills">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Damage Dealt:</span>
+                <span class="stat-value" id="victoryDamage">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Survival Time:</span>
+                <span class="stat-value" id="victoryTime">0:00</span>
+            </div>
+            <div class="stat-row highlight">
+                <span class="stat-label">Reward:</span>
+                <span class="stat-value" id="victoryReward">+100 Coins +200 XP</span>
+            </div>
         </div>
-    </div>
-
-    <div id="deathScreen" class="hidden">
-        <h1>ELIMINATED</h1>
-        <div class="end-stats">
-            <p>Rank: <span>#<span id="finalRank">0</span></span></p>
-            <p>Kills: <span id="finalKills">0</span></p>
-            <p>Damage Dealt: <span id="finalDamage">0</span></p>
-            <p>Survival Time: <span id="finalTime">0:00</span></p>
-            <p>Reward: <span id="finalReward">+0 Coins +0 XP</span></p>
-        </div>
-        <div class="end-actions">
-            <button class="return-btn" onclick="spectate()">SPECTATE</button>
-            <button class="return-btn" onclick="returnToLobby()">RETURN TO LOBBY</button>
-            <button class="return-btn" onclick="playAgain()">PLAY AGAIN</button>
-        </div>
-    </div>
-
-    <div id="spectateUI" class="hidden">
-        <div class="spectate-header">
-            <h3>SPECTATING</h3>
-            <p id="spectatePlayerName">Player</p>
-            <button onclick="nextSpectate()">NEXT PLAYER →</button>
-            <button onclick="returnToLobby()">EXIT</button>
+        <div class="victory-actions">
+            <button class="victory-btn" onclick="returnToLobby()">RETURN TO LOBBY</button>
+            <button class="victory-btn primary" onclick="playAgain()">PLAY AGAIN</button>
+            <button class="victory-btn" onclick="shareVictory()">SHARE</button>
         </div>
     </div>
 </div>
 
-<!-- ALL MENUS -->
-<div id="skinMenu" class="hidden">
-    <div class="menu-header">
+<!-- DEATH SCREEN -->
+<div id="deathScreen" class="screen hidden">
+    <div class="death-background"></div>
+    <div class="death-content">
+        <div class="death-header">
+            <h1 class="death-title">ELIMINATED</h1>
+            <div class="death-subtitle">Better luck next time</div>
+        </div>
+        <div class="death-stats">
+            <div class="stat-row">
+                <span class="stat-label">Rank:</span>
+                <span class="stat-value">#<span id="finalRank">0</span></span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Kills:</span>
+                <span class="stat-value" id="finalKills">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Damage Dealt:</span>
+                <span class="stat-value" id="finalDamage">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Survival Time:</span>
+                <span class="stat-value" id="finalTime">0:00</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Reward:</span>
+                <span class="stat-value" id="finalReward">+0 Coins +0 XP</span>
+            </div>
+        <div class="death-actions">
+            <button class="death-btn" onclick="spectate()">SPECTATE</button>
+            <button class="death-btn" onclick="returnToLobby()">RETURN TO LOBBY</button>
+            <button class="death-btn primary" onclick="playAgain()">PLAY AGAIN</button>
+        </div>
+    </div>
+</div>
+
+<!-- SPECTATE UI -->
+<div id="spectateUI" class="hud-element hidden">
+    <div class="spectate-header">
+        <div class="spectate-title">SPECTATING</div>
+        <div class="spectate-player" id="spectatePlayerName">Player</div>
+    </div>
+    <div class="spectate-controls">
+        <button class="spectate-btn" onclick="prevSpectate()">← PREV</button>
+        <button class="spectate-btn" onclick="nextSpectate()">NEXT →</button>
+        <button class="spectate-btn danger" onclick="returnToLobby()">EXIT</button>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- ALL MENUS - KEEP EXISTING CODE -->
+<!-- ============================================ -->
+
+<!-- ============================================ -->
+<!-- SKIN MENU - TOHINY -->
+<!-- ============================================ -->
+<div id="skinMenu" class="panel hidden">
+    <div class="panel-header">
         <h2>👕 CUSTOMIZE</h2>
-        <button class="close-btn" onclick="closeSkinMenu()">✕</button>
+        <button class="panel-close" onclick="closeSkinMenu()">✕</button>
     </div>
     
-    <div class="skin-tabs">
-        <button class="skin-tab active" onclick="showSkinTab('colors')">Colors</button>
-        <button class="skin-tab" onclick="showSkinTab('hats')">Hats</button>
-        <button class="skin-tab" onclick="showSkinTab('outfits')">Outfits</button>
-        <button class="skin-tab" onclick="showSkinTab('emotes')">Emotes</button>
+    <div class="panel-tabs">
+        <button class="tab-btn active" onclick="showSkinTab('colors')">Colors</button>
+        <button class="tab-btn" onclick="showSkinTab('hats')">Hats</button>
+        <button class="tab-btn" onclick="showSkinTab('outfits')">Outfits</button>
+        <button class="tab-btn" onclick="showSkinTab('emotes')">Emotes</button>
     </div>
 
-    <div id="skinColorsTab" class="skin-tab-content">
+    <div id="skinColorsTab" class="tab-content">
         <h3>Character Colors</h3>
         <div class="skin-grid">
-            <div class="skin-item" style="background:#00ff00" onclick="changeSkinColor('#00ff00')"></div>
-            <div class="skin-item" style="background:#ff0000" onclick="changeSkinColor('#ff0000')"></div>
-            <div class="skin-item" style="background:#0088ff" onclick="changeSkinColor('#0088ff')"></div>
-            <div class="skin-item" style="background:#ffff00" onclick="changeSkinColor('#ffff00')"></div>
-            <div class="skin-item" style="background:#ff00ff" onclick="changeSkinColor('#ff00ff')"></div>
-            <div class="skin-item" style="background:#ff6600" onclick="changeSkinColor('#ff6600')"></div>
-            <div class="skin-item" style="background:#00ffff" onclick="changeSkinColor('#00ffff')"></div>
-            <div class="skin-item" style="background:#ffffff" onclick="changeSkinColor('#ffffff')"></div>
-            <div class="skin-item locked" style="background:#800080" onclick="buySkin('purple', 100)">
+            <div class="skin-item" style="background:#00ff00" onclick="changeSkinColor('#00ff00')" title="Green"></div>
+            <div class="skin-item" style="background:#ff0000" onclick="changeSkinColor('#ff0000')" title="Red"></div>
+            <div class="skin-item" style="background:#0088ff" onclick="changeSkinColor('#0088ff')" title="Blue"></div>
+            <div class="skin-item" style="background:#ffff00" onclick="changeSkinColor('#ffff00')" title="Yellow"></div>
+            <div class="skin-item" style="background:#ff00ff" onclick="changeSkinColor('#ff00ff')" title="Magenta"></div>
+            <div class="skin-item" style="background:#ff6600" onclick="changeSkinColor('#ff6600')" title="Orange"></div>
+            <div class="skin-item" style="background:#00ffff" onclick="changeSkinColor('#00ffff')" title="Cyan"></div>
+            <div class="skin-item" style="background:#ffffff" onclick="changeSkinColor('#ffffff')" title="White"></div>
+            <div class="skin-item" style="background:#000000" onclick="changeSkinColor('#000000')" title="Black"></div>
+            <div class="skin-item" style="background:#800080" onclick="changeSkinColor('#800080')" title="Purple"></div>
+            <div class="skin-item" style="background:#808080" onclick="changeSkinColor('#808080')" title="Gray"></div>
+            <div class="skin-item" style="background:#8B4513" onclick="changeSkinColor('#8B4513')" title="Brown"></div>
+            <div class="skin-item locked" style="background:#FFD700" onclick="buySkin('gold', 100)">
                 <span class="lock-icon">🔒</span>
                 <span class="price">100💰</span>
+            </div>
+            <div class="skin-item locked" style="background:#C0C0" onclick="buySkin('silver', 80)">
+                <span class="lock-icon">🔒</span>
+                <span class="price">80💰</span>
+            </div>
+            <div class="skin-item locked" style="background:#FF69B4" onclick="buySkin('pink', 50)">
+                <span class="lock-icon">🔒</span>
+                <span class="price">50💰</span>
             </div>
         </div>
     </div>
 
-    <div id="skinHatsTab" class="skin-tab-content hidden">
+    <div id="skinHatsTab" class="tab-content hidden">
         <h3>Hats & Accessories</h3>
         <div class="skin-grid">
-            <button onclick="changeSkinHat('none')">❌ None</button>
-            <button onclick="changeSkinHat('crown')">👑 Crown</button>
-            <button onclick="changeSkinHat('helmet')">🪖 Helmet</button>
-            <button onclick="changeSkinHat('cap')">🧢 Cap</button>
-            <button onclick="changeSkinHat('tophat')">🎩 Top Hat</button>
-            <button onclick="changeSkinHat('cowboy')">🤠 Cowboy</button>
-            <button onclick="changeSkinHat('wizard')">🧙 Wizard</button>
-            <button onclick="changeSkinHat('viking')">⚔️ Viking</button>
+            <button class="skin-btn" onclick="changeSkinHat('none')">
+                <span class="skin-emoji">❌</span>
+                <span class="skin-name">None</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('crown')">
+                <span class="skin-emoji">👑</span>
+                <span class="skin-name">Crown</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('helmet')">
+                <span class="skin-emoji">🪖</span>
+                <span class="skin-name">Helmet</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('cap')">
+                <span class="skin-emoji">🧢</span>
+                <span class="skin-name">Cap</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('tophat')">
+                <span class="skin-emoji">🎩</span>
+                <span class="skin-name">Top Hat</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('cowboy')">
+                <span class="skin-emoji">🤠</span>
+                <span class="skin-name">Cowboy</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('wizard')">
+                <span class="skin-emoji">🧙</span>
+                <span class="skin-name">Wizard</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('viking')">
+                <span class="skin-emoji">⚔️</span>
+                <span class="skin-name">Viking</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('pirate')">
+                <span class="skin-emoji">🏴‍☠️</span>
+                <span class="skin-name">Pirate</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('ninja')">
+                <span class="skin-emoji">🥷</span>
+                <span class="skin-name">Ninja</span>
+            </button>
+            <button class="skin-btn" onclick="changeSkinHat('samurai')">
+                <span class="skin-emoji">🗡️</span>
+                <span class="skin-name">Samurai</span>
+            </button>
+            <button class="skin-btn locked" onclick="buyHat('angel', 200)">
+                <span class="skin-emoji">👼</span>
+                <span class="skin-name">Angel</span>
+                <span class="price">200💰</span>
+            </button>
         </div>
     </div>
 
-    <div id="skinOutfitsTab" class="skin-tab-content hidden">
+    <div id="skinOutfitsTab" class="tab-content hidden">
         <h3>Outfits</h3>
         <div class="outfit-grid">
             <div class="outfit-item" onclick="changeOutfit('default')">
                 <div class="outfit-preview">👤</div>
-                <span>Default</span>
+                <span class="outfit-name">Default</span>
+                <span class="outfit-rarity common">Common</span>
             </div>
             <div class="outfit-item" onclick="changeOutfit('military')">
                 <div class="outfit-preview">🎖️</div>
-                <span>Military</span>
+                <span class="outfit-name">Military</span>
+                <span class="outfit-rarity rare">Rare</span>
             </div>
             <div class="outfit-item" onclick="changeOutfit('ninja')">
                 <div class="outfit-preview">🥷</div>
-                <span>Ninja</span>
+                <span class="outfit-name">Ninja</span>
+                <span class="outfit-rarity epic">Epic</span>
+            </div>
+            <div class="outfit-item" onclick="changeOutfit('samurai')">
+                <div class="outfit-preview">🗡️</div>
+                <span class="outfit-name">Samurai</span>
+                <span class="outfit-rarity epic">Epic</span>
+            </div>
+            <div class="outfit-item locked" onclick="buyOutfit('cyber', 500)">
+                <div class="outfit-preview">🤖</div>
+                <span class="outfit-name">Cyber</span>
+                <span class="outfit-rarity legendary">Legendary</span>
+                <span class="price">500💰</span>
+            </div>
+            <div class="outfit-item locked" onclick="buyOutfit('dragon', 800)">
+                <div class="outfit-preview">🐉</div>
+                <span class="outfit-name">Dragon</span>
+                <span class="outfit-rarity mythic">Mythic</span>
+                <span class="price">800💰</span>
             </div>
         </div>
     </div>
 
-    <div id="skinEmotesTab" class="skin-tab-content hidden">
+    <div id="skinEmotesTab" class="tab-content hidden">
         <h3>Emotes</h3>
         <div class="emote-grid">
-            <button onclick="useEmote('dance')">💃 Dance</button>
-            <button onclick="useEmote('wave')">👋 Wave</button>
-            <button onclick="useEmote('laugh')">😂 Laugh</button>
-            <button onclick="useEmote('cry')">😢 Cry</button>
-            <button onclick="useEmote('angry')">😠 Angry</button>
-            <button onclick="useEmote('cool')">😎 Cool</button>
+            <button class="emote-btn" onclick="useEmote('dance')">
+                <span class="emote-icon">💃</span>
+                <span class="emote-name">Dance</span>
+            </button>
+            <button class="emote-btn" onclick="useEmote('wave')">
+                <span class="emote-icon">👋</span>
+                <span class="emote-name">Wave</span>
+            </button>
+            <button class="emote-btn" onclick="useEmote('laugh')">
+                <span class="emote-icon">😂</span>
+                <span class="emote-name">Laugh</span>
+            </button>
+            <button class="emote-btn" onclick="useEmote('cry')">
+                <span class="emote-icon">😢</span>
+                <span class="emote-name">Cry</span>
+            </button>
+            <button class="emote-btn" onclick="useEmote('angry')">
+                <span class="emote-icon">😠</span>
+                <span class="emote-name">Angry</span>
+            </button>
+            <button class="emote-btn" onclick="useEmote('cool')">
+                <span class="emote-icon">😎</span>
+                <span class="emote-name">Cool</span>
+            </button>
+            <button class="emote-btn" onclick="useEmote('heart')">
+                <span class="emote-icon">❤️</span>
+                <span class="emote-name">Heart</span>
+            </button>
+            <button class="emote-btn" onclick="useEmote('thumbsup')">
+                <span class="emote-icon">👍</span>
+                <span class="emote-name">Thumbs Up</span>
+            </button>
+            <button class="emote-btn" onclick="useEmote('salute')">
+                <span class="emote-icon">🫡</span>
+                <span class="emote-name">Salute</span>
+            </button>
+            <button class="emote-btn locked" onclick="buyEmote('dab', 100)">
+                <span class="emote-icon">🤙</span>
+                <span class="emote-name">Dab</span>
+                <span class="price">100💰</span>
+            </button>
         </div>
     </div>
 </div>
 
-<div id="battlePassMenu" class="hidden">
-    <div class="menu-header">
+<!-- ============================================ -->
+<!-- BATTLE PASS MENU -->
+<!-- ============================================ -->
+<div id="battlePassMenu" class="panel hidden">
+    <div class="panel-header">
         <h2>🎫 BATTLE PASS SEASON 1</h2>
-        <button class="close-btn" onclick="closeBattlePass()">✕</button>
+        <button class="panel-close" onclick="closeBattlePass()">✕</button>
     </div>
     
     <div class="bp-header">
         <div class="bp-level-display">
-            <h3>Level <span id="bpLevelDisplay">1</span></h3>
-            <div class="stat-bar bp-bar">
-                <div class="stat-fill" id="bpXPBar" style="width:0%"></div>
+            <div class="bp-level-circle">
+                <span class="bp-level-number" id="bpLevelDisplay">1</span>
+                <span class="bp-level-text">LEVEL</span>
             </div>
-            <p><span id="bpCurrentXP">0</span> / <span id="bpRequiredXP">100</span> XP</p>
-        </div>
-        <div class="bp-premium">
+            <div class="bp-progress-container">
+                <div class="bp-progress-bar">
+                    <div class="bp-progress-fill" id="bpXPBar" style="width:0%"></div>
+                </div>
+                <div class="bp-progress-text">
+                    <span id="bpCurrentXP">0</span> / <span id="bpRequiredXP">100</span> XP
+                </div>
+            </div>
+        <div class="bp-premium-section">
+            <div class="premium-badge">PREMIUM</div>
             <h3>PREMIUM PASS</h3>
             <p>Unlock exclusive rewards!</p>
-            <button onclick="buyBattlePass()" class="premium-buy-btn">BUY FOR 500 💰</button>
+            <div class="premium-benefits">
+                <div class="benefit-item">✨ 50+ Exclusive Skins</div>
+                <div class="benefit-item">💎 1000 Diamonds Bonus</div>
+                <div class="benefit-item">🎁 Daily Rewards x2</div>
+            </div>
+            <button onclick="buyBattlePass()" class="premium-buy-btn">
+                <span class="btn-text">BUY FOR 500</span>
+                <span class="btn-icon">💎</span>
+            </button>
         </div>
     </div>
 
-    <div id="bpRewards" class="bp-rewards-grid"></div>
+    <div class="bp-rewards-container">
+        <div class="bp-rewards-track" id="bpRewards">
+            <!-- Generated by JS -->
+        </div>
+    </div>
+    
+    <div class="bp-footer">
+        <button class="bp-btn" onclick="claimAllBPRewards()">CLAIM ALL</button>
+        <button class="bp-btn" onclick="buyBPLevels()">BUY LEVELS</button>
+    </div>
 </div>
 
-<div id="shopMenu" class="hidden">
-    <div class="menu-header">
+<!-- ============================================ -->
+<!-- SHOP MENU -->
+<!-- ============================================ -->
+<div id="shopMenu" class="panel hidden">
+    <div class="panel-header">
         <h2>🛒 SHOP</h2>
-        <button class="close-btn" onclick="closeShop()">✕</button>
+        <button class="panel-close" onclick="closeShop()">✕</button>
     </div>
     
     <div class="shop-tabs">
@@ -653,58 +1069,149 @@
         <button class="shop-tab" onclick="showShopTab('skins')">Skins</button>
         <button class="shop-tab" onclick="showShopTab('weapons')">Weapons</button>
         <button class="shop-tab" onclick="showShopTab('bundles')">Bundles</button>
+        <button class="shop-tab" onclick="showShopTab('currency')">Currency</button>
     </div>
 
     <div id="shopFeaturedTab" class="shop-tab-content">
-        <h3>⭐ FEATURED ITEMS</h3>
+        <div class="shop-banner">
+            <h3>⭐ FEATURED ITEMS</h3>
+            <p class="shop-timer">Refreshes in: <span id="shopTimer">23:59:59</span></p>
+        </div>
         <div class="shop-grid">
             <div class="shop-item featured">
+                <div class="item-badge">HOT</div>
                 <div class="item-image">🎨</div>
                 <h4>Rainbow Skin</h4>
-                <p>Legendary</p>
+                <p class="item-rarity legendary">Legendary</p>
+                <p class="item-desc">Colorful animated skin</p>
                 <div class="item-price">500 💰</div>
-                <button onclick="buyItem('rainbow_skin', 500)">BUY</button>
+                <button class="buy-btn" onclick="buyItem('rainbow_skin', 500)">BUY</button>
             </div>
             <div class="shop-item featured">
+                <div class="item-badge">NEW</div>
                 <div class="item-image">⚔️</div>
                 <h4>Golden AK-47</h4>
-                <p>Epic</p>
+                <p class="item-rarity epic">Epic</p>
+                <p class="item-desc">Golden weapon skin</p>
                 <div class="item-price">300 💰</div>
-                <button onclick="buyItem('golden_ak', 300)">BUY</button>
+                <button class="buy-btn" onclick="buyItem('golden_ak', 300)">BUY</button>
+            </div>
+            <div class="shop-item featured">
+                <div class="item-badge">LIMITED</div>
+                <div class="item-image">👑</div>
+                <h4>Royal Crown</h4>
+                <p class="item-rarity mythic">Mythic</p>
+                <p class="item-desc">Exclusive hat</p>
+                <div class="item-price">800 💎</div>
+                <button class="buy-btn" onclick="buyItem('royal_crown', 800)">BUY</button>
             </div>
         </div>
     </div>
 
     <div id="shopSkinsTab" class="shop-tab-content hidden">
-        <h3>👕 SKINS</h3>
+        <h3>👕 CHARACTER SKINS</h3>
+        <div class="shop-filters">
+            <button class="filter-btn active" onclick="filterShopSkins('all')">All</button>
+            <button class="filter-btn" onclick="filterShopSkins('common')">Common</button>
+            <button class="filter-btn" onclick="filterShopSkins('rare')">Rare</button>
+            <button class="filter-btn" onclick="filterShopSkins('epic')">Epic</button>
+            <button class="filter-btn" onclick="filterShopSkins('legendary')">Legendary</button>
+        </div>
         <div class="shop-grid" id="shopSkinsGrid"></div>
     </div>
 
     <div id="shopWeaponsTab" class="shop-tab-content hidden">
-        <h3>🔫 WEAPONS</h3>
+        <h3>🔫 WEAPON SKINS</h3>
         <div class="shop-grid" id="shopWeaponsGrid"></div>
     </div>
 
     <div id="shopBundlesTab" class="shop-tab-content hidden">
         <h3>📦 BUNDLES</h3>
-        <div class="shop-grid" id="shopBundlesGrid"></div>
+        <div class="shop-grid" id="shopBundlesGrid">
+            <div class="shop-item bundle">
+                <div class="item-badge">SAVE 50%</div>
+                <div class="item-image">🎁</div>
+                <h4>Starter Pack</h4>
+                <p class="item-desc">5 Skins + 1000 Coins</p>
+                <div class="item-price-old">1000 💰</div>
+                <div class="item-price">500 💰</div>
+                <button class="buy-btn" onclick="buyBundle('starter', 500)">BUY</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="shopCurrencyTab" class="shop-tab-content hidden">
+        <h3>💎 BUY CURRENCY</h3>
+        <div class="shop-grid">
+            <div class="shop-item">
+                <div class="item-image">💎</div>
+                <h4>100 Diamonds</h4>
+                <div class="item-price">$0.99</div>
+                <button class="buy-btn" onclick="buyCurrency(100, 0.99)">BUY</button>
+            </div>
+            <div class="shop-item">
+                <div class="item-image">💎</div>
+                <h4>500 Diamonds</h4>
+                <div class="item-price">$4.99</div>
+                <button class="buy-btn" onclick="buyCurrency(500, 4.99)">BUY</button>
+            </div>
+            <div class="shop-item">
+                <div class="item-image">💎</div>
+                <h4>1000 Diamonds</h4>
+                <div class="item-price">$9.99</div>
+                <button class="buy-btn" onclick="buyCurrency(1000, 9.99)">BUY</button>
+            </div>
+            <div class="shop-item">
+                <div class="item-image">💎</div>
+                <h4>5000 Diamonds</h4>
+                <div class="item-price">$49.99</div>
+                <button class="buy-btn" onclick="buyCurrency(5000, 49.99)">BUY</button>
+            </div>
+        </div>
     </div>
 </div>
 
-<div id="inventoryMenu" class="hidden">
-    <div class="menu-header">
+<!-- ============================================ -->
+<!-- INVENTORY MENU -->
+<!-- ============================================ -->
+<div id="inventoryMenu" class="panel hidden">
+    <div class="panel-header">
         <h2>🎒 INVENTORY</h2>
-        <button class="close-btn" onclick="closeInventory()">✕</button>
+        <button class="panel-close" onclick="closeInventory()">✕</button>
+    </div>
+    
+    <div class="inventory-stats">
+        <div class="inv-stat">
+            <span class="stat-label">Total Items:</span>
+            <span class="stat-value" id="invTotalItems">0</span>
+        </div>
+        <div class="inv-stat">
+            <span class="stat-label">Skins:</span>
+            <span class="stat-value" id="invSkinsCount">0</span>
+        </div>
+        <div class="inv-stat">
+            <span class="stat-label">Weapons:</span>
+            <span class="stat-value" id="invWeaponsCount">0</span>
+        </div>
     </div>
     
     <div class="inventory-tabs">
-        <button class="inv-tab active" onclick="showInvTab('skins')">Skins</button>
+        <button class="inv-tab active" onclick="showInvTab('all')">All</button>
+        <button class="inv-tab" onclick="showInvTab('skins')">Skins</button>
         <button class="inv-tab" onclick="showInvTab('weapons')">Weapons</button>
         <button class="inv-tab" onclick="showInvTab('emotes')">Emotes</button>
         <button class="inv-tab" onclick="showInvTab('items')">Items</button>
     </div>
 
-    <div id="invSkinsTab" class="inv-tab-content">
+    <div class="inventory-search">
+        <input type="text" id="invSearchInput" placeholder="Search items..." oninput="searchInventory()">
+    </div>
+
+    <div id="invAllTab" class="inv-tab-content">
+        <div class="inventory-grid" id="invAllGrid"></div>
+    </div>
+
+    <div id="invSkinsTab" class="inv-tab-content hidden">
         <div class="inventory-grid" id="invSkinsGrid"></div>
     </div>
 
@@ -719,233 +1226,447 @@
     <div id="invItemsTab" class="inv-tab-content hidden">
         <div class="inventory-grid" id="invItemsGrid"></div>
     </div>
+    
+    <div class="inventory-actions">
+        <button class="inv-btn" onclick="equipAll()">EQUIP ALL</button>
+        <button class="inv-btn" onclick="sellDuplicates()">SELL DUPLICATES</button>
+    </div>
 </div>
 
-<div id="settingsMenu" class="hidden">
-    <div class="menu-header">
+<!-- ============================================ -->
+<!-- SETTINGS MENU -->
+<!-- ============================================ -->
+<div id="settingsMenu" class="panel hidden">
+    <div class="panel-header">
         <h2>⚙️ SETTINGS</h2>
-        <button class="close-btn" onclick="closeSettings()">✕</button>
+        <button class="panel-close" onclick="closeSettings()">✕</button>
+    </div>
+    
+    <div class="settings-tabs">
+        <button class="settings-tab active" onclick="showSettingsTab('gameplay')">Gameplay</button>
+        <button class="settings-tab" onclick="showSettingsTab('controls')">Controls</button>
+        <button class="settings-tab" onclick="showSettingsTab('graphics')">Graphics</button>
+        <button class="settings-tab" onclick="showSettingsTab('audio')">Audio</button>
+        <button class="settings-tab" onclick="showSettingsTab('account')">Account</button>
     </div>
     
     <div class="settings-content">
-        <div class="settings-section">
-            <h3>🎮 Gameplay</h3>
-            <div class="setting-item">
-                <label>Sensitivity</label>
-                <input type="range" id="sensitivitySlider" min="0.1" max="2" step="0.1" value="1">
-                <span id="sensitivityValue">1.0</span>
-            </div>
-            <div class="setting-item">
-                <label>Auto Sprint</label>
-                <input type="checkbox" id="autoSprintToggle">
-            </div>
-            <div class="setting-item">
-                <label>Aim Assist</label>
-                <input type="checkbox" id="aimAssistToggle" checked>
-            </div>
-        </div>
-
-        <div class="settings-section">
-            <h3>🔊 Audio</h3>
-            <div class="setting-item">
-                <label>Master Volume</label>
-                <input type="range" id="masterVolume" min="0" max="100" value="100">
-                <span id="masterVolumeValue">100</span>
-            </div>
-            <div class="setting-item">
-                <label>Music Volume</label>
-                <input type="range" id="musicVolume" min="0" max="100" value="50">
-                <span id="musicVolumeValue">50</span>
-            </div>
-            <div class="setting-item">
-                <label>SFX Volume</label>
-                <input type="range" id="sfxVolume" min="0" max="100" value="100">
-                <span id="sfxVolumeValue">100</span>
-            </div>
-            <div class="setting-item">
-                <label>Voice Chat</label>
-                <input type="checkbox" id="voiceChatToggle">
+        <div id="settingsGameplayTab" class="settings-tab-content">
+            <div class="settings-section">
+                <h3>🎮 Gameplay</h3>
+                <div class="setting-item">
+                    <label>Sensitivity</label>
+                    <input type="range" id="sensitivitySlider" min="0.1" max="2" step="0.1" value="1">
+                    <span id="sensitivityValue">1.0</span>
+                </div>
+                <div class="setting-item">
+                    <label>Aim Sensitivity</label>
+                    <input type="range" id="aimSensitivitySlider" min="0.1" max="2" step="0.1" value="1">
+                    <span id="aimSensitivityValue">1.0</span>
+                </div>
+                <div class="setting-item">
+                    <label>Auto Sprint</label>
+                    <input type="checkbox" id="autoSprintToggle">
+                </div>
+                <div class="setting-item">
+                    <label>Aim Assist</label>
+                    <input type="checkbox" id="aimAssistToggle" checked>
+                </div>
+                <div class="setting-item">
+                    <label>Auto Pickup</label>
+                    <input type="checkbox" id="autoPickupToggle" checked>
+                </div>
+                <div class="setting-item">
+                    <label>Show Damage Numbers</label>
+                    <input type="checkbox" id="showDamageToggle" checked>
+                </div>
             </div>
         </div>
 
-        <div class="settings-section">
-            <h3>📺 Graphics</h3>
-            <div class="setting-item">
-                <label>Quality</label>
-                <select id="graphicsQuality">
-                    <option value="low">Low</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="high">High</option>
-                    <option value="ultra">Ultra</option>
-                </select>
-            </div>
-            <div class="setting-item">
-                <label>FPS Limit</label>
-                <select id="fpsLimit">
-                    <option value="30">30 FPS</option>
-                    <option value="60" selected>60 FPS</option>
-                    <option value="120">120 FPS</option>
-                    <option value="unlimited">Unlimited</option>
-                </select>
-            </div>
-            <div class="setting-item">
-                <label>Show FPS</label>
-                <input type="checkbox" id="showFPSToggle">
+        <div id="settingsControlsTab" class="settings-tab-content hidden">
+            <div class="settings-section">
+                <h3>⌨️ Keyboard Controls</h3>
+                <div class="controls-list">
+                    <div class="control-item">
+                        <span class="control-key">W/A/S/D</span>
+                        <span class="control-action">Move</span>
+                        <button class="control-edit" onclick="editControl('move')">EDIT</button>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">SHIFT</span>
+                        <span class="control-action">Sprint</span>
+                        <button class="control-edit" onclick="editControl('sprint')">EDIT</button>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">SPACE</span>
+                        <span class="control-action">Jump</span>
+                        <button class="control-edit" onclick="editControl('jump')">EDIT</button>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">C</span>
+                        <span class="control-action">Crouch</span>
+                        <button class="control-edit" onclick="editControl('crouch')">EDIT</button>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">R</span>
+                        <span class="control-action">Reload</span>
+                        <button class="control-edit" onclick="editControl('reload')">EDIT</button>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">G</span>
+                        <span class="control-action">Grenade</span>
+                        <button class="control-edit" onclick="editControl('grenade')">EDIT</button>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">F</span>
+                        <span class="control-action">Interact</span>
+                        <button class="control-edit" onclick="editControl('interact')">EDIT</button>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">1-4</span>
+                        <span class="control-action">Weapons</span>
+                        <button class="control-edit" onclick="editControl('weapons')">EDIT</button>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">TAB</span>
+                        <span class="control-action">Scoreboard</span>
+                        <button class="control-edit" onclick="editControl('scoreboard')">EDIT</button>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">M</span>
+                        <span class="control-action">Map</span>
+                        <button class="control-edit" onclick="editControl('map')">EDIT</button>
+                    </div>
+                </div>
+                <button class="btn-secondary" onclick="resetControls()">RESET TO DEFAULT</button>
             </div>
         </div>
 
-        <div class="settings-section">
-            <h3>🎨 Display</h3>
-            <div class="setting-item">
-                <label>Fullscreen</label>
-                <input type="checkbox" id="fullscreenToggle">
+        <div id="settingsGraphicsTab" class="settings-tab-content hidden">
+            <div class="settings-section">
+                <h3>📺 Graphics</h3>
+                <div class="setting-item">
+                    <label>Quality</label>
+                    <select id="graphicsQuality" class="select-input">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="ultra">Ultra</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>FPS Limit</label>
+                    <select id="fpsLimit" class="select-input">
+                        <option value="30">30 FPS</option>
+                        <option value="60" selected>60 FPS</option>
+                        <option value="120">120 FPS</option>
+                        <option value="unlimited">Unlimited</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Resolution</label>
+                    <select id="resolution" class="select-input">
+                        <option value="1920x1080" selected>1920x1080</option>
+                        <option value="1280x720">1280x720</option>
+                        <option value="2560x1440">2560x1440</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label><input type="checkbox" id="showFPSToggle"> Show FPS</label>
+                </div>
+                <div class="setting-item">
+                    <label><input type="checkbox" id="showPingToggle" checked> Show Ping</label>
+                </div>
+                <div class="setting-item">
+                    <label><input type="checkbox" id="vSyncToggle"> V-Sync</label>
+                </div>
+                <div class="setting-item">
+                    <label><input type="checkbox" id="fullscreenToggle"> Fullscreen</label>
+                </div>
             </div>
-            <div class="setting-item">
-                <label>Show Minimap</label>
-                <input type="checkbox" id="showMinimapToggle" checked>
-            </div>
-            <div class="setting-item">
-                <label>Show Damage Numbers</label>
-                <input type="checkbox" id="showDamageToggle" checked>
-            </div>
-        </div>
         </div>
 
-        <div class="settings-section">
-            <h3>⌨️ Controls</h3>
-            <div class="controls-list">
-                <div class="control-item"><span>W/A/S/D</span><span>Move</span></div>
-                <div class="control-item"><span>SHIFT</span><span>Sprint</span></div>
-                <div class="control-item"><span>SPACE</span><span>Jump</span></div>
-                <div class="control-item"><span>R</span><span>Reload</span></div>
-                <div class="control-item"><span>G</span><span>Grenade</span></div>
-                <div class="control-item"><span>1-4</span><span>Weapons</span></div>
-                <div class="control-item"><span>TAB</span><span>Scoreboard</span></div>
-                <div class="control-item"><span>M</span><span>Map</span></div>
-                <div class="control-item"><span>ESC</span><span>Menu</span></div>
+        <div id="settingsAudioTab" class="settings-tab-content hidden">
+            <div class="settings-section">
+                <h3>🔊 Audio</h3>
+                <div class="setting-item">
+                    <label>Master Volume: <span id="masterVolumeValue">100</span></label>
+                    <input type="range" id="masterVolume" min="0" max="100" value="100" class="slider">
+                </div>
+                <div class="setting-item">
+                    <label>Music Volume: <span id="musicVolumeValue">50</span></label>
+                    <input type="range" id="musicVolume" min="0" max="100" value="50" class="slider">
+                </div>
+                <div class="setting-item">
+                    <label>SFX Volume: <span id="sfxVolumeValue">100</span></label>
+                    <input type="range" id="sfxVolume" min="0" max="100" value="100" class="slider">
+                </div>
+                <div class="setting-item">
+                    <label>Voice Volume: <span id="voiceVolumeValue">100</span></label>
+                    <input type="range" id="voiceVolume" min="0" max="100" value="100" class="slider">
+                </div>
+                <div class="setting-item">
+                    <label><input type="checkbox" id="voiceChatToggle"> Voice Chat</label>
+                </div>
+                <div class="setting-item">
+                    <label><input type="checkbox" id="pushToTalkToggle"> Push to Talk</label>
+                </div>
             </div>
-            <button onclick="resetControls()">RESET TO DEFAULT</button>
         </div>
 
-        <div class="settings-actions">
-            <button onclick="saveSettings()" class="save-btn">SAVE SETTINGS</button>
-            <button onclick="resetSettings()" class="reset-btn">RESET ALL</button>
+        <div id="settingsAccountTab" class="settings-tab-content hidden">
+            <div class="settings-section">
+                <h3>👤 Account</h3>
+                <div class="setting-item">
+                    <label>Username</label>
+                    <input type="text" id="accountUsername" class="text-input" maxlength="20">
+                    <button class="btn-small" onclick="saveUsername()">SAVE</button>
+                </div>
+                <div class="setting-item">
+                    <label>Email</label>
+                    <input type="email" id="accountEmail" class="text-input" disabled>
+                </div>
+                <div class="setting-item">
+                    <label>Account ID</label>
+                    <input type="text" id="accountId" class="text-input" disabled>
+                    <button class="btn-small" onclick="copyAccountId()">COPY</button>
+                </div>
+                <div class="setting-actions">
+                    <button class="btn-danger" onclick="logoutAccount()">LOGOUT</button>
+                    <button class="btn-danger" onclick="deleteAccount()">DELETE ACCOUNT</button>
+                </div>
+            </div>
         </div>
+    </div>
+
+    <div class="settings-footer">
+        <button onclick="saveSettings()" class="btn-primary">SAVE SETTINGS</button>
+        <button onclick="resetSettings()" class="btn-secondary">RESET ALL</button>
     </div>
 </div>
 
+<!-- ============================================ -->
 <!-- PROFILE MENU -->
-<div id="profileMenu" class="hidden">
-    <div class="menu-header">
+<!-- ============================================ -->
+<div id="profileMenu" class="panel hidden">
+    <div class="panel-header">
         <h2>👤 PROFILE</h2>
-        <button class="close-btn" onclick="closeProfile()">✕</button>
+        <button class="panel-close" onclick="closeProfile()">✕</button>
     </div>
     
-    <div class="profile-content">
-        <div class="profile-avatar-section">
-            <div class="profile-avatar-large" id="profileAvatarLarge"></div>
-            <button onclick="changeAvatar()">CHANGE AVATAR</button>
-        </div>
+    <div class="panel-body">
+        <div class="profile-content">
+            <div class="profile-avatar-section">
+                <div class="profile-avatar-large" id="profileAvatarLarge"></div>
+                <button class="btn-secondary" onclick="changeAvatar()">CHANGE AVATAR</button>
+                <button class="btn-secondary" onclick="changeAvatarColor()">CHANGE COLOR</button>
+            </div>
 
-        <div class="profile-info-section">
-            <div class="info-item">
-                <label>Username:</label>
-                <input type="text" id="profileUsername" maxlength="20">
-                <button onclick="saveUsername()">SAVE</button>
+            <div class="profile-info-section">
+                <div class="info-row">
+                    <label>Username:</label>
+                    <input type="text" id="profileUsername" maxlength="20" class="text-input">
+                    <button class="btn-small" onclick="saveUsername()">SAVE</button>
+                </div>
+                <div class="info-row">
+                    <label>Level:</label>
+                    <span class="info-value" id="profileLevel">1</span>
+                    <div class="xp-bar">
+                        <div class="xp-fill" id="profileXPBar"></div>
+                    </div>
+                </div>
+                <div class="info-row">
+                    <label>Rank:</label>
+                    <span class="info-value rank-badge" id="profileRank">Bronze III</span>
+                </div>
+                <div class="info-row">
+                    <label>K/D Ratio:</label>
+                    <span class="info-value" id="profileKDR">0.00</span>
+                </div>
+                <div class="info-row">
+                    <label>Win Rate:</label>
+                    <span class="info-value" id="profileWinRate">0%</span>
+                </div>
+                <div class="info-row">
+                    <label>Member Since:</label>
+                    <span class="info-value" id="profileJoinDate">-</span>
+                </div>
             </div>
-            <div class="info-item">
-                <label>Level:</label>
-                <span id="profileLevel">1</span>
-            </div>
-            <div class="info-item">
-                <label>Rank:</label>
-                <span id="profileRank">Bronze III</span>
-            </div>
-            <div class="info-item">
-                <label>K/D Ratio:</label>
-                <span id="profileKDR">0.00</span>
-            </div>
-        </div>
 
-        <div class="profile-stats-section">
-            <h3>📊 STATISTICS</h3>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="statWins">0</div>
-                    <div class="stat-label">Wins</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statKills">0</div>
-                    <div class="stat-label">Kills</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statDeaths">0</div>
-                    <div class="stat-label">Deaths</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statMatches">0</div>
-                    <div class="stat-label">Matches</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statDamage">0</div>
-                    <div class="stat-label">Damage</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statTime">0h</div>
-                    <div class="stat-label">Play Time</div>
+            <div class="profile-stats-section">
+                <h3>📊 STATISTICS</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🏆</div>
+                        <div class="stat-value" id="statWins">0</div>
+                        <div class="stat-label">Wins</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💀</div>
+                        <div class="stat-value" id="statKills">0</div>
+                        <div class="stat-label">Kills</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">☠️</div>
+                        <div class="stat-value" id="statDeaths">0</div>
+                        <div class="stat-label">Deaths</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎮</div>
+                        <div class="stat-value" id="statMatches">0</div>
+                        <div class="stat-label">Matches</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💥</div>
+                        <div class="stat-value" id="statDamage">0</div>
+                        <div class="stat-label">Damage</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-value" id="statTime">0h</div>
+                        <div class="stat-label">Play Time</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-value" id="statHeadshots">0</div>
+                        <div class="stat-label">Headshots</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-value" id="statStreak">0</div>
+                        <div class="stat-label">Best Streak</div>
+                    </div>
+                     <div class="stat-card">
+                        <div class="stat-icon">🏅</div>
+                        <div class="stat-value" id="statTop10">0</div>
+                        <div class="stat-label">Top 10</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎖️</div>
+                        <div class="stat-value" id="statRevives">0</div>
+                        <div class="stat-label">Revives</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-value" id="statLooted">0</div>
+                        <div class="stat-label">Items Looted</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🚗</div>
+                        <div class="stat-value" id="statVehicles">0</div>
+                        <div class="stat-label">Vehicles Used</div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="profile-achievements">
-            <h3>🏆 ACHIEVEMENTS</h3>
-            <div class="achievements-grid" id="achievementsGrid"></div>
+            <div class="profile-achievements">
+                <h3>🏆 ACHIEVEMENTS</h3>
+                <div class="achievements-filter">
+                    <button class="filter-btn active" onclick="filterAchievements('all')">All</button>
+                    <button class="filter-btn" onclick="filterAchievements('unlocked')">Unlocked</button>
+                    <button class="filter-btn" onclick="filterAchievements('locked')">Locked</button>
+                </div>
+                <div class="achievements-grid" id="achievementsGrid">
+                    <div class="achievement-item unlocked">
+                        <div class="achievement-icon">🎮</div>
+                        <div class="achievement-info">
+                            <div class="achievement-name">First Blood</div>
+                            <div class="achievement-desc">Get your first kill</div>
+                        </div>
+                        <div class="achievement-reward">+50 XP</div>
+                    </div>
+                    <div class="achievement-item unlocked">
+                        <div class="achievement-icon">🏆</div>
+                        <div class="achievement-info">
+                            <div class="achievement-name">Winner</div>
+                            <div class="achievement-desc">Win your first match</div>
+                        </div>
+                        <div class="achievement-reward">+200 XP</div>
+                    </div>
+                    <div class="achievement-item locked">
+                        <div class="achievement-icon">💀</div>
+                        <div class="achievement-info">
+                            <div class="achievement-name">Killing Machine</div>
+                            <div class="achievement-desc">Get 100 kills</div>
+                        </div>
+                        <div class="achievement-reward">+500 XP</div>
+                    </div>
+                    <div class="achievement-item locked">
+                        <div class="achievement-icon">🔥</div>
+                        <div class="achievement-info">
+                            <div class="achievement-name">Hot Streak</div>
+                            <div class="achievement-desc">Win 5 matches in a row</div>
+                        </div>
+                        <div class="achievement-reward">+1000 XP</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- ============================================ -->
 <!-- MAIL MENU -->
-<div id="mailMenu" class="hidden">
-    <div class="menu-header">
+<!-- ============================================ -->
+<div id="mailMenu" class="panel hidden">
+    <div class="panel-header">
         <h2>📧 MAIL</h2>
-        <button class="close-btn" onclick="closeMail()">✕</button>
+        <button class="panel-close" onclick="closeMail()">✕</button>
     </div>
     
     <div class="mail-tabs">
-        <button class="mail-tab active" onclick="showMailTab('inbox')">Inbox</button>
+        <button class="mail-tab active" onclick="showMailTab('inbox')">
+            Inbox <span class="tab-badge" id="inboxBadge">0</span>
+        </button>
         <button class="mail-tab" onclick="showMailTab('sent')">Sent</button>
-        <button class="mail-tab" onclick="showMailTab('rewards')">Rewards</button>
+        <button class="mail-tab" onclick="showMailTab('rewards')">
+            Rewards <span class="tab-badge" id="rewardsBadge">0</span>
+        </button>
     </div>
 
     <div id="mailInboxTab" class="mail-tab-content">
-        <div class="mail-list" id="mailInboxList"></div>
+        <div class="mail-list" id="mailInboxList">
+            <div class="mail-empty">No messages</div>
+        </div>
     </div>
 
     <div id="mailSentTab" class="mail-tab-content hidden">
-        <div class="mail-list" id="mailSentList"></div>
+        <div class="mail-list" id="mailSentList">
+            <div class="mail-empty">No sent messages</div>
+        </div>
     </div>
 
     <div id="mailRewardsTab" class="mail-tab-content hidden">
-        <div class="mail-list" id="mailRewardsList"></div>
+        <div class="mail-list" id="mailRewardsList">
+            <div class="mail-empty">No rewards available</div>
+        </div>
     </div>
 
     <div class="mail-actions">
-        <button onclick="claimAllMail()">CLAIM ALL</button>
-        <button onclick="deleteReadMail()">DELETE READ</button>
+        <button class="mail-btn" onclick="claimAllMail()">CLAIM ALL</button>
+        <button class="mail-btn" onclick="deleteReadMail()">DELETE READ</button>
+        <button class="mail-btn" onclick="composeMail()">COMPOSE</button>
     </div>
 </div>
 
+<!-- ============================================ -->
 <!-- FULL LEADERBOARD -->
-<div id="fullLeaderboard" class="hidden">
-    <div class="menu-header">
+<!-- ============================================ -->
+<div id="fullLeaderboard" class="panel hidden">
+    <div class="panel-header">
         <h2>🏆 GLOBAL LEADERBOARD</h2>
-        <button class="close-btn" onclick="closeFullLeaderboard()">✕</button>
+        <button class="panel-close" onclick="closeFullLeaderboard()">✕</button>
     </div>
     
     <div class="leaderboard-filters">
         <button class="filter-btn active" onclick="filterLeaderboard('global')">Global</button>
         <button class="filter-btn" onclick="filterLeaderboard('friends')">Friends</button>
         <button class="filter-btn" onclick="filterLeaderboard('region')">Region</button>
+        <button class="filter-btn" onclick="filterLeaderboard('season')">Season</button>
+    </div>
+
+    <div class="leaderboard-search">
+        <input type="text" id="leaderboardSearch" placeholder="Search player..." oninput="searchLeaderboard()">
     </div>
 
     <div class="leaderboard-table-wrapper">
@@ -961,409 +1682,326 @@
                     <th>Score</th>
                 </tr>
             </thead>
-            <tbody id="fullLeaderboardBody"></tbody>
+            <tbody id="fullLeaderboardBody">
+                <tr>
+                    <td colspan="7" class="loading-cell">Loading...</td>
+                </tr>
+            </tbody>
         </table>
     </div>
 
     <div class="leaderboard-pagination">
-        <button onclick="prevLeaderboardPage()">← PREV</button>
-        <span id="leaderboardPage">Page 1</span>
-        <button onclick="nextLeaderboardPage()">NEXT →</button>
+        <button class="page-btn" onclick="prevLeaderboardPage()">← PREV</button>
+        <span class="page-info" id="leaderboardPage">Page 1 of 1</span>
+        <button class="page-btn" onclick="nextLeaderboardPage()">NEXT →</button>
+    </div>
+    
+    <div class="my-rank-display">
+        <span class="my-rank-label">Your Rank:</span>
+        <span class="my-rank-value" id="myRankValue">#-</span>
     </div>
 </div>
 
+<!-- ============================================ -->
+<!-- TERMS MODAL -->
+<!-- ============================================ -->
 <div id="termsModal" class="modal hidden">
-    <div class="modal-content" style="max-width:500px;">
-        <h2>Terms of Service</h2>
-        <div style="max-height:300px;overflow-y:auto;margin:15px 0;padding:10px;background:#1a1a1a;border-radius:6px;font-size:12px;line-height:1.6;">
-            <p><strong>1. Acceptance of Terms</strong><br>By playing MG FIGHTER, you agree to these terms...</p>
-            <p><strong>2. User Conduct</strong><br>No cheating, hacking, or exploiting bugs...</p>
-            <p><strong>3. Account Security</strong><br>You are responsible for your account...</p>
-            <p><strong>4. Privacy</strong><br>We collect gameplay data to improve service...</p>
-            <p><strong>5. Termination</strong><br>We reserve the right to ban violators...</p>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Terms of Service</h2>
+            <button class="modal-close" onclick="closeTerms()">✕</button>
         </div>
-        <div style="display:flex;gap:10px;">
-            <button onclick="closeTerms()" class="btn-secondary" style="flex:1;">Cancel</button>
-            <button onclick="acceptTerms()" class="btn-primary" style="flex:1;">OK - Accept</button>
+        <div class="modal-body">
+            <div class="terms-content">
+                <h3>1. Acceptance of Terms</h3>
+                <p>By playing MG FIGHTER, you agree to these terms and conditions. If you do not agree, please do not play the game.</p>
+                
+                <h3>2. User Conduct</h3>
+                <p>No cheating, hacking, exploiting bugs, or using unauthorized third-party software. Respect other players.</p>
+                
+                <h3>3. Account Security</h3>
+                <p>You are responsible for maintaining the security of your account. Do not share your login credentials.</p>
+                
+                <h3>4. Privacy</h3>
+                <p>We collect gameplay data, statistics, and device information to improve service and prevent cheating.</p>
+                
+                <h3>5. Virtual Items</h3>
+                <p>Virtual items have no real-world value. Purchases are final and non-refundable.</p>
+                
+                <h3>6. Termination</h3>
+                <p>We reserve the right to ban violators and terminate accounts without notice.</p>
+                
+                <h3>7. Changes to Terms</h3>
+                <p>We may update these terms at any time. Continued use constitutes acceptance of changes.</p>
+            </div>
         </div>
-    </div>
-</div>
-
-<!-- ADMIN LOGIN SIDEBAR - SECURE -->
-<div id="adminLoginSidebar" style="
-    position: fixed;
-    top: 0;
-    right: -350px;
-    width: 320px;
-    height: 100vh;
-    background: linear-gradient(135deg, #1a0000, #000);
-    border-left: 3px solid #ff0000;
-    z-index: 99999;
-    transition: right 0.3s ease;
-    box-shadow: -5px 0 20px rgba(255,0,0,0.5);
-    display: none;
-">
-    <div style="padding:20px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid #ff0000;padding-bottom:10px;">
-            <h3 style="color:#ff0000;margin:0;font-size:16px;">🔐 ADMIN VERIFICATION</h3>
-            <button onclick="closeAdminLogin()" style="background:#ff0000;border:none;color:#fff;padding:5px 12px;cursor:pointer;border-radius:4px;font-weight:bold;">✕</button>
-        </div>
-
-        <div style="text-align:center;margin:30px 0;">
-            <div style="font-size:48px;margin-bottom:15px;">🔒</div>
-            <div style="color:#aaa;font-size:13px;margin-bottom:20px;">Verifying administrator credentials...</div>
-        </div>
-
-        <button onclick="requestAdminAccess()" style="
-            width:100%;
-            padding:15px;
-            background:#ff0000;
-            border:none;
-            color:#fff;
-            cursor:pointer;
-            border-radius:6px;
-            font-weight:bold;
-            font-size:14px;
-            margin-bottom:10px;
-        ">VERIFY ACCESS</button>
-
-        <div id="adminLoginMsg" style="font-size:12px;text-align:center;min-height:25px;font-weight:bold;"></div>
-
-        <div style="margin-top:40px;padding-top:20px;border-top:1px solid #333;font-size:10px;color:#666;text-align:center;">
-            Authorized personnel only<br>
-            All access attempts are logged
+        <div class="modal-footer">
+            <button onclick="closeTerms()" class="btn-secondary">Cancel</button>
+            <button onclick="acceptTerms()" class="btn-primary">OK - Accept</button>
         </div>
     </div>
 </div>
 
+<!-- ============================================ -->
 <!-- PRIVACY MODAL -->
+<!-- ============================================ -->
 <div id="privacyModal" class="modal hidden">
     <div class="modal-content">
         <div class="modal-header">
             <h2>Privacy Policy</h2>
-            <button class="close-btn" onclick="closePrivacy()">✕</button>
+            <button class="modal-close" onclick="closePrivacy()">✕</button>
         </div>
         <div class="modal-body">
-            <h3>1. Information We Collect</h3>
-            <p>We collect username, email, gameplay statistics, and device information.</p>
-            
-            <h3>2. How We Use Information</h3>
-            <p>Data is used to provide game services, improve gameplay, and prevent cheating.</p>
-            
-            <h3>3. Data Security</h3>
-            <p>We implement security measures to protect your personal information.</p>
-            
-            <h3>4. Third Parties</h3>
-            <p>We do not sell or share your personal data with third parties.</p>
-            
-            <h3>5. Your Rights</h3>
-            <p>You can request deletion of your account and associated data at any time.</p>
+            <div class="privacy-content">
+                <h3>1. Information We Collect</h3>
+                <p>We collect username, email address, gameplay statistics, device information, IP address, and game performance data.</p>
+                
+                <h3>2. How We Use Information</h3>
+                <p>Data is used to provide game services, improve gameplay experience, prevent cheating, and provide customer support.</p>
+                
+                <h3>3. Data Security</h3>
+                <p>We implement industry-standard security measures to protect your personal information from unauthorized access.</p>
+                
+                <h3>4. Third Parties</h3>
+                <p>We do not sell or share your personal data with third parties for marketing purposes. We may share data with service providers.</p>
+                
+                <h3>5. Your Rights</h3>
+                <p>You can request access, correction, or deletion of your account and associated data at any time by contacting support.</p>
+                
+                <h3>6. Cookies</h3>
+                <p>We use cookies and similar technologies to enhance your experience and analyze game performance.</p>
+                
+                <h3>7. Children's Privacy</h3>
+                <p>Our game is not intended for children under 13. We do not knowingly collect data from children.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closePrivacy()" class="btn-primary">OK</button>
         </div>
     </div>
 </div>
 
+<!-- ============================================ -->
 <!-- CREDITS SCREEN -->
-<div id="creditsScreen" class="hidden">
+<!-- ============================================ -->
+<div id="creditsScreen" class="screen hidden">
+    <div class="credits-background"></div>
     <div class="credits-content">
-        <h1>MG FIGHTER</h1>
-        <h2>Version 4.0.0</h2>
+        <div class="credits-header">
+            <h1>MG FIGHTER</h1>
+            <h2>Version 4.0.0</h2>
+        </div>
         
-        <div class="credits-section">
-            <h3>Development Team</h3>
-            <p>Lead Developer: MG Studios</p>
-            <p>Game Design: Battle Team</p>
-            <p>Art & Animation: Creative Squad</p>
+        <div class="credits-scroller">
+            <div class="credits-section">
+                <h3>Development Team</h3>
+                <p>Lead Developer: MG Studios</p>
+                <p>Game Design: Battle Team</p>
+                <p>Art & Animation: Creative Squad</p>
+                <p>Sound Design: Audio Forge</p>
+                <p>QA Testing: Test Warriors</p>
+            </div>
+
+            <div class="credits-section">
+                <h3>Special Thanks</h3>
+                <p>To all beta testers</p>
+                <p>Community contributors</p>
+                <p>Firebase & Socket.io</p>
+                <p>Our amazing players</p>
+            </div>
+
+            <div class="credits-section">
+                <h3>Technologies</h3>
+                <p>HTML5 Canvas</p>
+                <p>Node.js & Express</p>
+                <p>Firebase & Firestore</p>
+                <p>Socket.io</p>
+                <p>WebGL</p>
+            </div>
+
+            <div class="credits-section">
+                <h3>Music & Sound</h3>
+                <p>Background Music: Epic Orchestra</p>
+                <p>SFX: Game Audio Studio</p>
+            </div>
+
+            <div class="credits-section">
+                <h3>Copyright</h3>
+                <p>© 2024 MG Studios</p>
+                <p>All Rights Reserved</p>
+            </div>
         </div>
 
-        <div class="credits-section">
-            <h3>Special Thanks</h3>
-            <p>To all beta testers</p>
-            <p>Community contributors</p>
-            <p>Firebase & Socket.io</p>
-        </div>
-
-        <div class="credits-section">
-            <h3>Technologies</h3>
-            <p>HTML5 Canvas</p>
-            <p>Node.js & Express</p>
-            <p>Firebase & Firestore</p>
-        </div>
-
-        <button onclick="closeCredits()">BACK TO MENU</button>
+        <button class="credits-btn" onclick="closeCredits()">BACK TO MENU</button>
     </div>
 </div>
+
+<!-- ============================================ -->
 <!-- ADMIN PAGE - MIAFINA -->
-<div id="adminPage" class="screen hidden" style="
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: linear-gradient(135deg, #0a0000, #000);
-    z-index: 99999;
-    overflow-y: auto;
-">
-    <div style="max-width:1200px;margin:0 auto;padding:20px;">
-        <!-- HEADER -->
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;border-bottom:2px solid #ff0000;padding-bottom:15px;">
-            <h1 style="color:#ff0000;margin:0;font-size:28px;">👑 ADMIN CONTROL CENTER</h1>
-            <button onclick="AdminPage.logout()" style="background:#ff0000;border:none;color:#fff;padding:10px 20px;cursor:pointer;border-radius:6px;font-weight:bold;">LOGOUT</button>
+<!-- ============================================ -->
+<div id="adminPage" class="screen hidden">
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>👑 ADMIN CONTROL CENTER</h1>
+            <button class="admin-logout-btn" onclick="AdminPage.logout()">LOGOUT</button>
         </div>
 
-        <!-- STATS -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:30px;">
-            <div style="background:#1a0000;border:1px solid #ff0000;padding:15px;border-radius:8px;">
-                <div style="font-size:12px;color:#aaa;">Online Players</div>
-                <div id="adminOnlineCount" style="font-size:32px;color:#00ff00;font-weight:bold;">0</div>
+        <div class="admin-stats-grid">
+            <div class="admin-stat-card">
+                <div class="stat-label">Online Players</div>
+                <div class="stat-value" id="adminOnlineCount">0</div>
+                <div class="stat-icon">👥</div>
             </div>
-            <div style="background:#1a0000;border:1px solid #ff0000;padding:15px;border-radius:8px;">
-                <div style="font-size:12px;color:#aaa;">Total Bans</div>
-                <div id="adminBanCount" style="font-size:32px;color:#ff0000;font-weight:bold;">0</div>
+            <div class="admin-stat-card">
+                <div class="stat-label">Total Bans</div>
+                <div class="stat-value" id="adminBanCount">0</div>
+                <div class="stat-icon">🚫</div>
             </div>
-            <div style="background:#1a0000;border:1px solid #ff0000;padding:15px;border-radius:8px;">
-                <div style="font-size:12px;color:#aaa;">Active Games</div>
-                <div id="adminGameCount" style="font-size:32px;color:#00aaff;font-weight:bold;">0</div>
+            <div class="admin-stat-card">
+                <div class="stat-label">Active Games</div>
+                <div class="stat-value" id="adminGameCount">0</div>
+                <div class="stat-icon">🎮</div>
             </div>
-            <div style="background:#1a0000;border:1px solid #ff0000;padding:15px;border-radius:8px;">
-                <div style="font-size:12px;color:#aaa;">Server Uptime</div>
-                <div id="adminUptime" style="font-size:32px;color:#ffaa00;font-weight:bold;">0h</div>
+            <div class="admin-stat-card">
+                <div class="stat-label">Server Uptime</div>
+                <div class="stat-value" id="adminUptime">0h</div>
+                <div class="stat-icon">⏱️</div>
             </div>
         </div>
 
-        <!-- CONTROLS -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-            <!-- LEFT: PLAYER MANAGEMENT -->
-            <div style="background:#0a0a0a;border:1px solid #333;padding:20px;border-radius:8px;">
-                <h3 style="color:#ffaa00;margin:0 0 15px 0;border-bottom:1px solid #333;padding-bottom:10px;">👤 PLAYER MANAGEMENT</h3>
+        <div class="admin-content">
+            <div class="admin-panel">
+                <div class="panel-title">👤 PLAYER MANAGEMENT</div>
+                
+                <div class="admin-search">
+                    <input id="adminPlayerSearch" type="text" placeholder="Search username..." oninput="AdminPage.searchPlayer()">
+                    <button onclick="AdminPage.refreshPlayerList()">🔄</button>
+                </div>
 
-                <input id="adminPlayerSearch" placeholder="Search username..." style="
-                    width:100%;padding:10px;margin-bottom:15px;background:#222;border:1px solid #444;color:#fff;border-radius:6px;
-                " oninput="AdminPage.searchPlayer()">
+                <div id="adminPlayerList" class="admin-player-list"></div>
 
-                <div id="adminPlayerList" style="max-height:300px;overflow-y:auto;margin-bottom:15px;"></div>
-
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    <button onclick="AdminPage.giveDiamonds(1000)" class="btn-admin">💎 +1K</button>
-                    <button onclick="AdminPage.giveDiamonds(10000)" class="btn-admin">💎 +10K</button>
-                    <button onclick="AdminPage.giveCoins(5000)" class="btn-admin">💰 +5K</button>
-                    <button onclick="AdminPage.giveCoins(50000)" class="btn-admin">💰 +50K</button>
-                    <button onclick="AdminPage.giveLevel(10)" class="btn-admin">⭐ +10 LVL</button>
-                    <button onclick="AdminPage.giveBP()" class="btn-admin">🎫 MAX BP</button>
-                    <button onclick="AdminPage.healPlayer()" class="btn-admin">❤️ HEAL</button>
-                    <button onclick="AdminPage.killPlayer()" class="btn-admin danger">💀 KILL</button>
-                    <button onclick="AdminPage.banPlayer()" class="btn-admin danger">🚫 BAN</button>
-                    <button onclick="AdminPage.unbanPlayer()" class="btn-admin">✅ UNBAN</button>
+                <div class="admin-controls-grid">
+                    <button class="admin-btn" onclick="AdminPage.giveDiamonds(1000)">💎 +1K</button>
+                    <button class="admin-btn" onclick="AdminPage.giveDiamonds(10000)">💎 +10K</button>
+                    <button class="admin-btn" onclick="AdminPage.giveCoins(5000)">💰 +5K</button>
+                    <button class="admin-btn" onclick="AdminPage.giveCoins(50000)">💰 +50K</button>
+                    <button class="admin-btn" onclick="AdminPage.giveLevel(10)">⭐ +10 LVL</button>
+                    <button class="admin-btn" onclick="AdminPage.giveBP()">🎫 MAX BP</button>
+                    <button class="admin-btn" onclick="AdminPage.healPlayer()">❤️ HEAL</button>
+                    <button class="admin-btn danger" onclick="AdminPage.killPlayer()">💀 KILL</button>
+                    <button class="admin-btn danger" onclick="AdminPage.banPlayer()">🚫 BAN</button>
+                    <button class="admin-btn" onclick="AdminPage.unbanPlayer()">✅ UNBAN</button>
+                    <button class="admin-btn" onclick="AdminPage.mutePlayer()">🔇 MUTE</button>
+                    <button class="admin-btn" onclick="AdminPage.resetPlayer()">🔄 RESET</button>
                 </div>
             </div>
 
-            <!-- RIGHT: SERVER CONTROL -->
-            <div style="background:#0a0a0a;border:1px solid #333;padding:20px;border-radius:8px;">
-                <h3 style="color:#00aaff;margin:0 0 15px 0;border-bottom:1px solid #333;padding-bottom:10px;">🌍 SERVER CONTROL</h3>
-
-                <textarea id="adminBroadcast" placeholder="Broadcast message to all players..." style="
-                    width:100%;height:80px;padding:10px;margin-bottom:10px;background:#222;border:1px solid #444;color:#fff;border-radius:6px;resize:none;
-                "></textarea>
-                <button onclick="AdminPage.broadcast()" class="btn-admin" style="width:100%;margin-bottom:15px;">📢 SEND BROADCAST</button>
-
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px;">
-                    <button onclick="AdminPage.spawnLoot()" class="btn-admin">🎁 SPAWN LOOT</button>
-                    <button onclick="AdminPage.spawnVehicle()" class="btn-admin">🚗 SPAWN CAR</button>
-                    <button onclick="AdminPage.forceZone()" class="btn-admin">⭕ FORCE ZONE</button>
-                    <button onclick="AdminPage.kickAll()" class="btn-admin danger">👢 KICK ALL</button>
+            <div class="admin-panel">
+                <div class="panel-title">🌍 SERVER CONTROL</div>
+                
+                <div class="admin-broadcast">
+                    <textarea id="adminBroadcast" placeholder="Broadcast message to all players..."></textarea>
+                    <button class="admin-btn primary" onclick="AdminPage.broadcast()">📢 SEND BROADCAST</button>
                 </div>
 
-                <div style="background:#1a0000;padding:10px;border-radius:6px;margin-top:15px;">
-                    <div style="font-size:11px;color:#aaa;margin-bottom:8px;">SERVER CONSOLE</div>
-                    <div id="adminConsole" style="background:#000;padding:10px;border-radius:4px;height:150px;overflow-y:auto;font-family:monospace;font-size:11px;color:#0f0;"></div>
+                <div class="admin-controls-grid">
+                    <button class="admin-btn" onclick="AdminPage.spawnLoot()">🎁 SPAWN LOOT</button>
+                    <button class="admin-btn" onclick="AdminPage.spawnVehicle()">🚗 SPAWN CAR</button>
+                    <button class="admin-btn" onclick="AdminPage.forceZone()">⭕ FORCE ZONE</button>
+                    <button class="admin-btn" onclick="AdminPage.spawnBots(10)">🤖 SPAWN BOTS</button>
+                    <button class="admin-btn" onclick="AdminPage.clearLoot()">🗑️ CLEAR LOOT</button>
+                    <button class="admin-btn danger" onclick="AdminPage.kickAll()">👢 KICK ALL</button>
+                    <button class="admin-btn danger" onclick="AdminPage.restartServer()">🔄 RESTART</button>
+                    <button class="admin-btn danger" onclick="AdminPage.shutdownServer()">⚠️ SHUTDOWN</button>
+                </div>
+
+                <div class="admin-console">
+                    <div class="console-header">SERVER CONSOLE</div>
+                    <div id="adminConsole" class="console-output"></div>
+                    <div class="console-input">
+                        <input type="text" id="consoleCommand" placeholder="Enter command..." onkeypress="if(event.key==='Enter')AdminPage.executeCommand()">
+                        <button onclick="AdminPage.executeCommand()">EXEC</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- SKINS -->
-        <div style="background:#0a0a0a;border:1px solid #333;padding:20px;border-radius:8px;margin-top:20px;">
-            <h3 style="color:#ff00ff;margin:0 0 15px 0;border-bottom:1px solid #333;padding-bottom:10px;">👑 GIVE COSMETICS</h3>
-            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;">
-                <button onclick="AdminPage.giveSkin('crown')" class="btn-admin">👑 Crown</button>
-                <button onclick="AdminPage.giveSkin('viking')" class="btn-admin">🪖 Viking</button>
-                <button onclick="AdminPage.giveSkin('wizard')" class="btn-admin">🧙 Wizard</button>
-                <button onclick="AdminPage.giveSkin('gold_skin')" class="btn-admin">✨ Gold</button>
-                <button onclick="AdminPage.giveSkin('pink_skin')" class="btn-admin">💖 Pink</button>
-                <button onclick="AdminPage.giveSkin('purple_skin')" class="btn-admin">💜 Purple</button>
+        <div class="admin-panel full-width">
+            <div class="panel-title">👑 GIVE COSMETICS</div>
+            <div class="cosmetics-grid">
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('crown')">👑 Crown</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('viking')">🪖 Viking</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('wizard')">🧙 Wizard</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('ninja')">🥷 Ninja</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('samurai')">🗡️ Samurai</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('pirate')">🏴‍☠️ Pirate</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('angel')">👼 Angel</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('demon')">😈 Demon</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('gold_skin')">✨ Gold</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('pink_skin')">💖 Pink</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('purple_skin')">💜 Purple</button>
+                <button class="cosmetic-btn" onclick="AdminPage.giveSkin('rainbow_skin')">🌈 Rainbow</button>
+            </div>
+        </div>
+
+        <div class="admin-panel full-width">
+            <div class="panel-title">📊 SERVER STATISTICS</div>
+            <div class="stats-detailed">
+                <div class="stat-row">
+                    <span class="stat-name">Total Players Registered:</span>
+                    <span class="stat-value" id="statTotalPlayers">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-name">Matches Played Today:</span>
+                    <span class="stat-value" id="statMatchesToday">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-name">Peak Players Today:</span>
+                    <span class="stat-value" id="statPeakPlayers">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-name">Total Kills:</span>
+                    <span class="stat-value" id="statTotalKills">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-name">Revenue Today:</span>
+                    <span class="stat-value" id="statRevenue">$0.00</span>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-.btn-admin {
-    padding: 10px;
-    background: #222;
-    border: 1px solid #444;
-    color: #fff;
-    cursor: pointer;
-    border-radius: 6px;
-    font-weight: bold;
-    transition: all 0.2s;
-}
-.btn-admin:hover {
-    background: #333;
-    border-color: #ff0000;
-    transform: translateY(-2px);
-}
-.btn-admin.danger:hover {
-    background: #ff0000;
-    border-color: #ff0000;
-}
-</style>
+<!-- ============================================ -->
 <!-- NOTIFICATION SYSTEM -->
+<!-- ============================================ -->
 <div id="notificationContainer"></div>
 
+<!-- ============================================ -->
 <!-- CONFIRM DIALOG -->
-<div id="confirmDialog" class="hidden">
-    <div class="confirm-box">
+<!-- ============================================ -->
+<div id="confirmDialog" class="modal hidden">
+    <div class="modal-content confirm-dialog">
+        <div class="confirm-icon">⚠️</div>
         <h3 id="confirmTitle">Confirm Action</h3>
         <p id="confirmMessage">Are you sure?</p>
         <div class="confirm-actions">
-            <button onclick="confirmYes()" class="confirm-yes">YES</button>
-            <button onclick="confirmNo()" class="confirm-no">NO</button>
+            <button onclick="confirmYes()" class="confirm-btn yes">YES</button>
+            <button onclick="confirmNo()" class="confirm-btn no">NO</button>
         </div>
     </div>
 </div>
 
+<!-- ============================================ -->
 <!-- TOAST MESSAGES -->
+<!-- ============================================ -->
 <div id="toastContainer"></div>
 
+<!-- ============================================ -->
 <!-- SCRIPTS -->
+<!-- ============================================ -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script src="script.js"></script>
-
-<script>
-// INLINE UTILITY FUNCTIONS
-function showTerms() {
-    document.getElementById('termsModal').classList.remove('hidden');
-}
-
-function closeTerms() {
-    document.getElementById('termsModal').classList.add('hidden');
-}
-
-function showPrivacy() {
-    document.getElementById('privacyModal').classList.remove('hidden');
-}
-
-function closePrivacy() {
-    document.getElementById('privacyModal').classList.add('hidden');
-}
-
-function closeCredits() {
-    document.getElementById('creditsScreen').classList.add('hidden');
-}
-
-function closeProfile() {
-    document.getElementById('profileMenu').classList.add('hidden');
-}
-
-function closeMail() {
-    document.getElementById('mailMenu').classList.add('hidden');
-}
-
-function closeFullLeaderboard() {
-    document.getElementById('fullLeaderboard').classList.add('hidden');
-}
-
-function closeSkinMenu() {
-    document.getElementById('skinMenu').classList.add('hidden');
-}
-
-function closeBattlePass() {
-    document.getElementById('battlePassMenu').classList.add('hidden');
-}
-
-function closeShop() {
-    document.getElementById('shopMenu').classList.add('hidden');
-}
-
-function closeInventory() {
-    document.getElementById('inventoryMenu').classList.add('hidden');
-}
-
-function closeSettings() {
-    document.getElementById('settingsMenu').classList.add('hidden');
-}
-
-function showSkinTab(tab) {
-    document.querySelectorAll('.skin-tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.skin-tab').forEach(el => el.classList.remove('active'));
-    document.getElementById('skin' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Tab').classList.remove('hidden');
-    event.target.classList.add('active');
-}
-
-function showShopTab(tab) {
-    document.querySelectorAll('.shop-tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.shop-tab').forEach(el => el.classList.remove('active'));
-    document.getElementById('shop' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Tab').classList.remove('hidden');
-    event.target.classList.add('active');
-}
-
-function showInvTab(tab) {
-    document.querySelectorAll('.inv-tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.inv-tab').forEach(el => el.classList.remove('active'));
-    document.getElementById('inv' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Tab').classList.remove('hidden');
-    event.target.classList.add('active');
-}
-
-function showMailTab(tab) {
-    document.querySelectorAll('.mail-tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.mail-tab').forEach(el => el.classList.remove('active'));
-    document.getElementById('mail' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Tab').classList.remove('hidden');
-    event.target.classList.add('active');
-}
-
-function showFriendsTab(tab) {
-    document.querySelectorAll('.friends-tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    event.target.classList.add('active');
-    loadFriendsTab(tab);
-}
-
-function switchChat(chat) {
-    document.querySelectorAll('.chat-tab').forEach(el => el.classList.remove('active'));
-    event.target.classList.add('active');
-    loadChatMessages(chat);
-}
-
-function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    document.getElementById('toastContainer').appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 10);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-function showNotification(title, message) {
-    const notif = document.createElement('div');
-    notif.className = 'notification';
-    notif.innerHTML = `<h4>${title}</h4><p>${message}</p>`;
-    document.getElementById('notificationContainer').appendChild(notif);
-    setTimeout(() => notif.classList.add('show'), 10);
-    setTimeout(() => {
-        notif.classList.remove('show');
-        setTimeout(() => notif.remove(), 300);
-    }, 5000);
-}
-
-// Hide loading screen when ready
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        document.getElementById('loadingScreen').classList.add('hidden');
-        document.getElementById('authScreen').classList.remove('hidden');
-    }, 1000);
-});
-</script>
 
 </body>
 </html>
