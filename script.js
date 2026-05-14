@@ -3726,3 +3726,521 @@ function manovaSensitivity() {
     document.getElementById('aimSensitivityValue').textContent = aim.toFixed(1);
 }
 
+let feoData = {
+    feo: {},
+    mozika: null,
+    mavitrika: true,
+    volumeMaster: 1.0,
+    volumeMozika: 0.5,
+    volumeSFX: 1.0
+};
+
+let animationData = {
+    mavitrika: true,
+    particles: [],
+    effets: []
+};
+
+let performanceData = {
+    fps: 60,
+    fpsTaloha: [],
+    ping: 0,
+    memory: 0,
+    mavitrika: false
+};
+
+function amboaryFeo() {
+    const feoList = [
+        'tifitra', 'reload', 'hit', 'maty', 'fandresena',
+        'join', 'leave', 'chat', 'vidy', 'valisoa',
+        'lobby', 'countdown', 'faritra', 'grenady',
+        'fitsaboana', 'levelup', 'click', 'error'
+    ];
+
+    feoList.forEach(anarana => {
+        const audio = new Audio();
+        audio.src = `/sounds/${anarana}.mp3`;
+        audio.preload = 'auto';
+        audio.volume = 0.7;
+        feoData.feo[anarana] = audio;
+    });
+
+    feoData.mozika = new Audio('/sounds/music_lobby.mp3');
+    feoData.mozika.loop = true;
+    feoData.mozika.volume = 0.3;
+
+    havaozyFeo();
+}
+
+function alefaFeo(anarana, volume = 1.0) {
+    if (!feoData.mavitrika) return;
+
+    const feo = feoData.feo[anarana];
+    if (!feo) return;
+
+    const feoVaovao = feo.cloneNode();
+    feoVaovao.volume = volume * feoData.volumeSFX * feoData.volumeMaster;
+    feoVaovao.play().catch(() => {});
+}
+
+function alefaMozika(anarana) {
+    if (!feoData.mavitrika) return;
+
+    if (feoData.mozika) {
+        feoData.mozika.pause();
+    }
+
+    feoData.mozika = new Audio(`/sounds/${anarana}.mp3`);
+    feoData.mozika.loop = true;
+    feoData.mozika.volume = feoData.volumeMozika * feoData.volumeMaster;
+    feoData.mozika.play().catch(() => {});
+}
+
+function atsahatraMozika() {
+    if (feoData.mozika) {
+        feoData.mozika.pause();
+        feoData.mozika = null;
+    }
+}
+
+function havaozyFeo() {
+    const s = mpilalao.settings || {};
+
+    feoData.volumeMaster = (s.masterVolume || 100) / 100;
+    feoData.volumeMozika = (s.musicVolume || 50) / 100;
+    feoData.volumeSFX = (s.sfxVolume || 100) / 100;
+
+    if (feoData.mozika) {
+        feoData.mozika.volume = feoData.volumeMozika * feoData.volumeMaster;
+    }
+}
+
+function manovaFeoMaster(isa) {
+    feoData.volumeMaster = isa / 100;
+    havaozyFeo();
+}
+
+function manginaFeo() {
+    feoData.mavitrika =!feoData.mavitrika;
+
+    if (!feoData.mavitrika) {
+        atsahatraMozika();
+    } else {
+        alefaMozika('music_lobby');
+    }
+
+    asehoToast(feoData.mavitrika? 'Feo mandeha' : 'Feo mangina', 'info');
+}
+
+function mamoronaParticle(x, y, karazana, loko) {
+    if (!animationData.mavitrika) return;
+
+    const particle = {
+        x: x,
+        y: y,
+        vx: (Math.random() - 0.5) * 4,
+        vy: (Math.random() - 0.5) * 4,
+        aina: 60,
+        ainaMax: 60,
+        loko: loko || '#ff006e',
+        habe: Math.random() * 4 + 2,
+        karazana: karazana
+    };
+
+    animationData.particles.push(particle);
+
+    if (animationData.particles.length > 200) {
+        animationData.particles.shift();
+    }
+}
+
+function havaozyParticles(ctx) {
+    animationData.particles = animationData.particles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.1;
+        p.aina--;
+
+        const alpha = p.aina / p.ainaMax;
+
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.loko;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.habe * alpha, 0, Math.PI * 2);
+        ctx.fill();
+
+        return p.aina > 0;
+    });
+
+    ctx.globalAlpha = 1;
+}
+
+function mamoronaEffet(x, y, karazana) {
+    const effet = {
+        x: x,
+        y: y,
+        fotoana: 0,
+        fotoanaMax: 30,
+        karazana: karazana
+    };
+
+    animationData.effets.push(effet);
+}
+
+function havaozyEffets(ctx) {
+    animationData.effets = animationData.effets.filter(e => {
+        e.fotoana++;
+
+        const fandrosoana = e.fotoana / e.fotoanaMax;
+
+        if (e.karazana === 'fipoahana') {
+            ctx.strokeStyle = `rgba(255, 170, 0, ${1 - fandrosoana})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, fandrosoana * 50, 0, Math.PI * 2);
+            ctx.stroke();
+        } else if (e.karazana === 'fahasitranana') {
+            ctx.fillStyle = `rgba(6, 255, 165, ${1 - fandrosoana})`;
+            ctx.font = '20px Arial';
+            ctx.fillText('+', e.x, e.y - fandrosoana * 30);
+        }
+
+        return e.fotoana < e.fotoanaMax;
+    });
+}
+
+function amboaryPerformance() {
+    performanceData.mavitrika = mpilalao.settings?.showFPS || false;
+
+    if (!performanceData.mavitrika) return;
+
+    let fotoanaTaloha = performance.now();
+    let frame = 0;
+
+    function manisaFPS() {
+        frame++;
+        const ankehitriny = performance.now();
+
+        if (ankehitriny - fotoanaTaloha >= 1000) {
+            performanceData.fps = frame;
+            performanceData.fpsTaloha.push(frame);
+
+            if (performanceData.fpsTaloha.length > 10) {
+                performanceData.fpsTaloha.shift();
+            }
+
+            frame = 0;
+            fotoanaTaloha = ankehitriny;
+
+            havaozyFampisehoanaPerformance();
+        }
+
+        if (performanceData.mavitrika) {
+            requestAnimationFrame(manisaFPS);
+        }
+    }
+
+    manisaFPS();
+
+    setInterval(() => {
+        if (lalao.socket) {
+            performanceData.ping = lalao.socket.ping || 0;
+        }
+
+        if (performance.memory) {
+            performanceData.memory = Math.round(performance.memory.usedJSHeapSize / 1048576);
+        }
+    }, 1000);
+}
+
+function havaozyFampisehoanaPerformance() {
+    const fpsEl = document.getElementById('fpsCounter');
+    const pingEl = document.getElementById('pingCounter');
+    const memoryEl = document.getElementById('memoryCounter');
+
+    if (fpsEl) {
+        fpsEl.textContent = performanceData.fps + ' FPS';
+        fpsEl.style.color = performanceData.fps >= 55? '#06ffa5' : performanceData.fps >= 30? '#ffaa00' : '#ff4444';
+    }
+
+    if (pingEl) {
+        pingEl.textContent = performanceData.ping + ' ms';
+        pingEl.style.color = performanceData.ping < 50? '#06ffa5' : performanceData.ping < 100? '#ffaa00' : '#ff4444';
+    }
+
+    if (memoryEl && performanceData.memory > 0) {
+        memoryEl.textContent = performanceData.memory + ' MB';
+    }
+}
+
+function amboaryFampisehoana() {
+    const el = document.getElementById('performanceDisplay');
+    if (el) {
+        el.style.display = performanceData.mavitrika? 'block' : 'none';
+    }
+}
+
+function manadioMemory() {
+    animationData.particles = [];
+    animationData.effets = [];
+    lalaoEo.mpilalaoTaloha.clear();
+
+    if (window.gc) {
+        window.gc();
+    }
+
+    asehoToast('Memory nodiovina', 'info');
+}
+
+function amboaryToucheMobile() {
+    const joystick = document.getElementById('mobileJoystick');
+    const fireBtn = document.getElementById('mobileFireBtn');
+    const reloadBtn = document.getElementById('mobileReloadBtn');
+    const healBtn = document.getElementById('mobileHealBtn');
+
+    if (!joystick) return;
+
+    let joystickActive = false;
+    let joystickStartX = 0;
+    let joystickStartY = 0;
+
+    joystick.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        joystickActive = true;
+        const touch = e.touches[0];
+        joystickStartX = touch.clientX;
+        joystickStartY = touch.clientY;
+    });
+
+    joystick.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!joystickActive) return;
+
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - joystickStartX;
+        const deltaY = touch.clientY - joystickStartY;
+
+        const distance = Math.min(50, Math.sqrt(deltaX * deltaX + deltaY * deltaY));
+        const angle = Math.atan2(deltaY, deltaX);
+
+        const hetsika = {
+            ambony: deltaY < -10,
+            ambany: deltaY > 10,
+            ankavia: deltaX < -10,
+            ankavanana: deltaX > 10,
+            sprint: distance > 40
+        };
+
+        lalao.socket.emit('hetsika', hetsika);
+    });
+
+    joystick.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        joystickActive = false;
+        lalao.socket.emit('hetsika', {
+            ambony: false,
+            ambany: false,
+            ankavia: false,
+            ankavanana: false,
+            sprint: false
+        });
+    });
+
+    if (fireBtn) {
+        fireBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            alefaTifitra();
+        });
+
+        fireBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            lalao.socket.emit('ajanonaTifitra');
+        });
+    }
+
+    if (reloadBtn) {
+        reloadBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            alefaReload();
+        });
+    }
+
+    if (healBtn) {
+        healBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            alefaFitsaboana();
+        });
+    }
+}
+
+function amboaryVibration() {
+    if (!navigator.vibrate) return;
+
+    lalao.socket.on('vibration', (data) => {
+        if (mpilalao.settings?.vibration!== false) {
+            navigator.vibrate(data.laharana || [50]);
+        }
+    });
+}
+
+function amboaryFullscreen() {
+    const btn = document.getElementById('fullscreenBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+            btn.textContent = '⛶';
+        } else {
+            document.exitFullscreen().catch(() => {});
+            btn.textContent = '⛶';
+        }
+    });
+}
+
+function amboaryFampitandremana() {
+    window.addEventListener('beforeunload', (e) => {
+        if (lalaoEo.mandeha) {
+            e.preventDefault();
+            e.returnValue = 'Mbola milalao ianao. Hiala?';
+            return e.returnValue;
+        }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && lalaoEo.mandeha) {
+            lalao.socket.emit('afk');
+        } else if (!document.hidden && lalaoEo.mandeha) {
+            lalao.socket.emit('miverina');
+        }
+    });
+}
+
+function amboaryAutoSave() {
+    setInterval(() => {
+        if (mpilalao.uid && lalao.mpampiasa) {
+            mitahiryData();
+        }
+    }, 30000);
+}
+
+function amboaryFifandraisana() {
+    window.addEventListener('online', () => {
+        asehoToast('Mifandray indray', 'success');
+        if (lalao.socket &&!lalao.socket.connected) {
+            lalao.socket.connect();
+        }
+    });
+
+    window.addEventListener('offline', () => {
+        asehoToast('Tsy mifandray', 'error');
+    });
+}
+
+function amboaryFampidirana() {
+    const fampidirana = [
+        {asa: amboaryFeo, anarana: 'Feo'},
+        {asa: amboaryPerformance, anarana: 'Performance'},
+        {asa: amboaryToucheMobile, anarana: 'Mobile'},
+        {asa: amboaryVibration, anarana: 'Vibration'},
+        {asa: amboaryFullscreen, anarana: 'Fullscreen'},
+        {asa: amboaryFampitandremana, anarana: 'Fampitandremana'},
+        {asa: amboaryAutoSave, anarana: 'AutoSave'},
+        {asa: amboaryFifandraisana, anarana: 'Fifandraisana'}
+    ];
+
+    fampidirana.forEach((f, i) => {
+        setTimeout(() => {
+            try {
+                f.asa();
+                console.log(f.anarana + ' vonona');
+            } catch (e) {
+                console.error(f.anarana + ' tsy nety:', e);
+            }
+        }, i * 100);
+    });
+}
+
+function famarananaLalao() {
+    atsahatraLalao();
+    atsahatraMozika();
+    atsahatraCountdown();
+    atsahatraFotoanaMatchmaking();
+
+    if (lalao.socket) {
+        lalao.socket.disconnect();
+    }
+
+    animationData.particles = [];
+    animationData.effets = [];
+
+    asehoToast('Misaotra nilalao', 'info');
+}
+
+function mamerinaIndray() {
+    famarananaLalao();
+    setTimeout(() => {
+        window.location.reload();
+    }, 1000);
+}
+
+function asehoFampahalalana() {
+    const info = `
+MG FIGHTER v4.0.0
+Version: ${CONFIG.version}
+Mpilalao: ${mpilalao.anarana}
+Level: ${mpilalao.level}
+Server: ${CONFIG.server}
+    `;
+    alert(info);
+}
+
+function mizaraLalao() {
+    const hafatra = 'Milalao MG Fighter! Battle Royale Malagasy 🔥';
+
+    if (navigator.share) {
+        navigator.share({
+            title: 'MG Fighter',
+            text: hafatra,
+            url: 'https://mgfighter.mg'
+        });
+    } else {
+        mandikaClipboard('https://mgfighter.mg');
+        asehoToast('Rohy nadika', 'success');
+    }
+}
+
+function manomeNaoty() {
+    const naoty = confirm('Tianao ny lalao?');
+    if (naoty) {
+        window.open('https://mgfighter.mg/rate', '_blank');
+        mpilalao.volamena += 100;
+        mitahiryData();
+        havaozyUI();
+        asehoToast('Misaotra! +100 volamena', 'success');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        amboaryFampidirana();
+    }, 1000);
+});
+
+window.addEventListener('error', (e) => {
+    console.error('Hadisoana:', e.error);
+    lalao.socket?.emit('hadisoana', {
+        hafatra: e.message,
+        toerana: e.filename,
+        andalana: e.lineno
+    });
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('Promise tsy voakarakara:', e.reason);
+});
+
+console.log('MG FIGHTER v4.0.0 - Vonona tanteraka');
+console.log('Mpilalao:', mpilalao.anarana);
+console.log('Server:', CONFIG.server);
+
