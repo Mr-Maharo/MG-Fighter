@@ -39,30 +39,30 @@ async function manombokaLalao() {
     try {
         asehoLoading();
         havaozyLoading(10, 'Manomana...');
-        
+
         await miandry(300);
         amboaryEventListeners();
-        
+
         havaozyLoading(30, 'Mifandray amin ny Firebase...');
         await amboaryFirebase();
-        
+
         havaozyLoading(60, 'Manamarina kaonty...');
         await jereoAuth();
-        
+
         havaozyLoading(90, 'Mameno...');
         await miandry(400);
-        
+
         havaozyLoading(100, 'Vonona!');
         await miandry(300);
-        
+
         afenoLoading();
-        
+
         if (lalao.mpampiasa) {
             asehoMenu();
         } else {
             asehoAuth();
         }
-        
+
         lalao.vonona = true;
     } catch (e) {
         console.error(e);
@@ -93,21 +93,22 @@ function afenoLoading() {
 
 async function amboaryFirebase() {
     const firebaseConfig = {
-  apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
-  authDomain: "mgfigther-b3760.firebaseapp.com",
-  databaseURL: "https://mgfigther-b3760-default-rtdb.firebaseio.com",
-  projectId: "mgfigther-b3760",
-  storageBucket: "mgfigther-b3760.firebasestorage.app",
-  messagingSenderId: "829325634031",
-  appId: "1:829325634031:web:b9c13b78ffec75a372ee1a",
-  measurementId: "G-30QH3M5E9Z"
-};
-    
-    firebase.initializeApp(config);
+        apiKey: "AIzaSyAfI8xmHFY5UlWO0sn7OeTzfjv7cJARAGY",
+        authDomain: "mgfigther-b3760.firebaseapp.com",
+        databaseURL: "https://mgfigther-b3760-default-rtdb.firebaseio.com",
+        projectId: "mgfigther-b3760",
+        storageBucket: "mgfigther-b3760.firebasestorage.app",
+        messagingSenderId: "829325634031",
+        appId: "1:829325634031:web:b9c13b78ffec75a372ee1a",
+        measurementId: "G-30QH3M5E9Z"
+    };
+
+    // NANAVAO: firebaseConfig (tsy "config")
+    firebase.initializeApp(firebaseConfig);
     lalao.firebase = firebase;
     lalao.auth = firebase.auth();
     lalao.db = firebase.firestore();
-    
+
     await amboarySocket();
 }
 
@@ -117,13 +118,13 @@ async function amboarySocket() {
             transports: ['websocket'],
             reconnection: true
         });
-        
+
         socket.on('connect', () => {
             lalao.socket = socket;
             console.log('Tafiditra server');
             resolve();
         });
-        
+
         socket.on('connect_error', (err) => {
             reject(err);
         });
@@ -148,11 +149,11 @@ async function hiditraGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
         const valiny = await lalao.auth.signInWithPopup(provider);
         const user = valiny.user;
-        
+
         lalao.mpampiasa = user;
         await mamoronaProfile(user);
         await makaDataMpampiasa(user.uid);
-        
+
         asehoToast('Tonga soa ' + user.displayName, 'success');
         asehoMenu();
     } catch (e) {
@@ -166,11 +167,11 @@ async function hiditraFacebook() {
         const provider = new firebase.auth.FacebookAuthProvider();
         const valiny = await lalao.auth.signInWithPopup(provider);
         const user = valiny.user;
-        
+
         lalao.mpampiasa = user;
         await mamoronaProfile(user);
         await makaDataMpampiasa(user.uid);
-        
+
         asehoToast('Tonga soa ' + user.displayName, 'success');
         asehoMenu();
     } catch (e) {
@@ -184,13 +185,13 @@ async function hiditraAnonyme() {
         const valiny = await lalao.auth.signInAnonymously();
         const user = valiny.user;
         const anarana = 'Vahiny' + Math.floor(Math.random() * 9999);
-        
-        await user.updateProfile({displayName: anarana});
+
+        await user.updateProfile({ displayName: anarana });
         lalao.mpampiasa = user;
-        
+
         await mamoronaProfile(user);
         mpilalao.anarana = anarana;
-        
+
         asehoToast('Tafiditra vahiny', 'success');
         asehoMenu();
     } catch (e) {
@@ -201,12 +202,12 @@ async function hiditraAnonyme() {
 async function hiditraEmail() {
     const email = document.getElementById('emailInput').value.trim();
     const teny = document.getElementById('passwordInput').value;
-    
+
     if (!email || !teny) {
         asehoAuthError('Fenoy daholo');
         return;
     }
-    
+
     try {
         const valiny = await lalao.auth.signInWithEmailAndPassword(email, teny);
         lalao.mpampiasa = valiny.user;
@@ -222,26 +223,26 @@ async function hisoratraEmail() {
     const email = document.getElementById('emailInput').value.trim();
     const teny = document.getElementById('passwordInput').value;
     const anarana = document.getElementById('usernameInput').value.trim();
-    
+
     if (!email || !teny || !anarana) {
         asehoAuthError('Fenoy daholo');
         return;
     }
-    
+
     if (anarana.length < 3) {
         asehoAuthError('Anarana fohy loatra');
         return;
     }
-    
+
     try {
         const valiny = await lalao.auth.createUserWithEmailAndPassword(email, teny);
         const user = valiny.user;
-        await user.updateProfile({displayName: anarana});
-        
+        await user.updateProfile({ displayName: anarana });
+
         lalao.mpampiasa = user;
         mpilalao.anarana = anarana;
         mpilalao.uid = user.uid;
-        
+
         await mamoronaProfile(user);
         asehoToast('Voasoratra!', 'success');
         asehoMenu();
@@ -283,7 +284,7 @@ function asehoAuthError(hafatra) {
 async function mamoronaProfile(user) {
     const ref = lalao.db.collection('mpilalao').doc(user.uid);
     const doc = await ref.get();
-    
+
     if (!doc.exists) {
         await ref.set({
             uid: user.uid,
@@ -315,14 +316,14 @@ async function makaDataMpampiasa(uid) {
     const doc = await lalao.db.collection('mpilalao').doc(uid).get();
     if (doc.exists) {
         const data = doc.data();
-        mpilalao = {...mpilalao, ...data};
+        mpilalao = { ...mpilalao, ...data };
         havaozyUI();
     }
 }
 
 async function mitahiryData() {
     if (!lalao.mpampiasa) return;
-    
+
     await lalao.db.collection('mpilalao').doc(lalao.mpampiasa.uid).update({
         anarana: mpilalao.anarana,
         level: mpilalao.level,
@@ -346,7 +347,7 @@ function havaozyUI() {
     const lvl = document.getElementById('playerLevelMini');
     const vola = document.getElementById('headerCoins');
     const diam = document.getElementById('headerDiamonds');
-    
+
     if (anar) anar.textContent = mpilalao.anarana;
     if (lvl) lvl.textContent = 'Lv.' + mpilalao.level;
     if (vola) vola.textContent = formatNomera(mpilalao.volamena);
@@ -359,9 +360,7 @@ function asehoEfijery(id) {
     lalao.efijery = id;
 }
 
-function asehoAuth() {
-    asehoEfijery('authScreen');
-}
+function asehoAuth() { asehoEfijery('authScreen'); }
 
 function asehoMenu() {
     asehoEfijery('mainMenu');
@@ -369,9 +368,7 @@ function asehoMenu() {
     makaOnline();
 }
 
-function asehoLobby() {
-    asehoEfijery('lobbyScreen');
-}
+function asehoLobby() { asehoEfijery('lobbyScreen'); }
 
 function asehoPanel(id) {
     document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
@@ -391,12 +388,12 @@ function formatNomera(isa) {
 function asehoToast(hafatra, karazana = 'info', fotoana = 3000) {
     const fito = document.getElementById('toastContainer');
     if (!fito) return;
-    
+
     const t = document.createElement('div');
     t.className = `toast toast-${karazana}`;
     t.textContent = hafatra;
     fito.appendChild(t);
-    
+
     setTimeout(() => t.classList.add('show'), 10);
     setTimeout(() => {
         t.classList.remove('show');
@@ -407,7 +404,7 @@ function asehoToast(hafatra, karazana = 'info', fotoana = 3000) {
 function asehoNotification(lohateny, hafatra, karazana = 'info') {
     const fito = document.getElementById('notificationContainer');
     if (!fito) return;
-    
+
     const n = document.createElement('div');
     n.className = `notification ${karazana}`;
     n.innerHTML = `
@@ -418,7 +415,7 @@ function asehoNotification(lohateny, hafatra, karazana = 'info') {
         </div>
     `;
     fito.appendChild(n);
-    
+
     setTimeout(() => {
         n.classList.add('fade-out');
         setTimeout(() => n.remove(), 400);
@@ -426,7 +423,7 @@ function asehoNotification(lohateny, hafatra, karazana = 'info') {
 }
 
 function saryNotification(k) {
-    const s = {success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️'};
+    const s = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
     return s[k] || 'ℹ️';
 }
 
@@ -459,7 +456,7 @@ function makaOnline() {
 
 function manombokaLalaoVaovao(mode) {
     if (!lalao.socket) return;
-    
+
     lalao.socket.emit('mamoronaLobby', {
         mode: mode,
         mpilalao: {
@@ -469,7 +466,7 @@ function manombokaLalaoVaovao(mode) {
             hoditra: mpilalao.hoditraAnkehitriny
         }
     });
-    
+
     lalao.socket.once('lobbyVoavoatra', (data) => {
         asehoLobby();
         asehoToast('Lobby voaforona', 'success');
@@ -501,26 +498,18 @@ function mandefaChat(hafatra) {
     });
 }
 
-function mifidyMode(mode) {
-    lalao.socket.emit('ovayMode', {mode});
-}
-
-function mifidyFitaovana(fitaovana) {
-    lalao.socket.emit('ovayFitaovana', {fitaovana});
-}
-
-function vononaHilalao() {
-    lalao.socket.emit('vonona');
-}
+function mifidyMode(mode) { lalao.socket.emit('ovayMode', { mode }); }
+function mifidyFitaovana(fitaovana) { lalao.socket.emit('ovayFitaovana', { fitaovana }); }
+function vononaHilalao() { lalao.socket.emit('vonona'); }
 
 function mividyZavatra(id, vidiny) {
     if (mpilalao.volamena < vidiny) {
         asehoToast('Tsy ampy volamena', 'error');
         return;
     }
-    
-    lalao.socket.emit('mividy', {id, vidiny});
-    
+
+    lalao.socket.emit('mividy', { id, vidiny });
+
     lalao.socket.once('vidyValiny', (valiny) => {
         if (valiny.vita) {
             mpilalao.volamena -= vidiny;
@@ -534,289 +523,9 @@ function mividyZavatra(id, vidiny) {
     });
 }
 
-function manokatraBattlePass() {
-    asehoPanel('battlePassMenu');
-    lalao.socket.emit('makaBattlePass');
-    
-    lalao.socket.once('battlePassData', (data) => {
-        asehoBattlePass(data);
-    });
-}
-
-function makaValisoa(level) {
-    lalao.socket.emit('makaValisoa', {level});
-}
-
-function manokatraInventory() {
-    asehoPanel('inventoryMenu');
-    asehoInventory();
-}
-
-function asehoInventory() {
-    const fito = document.getElementById('inventoryGrid');
-    if (!fito) return;
-    
-    fito.innerHTML = '';
-    mpilalao.hoditra.forEach(h => {
-        const el = document.createElement('div');
-        el.className = 'inventory-item';
-        el.innerHTML = `<div class="skin-emoji">👤</div><div>${h}</div>`;
-        el.onclick = () => mifidyHoditra(h);
-        fito.appendChild(el);
-    });
-}
-
-function mifidyHoditra(hoditra) {
-    mpilalao.hoditraAnkehitriny = hoditra;
-    mitahiryData();
-    asehoToast('Hoditra voafidy', 'success');
-    afenoPanel('inventoryMenu');
-}
-
-function manokatraSettings() {
-    asehoPanel('settingsPanel');
-}
-
-function mitahirySettings() {
-    const s = mpilalao.settings || {};
-    s.sensitivity = parseFloat(document.getElementById('sensitivitySlider').value);
-    s.volume = parseInt(document.getElementById('volumeSlider').value);
-    mpilalao.settings = s;
-    mitahiryData();
-    asehoToast('Settings voatahiry', 'success');
-}
-
-function manokatraProfile() {
-    asehoPanel('profileMenu');
-    const anar = document.getElementById('profileUsername');
-    if (anar) anar.value = mpilalao.anarana;
-}
-
-function manovaAnarana() {
-    const vaovao = document.getElementById('profileUsername').value.trim();
-    if (vaovao.length < 3) {
-        asehoToast('Anarana fohy', 'error');
-        return;
-    }
-    
-    mpilalao.anarana = vaovao;
-    mitahiryData();
-    lalao.mpampiasa.updateProfile({displayName: vaovao});
-    havaozyUI();
-    asehoToast('Anarana novaina', 'success');
-}
-
-function manokatraShop() {
-    asehoPanel('shopMenu');
-    lalao.socket.emit('makaShop');
-    
-    lalao.socket.once('shopData', (zavatra) => {
-        asehoShop(zavatra);
-    });
-}
-
-function asehoShop(zavatra) {
-    const fito = document.getElementById('shopGrid');
-    if (!fito) return;
-    
-    fito.innerHTML = '';
-    zavatra.forEach(z => {
-        const el = document.createElement('div');
-        el.className = 'shop-item';
-        el.innerHTML = `
-            <div class="item-image">${z.sary}</div>
-            <h4>${z.anarana}</h4>
-            <div class="item-price">${z.vidiny} 💰</div>
-            <button onclick="mividyZavatra('${z.id}', ${z.vidiny})" class="buy-btn">Vidio</button>
-        `;
-        fito.appendChild(el);
-    });
-}
-
-function manokatraLeaderboard() {
-    asehoPanel('fullLeaderboard');
-    lalao.socket.emit('makaLeaderboard');
-    
-    lalao.socket.once('leaderboardData', (lisitra) => {
-        asehoLeaderboard(lisitra);
-    });
-}
-
-function asehoLeaderboard(lisitra) {
-    const tbody = document.querySelector('#leaderboardTable tbody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    lisitra.forEach((p, i) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${i + 1}</td>
-            <td>${p.anarana}</td>
-            <td>${p.level}</td>
-            <td>${p.vono}</td>
-            <td>${p.fandresena}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function mandefaHafatraMail() {
-    const hafatra = document.getElementById('mailInput').value;
-    if (!hafatra) return;
-    
-    lalao.socket.emit('mandefaMail', {hafatra});
-    asehoToast('Lasa ny hafatra', 'success');
-}
-
-function makaMail() {
-    lalao.socket.emit('makaMail');
-    lalao.socket.once('mailData', (mail) => {
-        asehoMail(mail);
-    });
-}
-
-function asehoMail(mail) {
-    const fito = document.getElementById('mailList');
-    if (!fito) return;
-    
-    fito.innerHTML = '';
-    mail.forEach(m => {
-        const el = document.createElement('div');
-        el.className = 'mail-item';
-        el.innerHTML = `
-            <div class="mail-sender">${m.nandefa}</div>
-            <div class="mail-subject">${m.lohateny}</div>
-            <div class="mail-preview">${m.votoatiny}</div>
-        `;
-        fito.appendChild(el);
-    });
-}
-
-function mialaAdmin() {
-    if (confirm('Hiala admin?')) {
-        window.location.href = '/';
-    }
-}
-
-function manokatraCredits() {
-    asehoEfijery('creditsScreen');
-}
-
-function miverinaMenu() {
-    asehoMenu();
-}
-
-function kisendrasendra(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function manakana(a, min, max) {
-    return Math.max(min, Math.min(max, a));
-}
-
-function halavirana(x1, y1, x2, y2) {
-    return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-}
-
-function mamoronaId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-}
-
-function mamadikaFotoana(segondra) {
-    const min = Math.floor(segondra / 60);
-    const sec = Math.floor(segondra % 60);
-    return `${min}:${sec.toString().padStart(2, '0')}`;
-}
-
-function mandikaClipboard(soratra) {
-    navigator.clipboard.writeText(soratra).then(() => {
-        asehoToast('Nadika', 'success');
-    });
-}
-
-function alefaSon(fe) {
-    if (mpilalao.settings?.volume > 0) {
-        const audio = new Audio(`/sounds/${fe}.mp3`);
-        audio.volume = mpilalao.settings.volume / 100;
-        audio.play().catch(() => {});
-    }
-}
-
-function manombokaLalaoServer(data) {
-    asehoEfijery('gameScreen');
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    
-    lalao.socket.on('gameUpdate', (state) => {
-        saryLalao(ctx, state);
-    });
-    
-    lalao.socket.on('lalaoTapitra', (vokatra) => {
-        asehoVokatra(vokatra);
-    });
-}
-
-function saryLalao(ctx, state) {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fillStyle = '#0a0015';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    
-    state.mpilalao.forEach(p => {
-        ctx.fillStyle = p.uid === mpilalao.uid ? '#ff006e' : '#9d4edd';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.fillStyle = 'white';
-        ctx.font = '12px Arial';
-        ctx.fillText(p.anarana, p.x - 20, p.y - 25);
-    });
-}
-
-function mihetsika(tari) {
-    lalao.socket.emit('mihetsika', {tari});
-}
-
-function mitifitra(tari) {
-    lalao.socket.emit('mitifitra', {tari});
-}
-
-function mamerinaBasy() {
-    lalao.socket.emit('reload');
-}
-
-function mampiasaFitsaboana() {
-    lalao.socket.emit('fahasitranana');
-}
-
-function manipyGrenady(tari) {
-    lalao.socket.emit('grenady', {tari});
-}
-
-function asehoVokatra(vokatra) {
-    if (vokatra.fandresena) {
-        asehoEfijery('victoryScreen');
-        document.getElementById('victoryKills').textContent = vokatra.vono;
-    } else {
-        asehoEfijery('deathScreen');
-        document.getElementById('deathKills').textContent = vokatra.vono;
-    }
-    
-    mpilalao.vono += vokatra.vono;
-    mpilalao.lalao += 1;
-    if (vokatra.fandresena) mpilalao.fandresena += 1;
-    else mpilalao.fahafatesana += 1;
-    
-    mitahiryData();
-}
-
-function miverinaLobby() {
-    lalao.socket.emit('miverinaLobby');
-    asehoLobby();
-}
+// ============================================================
+// LOBBY
+// ============================================================
 
 let lobby = {
     id: null,
@@ -829,7 +538,8 @@ let lobby = {
     mandeha: false,
     fotoana: null,
     chat: [],
-    vonona: new Set()
+    vonona: new Set(),
+    fotoanaMatchmaking: null
 };
 
 function amboaryLobbyListeners() {
@@ -846,7 +556,7 @@ function amboaryLobbyListeners() {
         havaozyLobby();
         manombokaCountdown(data.countdown);
         asehoToast('Lobby voaforona', 'success');
-        alefaSon('lobby');
+        alefaFeo('lobby');
     });
 
     s.on('lobbyNiditra', (data) => {
@@ -856,9 +566,7 @@ function amboaryLobbyListeners() {
         lobby.mode = data.mode;
         asehoLobby();
         havaozyLobby();
-        if (data.countdownMandeha) {
-            manombokaCountdown(data.countdown);
-        }
+        if (data.countdownMandeha) manombokaCountdown(data.countdown);
         asehoToast('Tafiditra lobby', 'success');
     });
 
@@ -867,12 +575,12 @@ function amboaryLobbyListeners() {
         havaozyLobby();
         asehoToast(data.mpilalao.anarana + ' niditra', 'info');
         ampianaChatSystem(data.mpilalao.anarana + ' niditra');
-        alefaSon('join');
+        alefaFeo('join');
     });
 
     s.on('mpilalaoNiala', (data) => {
         const index = lobby.mpilalao.findIndex(p => p.uid === data.uid);
-        if (index!== -1) {
+        if (index !== -1) {
             const anar = lobby.mpilalao[index].anarana;
             lobby.mpilalao.splice(index, 1);
             havaozyLobby();
@@ -882,15 +590,11 @@ function amboaryLobbyListeners() {
     });
 
     s.on('tomponyNiova', (data) => {
-        lobby.mpilalao.forEach(p => {
-            p.tompony = (p.uid === data.uidVaovao);
-        });
+        lobby.mpilalao.forEach(p => { p.tompony = (p.uid === data.uidVaovao); });
         lobby.tompony = (data.uidVaovao === mpilalao.uid);
         havaozyLobby();
         asehoToast('Tompony vaovao: ' + data.anarana, 'info');
-        if (lobby.tompony) {
-            asehoToast('Ianao no tompony', 'success');
-        }
+        if (lobby.tompony) asehoToast('Ianao no tompony', 'success');
     });
 
     s.on('lobbyNohavaozina', (data) => {
@@ -901,23 +605,15 @@ function amboaryLobbyListeners() {
     });
 
     s.on('countdownNohavaozina', (data) => {
-        if (data.mandeha) {
-            manombokaCountdown(data.fotoana);
-        } else {
-            atsahatraCountdown();
-        }
+        if (data.mandeha) manombokaCountdown(data.fotoana);
+        else atsahatraCountdown();
     });
 
-    s.on('chatLobby', (data) => {
-        raisoChat(data);
-    });
+    s.on('chatLobby', (data) => { raisoChat(data); });
 
     s.on('vononaNohavaozina', (data) => {
-        if (data.vonona) {
-            lobby.vonona.add(data.uid);
-        } else {
-            lobby.vonona.delete(data.uid);
-        }
+        if (data.vonona) lobby.vonona.add(data.uid);
+        else lobby.vonona.delete(data.uid);
         havaozyVonona();
     });
 
@@ -928,9 +624,7 @@ function amboaryLobbyListeners() {
 
     s.on('matchManomboka', (data) => {
         asehoToast('Manomboka ao anatin ny 3...', 'success');
-        setTimeout(() => {
-            manombokaLalaoServer(data);
-        }, 3000);
+        setTimeout(() => { manombokaLalaoServer(data); }, 3000);
     });
 
     s.on('matchFoana', (data) => {
@@ -963,8 +657,8 @@ function asehoMpilalaoLobby() {
     lobby.mpilalao.forEach(p => {
         const el = document.createElement('div');
         el.className = 'player-tag';
-        const vonona = lobby.vonona.has(p.uid)? '✓' : '';
-        const satroka = p.tompony? '👑' : '👤';
+        const vonona = lobby.vonona.has(p.uid) ? '✓' : '';
+        const satroka = p.tompony ? '👑' : '👤';
 
         el.innerHTML = `
             <span class="player-tag-icon">${satroka}</span>
@@ -973,7 +667,7 @@ function asehoMpilalaoLobby() {
             <span class="ready-badge">${vonona}</span>
         `;
 
-        if (lobby.tompony &&!p.tompony && p.uid!== mpilalao.uid) {
+        if (lobby.tompony && !p.tompony && p.uid !== mpilalao.uid) {
             el.onclick = () => asehoMenuMpilalao(p);
         }
 
@@ -1004,25 +698,20 @@ function havaozyIdLobby() {
 
 function havaozyFanarahaMasoTompony() {
     document.querySelectorAll('.host-only').forEach(el => {
-        el.style.display = lobby.tompony? 'block' : 'none';
+        el.style.display = lobby.tompony ? 'block' : 'none';
     });
 }
 
 function manombokaCountdown(segondra) {
     atsahatraCountdown();
-
     lobby.countdown = segondra;
     lobby.mandeha = true;
-
     havaozyCountdown();
 
     lobby.fotoana = setInterval(() => {
         lobby.countdown--;
         havaozyCountdown();
-
-        if (lobby.countdown <= 0) {
-            atsahatraCountdown();
-        }
+        if (lobby.countdown <= 0) atsahatraCountdown();
     }, 1000);
 }
 
@@ -1042,12 +731,7 @@ function havaozyCountdown() {
         const min = Math.floor(lobby.countdown / 60);
         const sec = lobby.countdown % 60;
         el.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
-
-        if (lobby.countdown <= 10) {
-            el.style.color = '#ff4444';
-        } else {
-            el.style.color = '';
-        }
+        el.style.color = lobby.countdown <= 10 ? '#ff4444' : '';
     }
 
     if (feno) {
@@ -1071,7 +755,7 @@ function mamoronaLobby(mode) {
 }
 
 function miditraLobbyId(id) {
-    if (!lalao.socket ||!id) return;
+    if (!lalao.socket || !id) return;
 
     lalao.socket.emit('miditraLobby', {
         id: id,
@@ -1086,7 +770,7 @@ function miditraLobbyId(id) {
 
 function mialaAminLobby() {
     if (lobby.id && lalao.socket) {
-        lalao.socket.emit('mialaLobby', {id: lobby.id});
+        lalao.socket.emit('mialaLobby', { id: lobby.id });
     }
 
     atsahatraCountdown();
@@ -1101,7 +785,8 @@ function mialaAminLobby() {
         mandeha: false,
         fotoana: null,
         chat: [],
-        vonona: new Set()
+        vonona: new Set(),
+        fotoanaMatchmaking: null
     };
 
     afenoChat();
@@ -1115,20 +800,14 @@ function manovaModeLobby(mode) {
     }
 
     lobby.mode = mode;
-    lalao.socket.emit('manovaMode', {
-        id: lobby.id,
-        mode: mode
-    });
-
+    lalao.socket.emit('manovaMode', { id: lobby.id, mode: mode });
     havaozyModeAseho();
 }
 
 function manovaFitaovanaLobby(fitaovana) {
     lobby.fitaovana = fitaovana;
 
-    document.querySelectorAll('.weapon-select-btn').forEach(b => {
-        b.classList.remove('selected');
-    });
+    document.querySelectorAll('.weapon-select-btn').forEach(b => b.classList.remove('selected'));
 
     const voafidy = document.querySelector(`[data-weapon="${fitaovana}"]`);
     if (voafidy) voafidy.classList.add('selected');
@@ -1136,26 +815,16 @@ function manovaFitaovanaLobby(fitaovana) {
     const anar = document.getElementById('selectedWeaponName');
     if (anar) anar.textContent = fitaovana.toUpperCase();
 
-    lalao.socket.emit('manovaFitaovana', {
-        id: lobby.id,
-        fitaovana: fitaovana
-    });
+    lalao.socket.emit('manovaFitaovana', { id: lobby.id, fitaovana: fitaovana });
 }
 
 function manovaVonona() {
     const efaVonona = lobby.vonona.has(mpilalao.uid);
 
-    if (efaVonona) {
-        lobby.vonona.delete(mpilalao.uid);
-    } else {
-        lobby.vonona.add(mpilalao.uid);
-    }
+    if (efaVonona) lobby.vonona.delete(mpilalao.uid);
+    else lobby.vonona.add(mpilalao.uid);
 
-    lalao.socket.emit('manovaVonona', {
-        id: lobby.id,
-        vonona:!efaVonona
-    });
-
+    lalao.socket.emit('manovaVonona', { id: lobby.id, vonona: !efaVonona });
     havaozyVonona();
 }
 
@@ -1164,14 +833,13 @@ function havaozyVonona() {
     if (!bokotra) return;
 
     const vonona = lobby.vonona.has(mpilalao.uid);
-    bokotra.textContent = vonona? 'TSY VONONA' : 'VONONA';
-    bokotra.className = vonona? 'ready-btn not-ready' : 'ready-btn';
+    bokotra.textContent = vonona ? 'TSY VONONA' : 'VONONA';
+    bokotra.className = vonona ? 'ready-btn not-ready' : 'ready-btn';
 }
 
 function manombokaMatch() {
     if (!lobby.tompony) return;
-
-    lalao.socket.emit('manombokaMatch', {id: lobby.id});
+    lalao.socket.emit('manombokaMatch', { id: lobby.id });
 }
 
 function amboaryChat() {
@@ -1180,15 +848,11 @@ function amboaryChat() {
 
     if (soratra) {
         soratra.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                alefaChat();
-            }
+            if (e.key === 'Enter') alefaChat();
         });
     }
 
-    if (bokotra) {
-        bokotra.addEventListener('click', alefaChat);
-    }
+    if (bokotra) bokotra.addEventListener('click', alefaChat);
 }
 
 function alefaChat() {
@@ -1203,21 +867,13 @@ function alefaChat() {
         return;
     }
 
-    lalao.socket.emit('alefaChat', {
-        id: lobby.id,
-        hafatra: hafatra
-    });
-
+    lalao.socket.emit('alefaChat', { id: lobby.id, hafatra: hafatra });
     soratra.value = '';
 }
 
 function raisoChat(data) {
     lobby.chat.push(data);
-
-    if (lobby.chat.length > 100) {
-        lobby.chat.shift();
-    }
-
+    if (lobby.chat.length > 100) lobby.chat.shift();
     asehoChat(data);
 }
 
@@ -1244,9 +900,7 @@ function asehoChat(data) {
     fito.appendChild(el);
     fito.scrollTop = fito.scrollHeight;
 
-    if (data.uid!== mpilalao.uid) {
-        alefaSon('chat');
-    }
+    if (data.uid !== mpilalao.uid) alefaFeo('chat');
 }
 
 function makaLokoMpilalao(uid) {
@@ -1314,13 +968,11 @@ function afenoMatchmaking() {
 
 function manombokaFotoanaMatchmaking() {
     let segondra = 0;
-    const el = document.getElementById('matchmakingTimer');
 
     lobby.fotoanaMatchmaking = setInterval(() => {
         segondra++;
-        if (el) {
-            el.textContent = mamadikaFotoana(segondra);
-        }
+        const el = document.getElementById('matchmakingTimer');
+        if (el) el.textContent = mamadikaFotoana(segondra);
     }, 1000);
 }
 
@@ -1342,25 +994,56 @@ function asehoFanekenaMatch(data) {
 
     showConfirmDialog('Match Hita!', hafatra,
         () => manaikyMatch(data.id),
-        () => mandàMatch(data.id)
+        () => mandaMatch(data.id)
     );
 
     setTimeout(() => {
         const dialog = document.getElementById('confirmDialog');
-        if (dialog &&!dialog.classList.contains('hidden')) {
+        if (dialog && !dialog.classList.contains('hidden')) {
             manaikyMatch(data.id);
         }
     }, 8000);
 }
 
+// NANAVAO: showConfirmDialog — tsy voafetra teo aloha
+function showConfirmDialog(lohateny, hafatra, onEkena, onLavina) {
+    const dialog = document.getElementById('confirmDialog');
+    if (!dialog) return;
+
+    const lohatenyEl = document.getElementById('confirmTitle');
+    const hafatraEl = document.getElementById('confirmMessage');
+    const ekenaBtn = document.getElementById('confirmOkBtn');
+    const lavinaBtn = document.getElementById('confirmCancelBtn');
+
+    if (lohatenyEl) lohatenyEl.textContent = lohateny;
+    if (hafatraEl) hafatraEl.textContent = hafatra;
+
+    if (ekenaBtn) {
+        ekenaBtn.onclick = () => {
+            dialog.classList.add('hidden');
+            if (onEkena) onEkena();
+        };
+    }
+
+    if (lavinaBtn) {
+        lavinaBtn.onclick = () => {
+            dialog.classList.add('hidden');
+            if (onLavina) onLavina();
+        };
+    }
+
+    dialog.classList.remove('hidden');
+}
+
 function manaikyMatch(id) {
-    lalao.socket.emit('manaikyMatch', {id});
+    lalao.socket.emit('manaikyMatch', { id });
     asehoToast('Nekena', 'success');
     document.getElementById('confirmDialog')?.classList.add('hidden');
 }
 
-function mandàMatch(id) {
-    lalao.socket.emit('mandàMatch', {id});
+// NANAVAO: mandaMatch (tsy mandàMatch misy Unicode)
+function mandaMatch(id) {
+    lalao.socket.emit('mandaMatch', { id });
     asehoToast('Nolavina', 'info');
     document.getElementById('confirmDialog')?.classList.add('hidden');
 }
@@ -1370,10 +1053,7 @@ function asehoMenuMpilalao(p) {
 
     const safidy = confirm(`${p.anarana}\n\nTe hamoaka?`);
     if (safidy) {
-        lalao.socket.emit('avoakaMpilalao', {
-            id: lobby.id,
-            uid: p.uid
-        });
+        lalao.socket.emit('avoakaMpilalao', { id: lobby.id, uid: p.uid });
     }
 }
 
@@ -1406,14 +1086,46 @@ function asehoLobbyListe(lisitra) {
 }
 
 function mamerinaLobby() {
-    if (lobby.id) {
-        lalao.socket.emit('mamerinaLobby', {id: lobby.id});
-    }
+    if (lobby.id) lalao.socket.emit('mamerinaLobby', { id: lobby.id });
 }
 
-amboaryLobbyListeners();
-amboaryChat();
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
 
+function kisendrasendra(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function manakana(a, min, max) {
+    return Math.max(min, Math.min(max, a));
+}
+
+function halavirana(x1, y1, x2, y2) {
+    return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+}
+
+function mamoronaId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function mamadikaFotoana(segondra) {
+    const min = Math.floor(segondra / 60);
+    const sec = Math.floor(segondra % 60);
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+function mandikaClipboard(soratra) {
+    navigator.clipboard.writeText(soratra).then(() => {
+        asehoToast('Nadika', 'success');
+    });
+}
+
+// ============================================================
+// LALAO EO — GAME ENGINE
+// ============================================================
+
+// NANAVAO: "fakan-tsary" → "fakanTsary" (hyphen tsy mety amin'ny JS)
 let lalaoEo = {
     canvas: null,
     ctx: null,
@@ -1421,12 +1133,12 @@ let lalaoEo = {
     state: null,
     mpilalaoTaloha: new Map(),
     fotoana: 0,
-    faritra: {x: 0, y: 0, radius: 5000},
-    faritraManaraka: {x: 0, y: 0, radius: 4000},
+    faritra: { x: 0, y: 0, radius: 5000 },
+    faritraManaraka: { x: 0, y: 0, radius: 4000 },
     sarintany: null,
     fanalahidy: {},
-    totozy: {x: 0, y: 0, tsindry: false},
-    fakan-tsary: {x: 0, y: 0, zoom: 1}
+    totozy: { x: 0, y: 0, tsindry: false },
+    fakanTsary: { x: 0, y: 0, zoom: 1 }
 };
 
 function manombokaLalaoEo(data) {
@@ -1447,6 +1159,11 @@ function manombokaLalaoEo(data) {
     asehoToast('Lalao manomboka', 'success');
 }
 
+function manombokaLalaoServer(data) {
+    asehoEfijery('gameScreen');
+    manombokaLalaoEo(data);
+}
+
 function mihainoFanavaozana() {
     lalao.socket.on('fanavaozanaLalao', (data) => {
         lalaoEo.state = data.state;
@@ -1455,13 +1172,8 @@ function mihainoFanavaozana() {
         if (data.faritraManaraka) lalaoEo.faritraManaraka = data.faritraManaraka;
     });
 
-    lalao.socket.on('mpilalaoMaty', (data) => {
-        raisoFahafatesana(data);
-    });
-
-    lalao.socket.on('mpilalaoNandresy', (data) => {
-        raisoFandresena(data);
-    });
+    lalao.socket.on('mpilalaoMaty', (data) => { raisoFahafatesana(data); });
+    lalao.socket.on('mpilalaoNandresy', (data) => { raisoFandresena(data); });
 
     lalao.socket.on('fahasimbana', (data) => {
         raisoFahasimbana(data);
@@ -1470,12 +1182,10 @@ function mihainoFanavaozana() {
 
     lalao.socket.on('balaLany', () => {
         havaozyBala(0);
-        alefaSon('reload');
+        alefaFeo('reload');
     });
 
-    lalao.socket.on('fitaovanaNovaina', (data) => {
-        havaozyFitaovana(data);
-    });
+    lalao.socket.on('fitaovanaNovaina', (data) => { havaozyFitaovana(data); });
 
     lalao.socket.on('faritraMiova', (data) => {
         lalaoEo.faritraManaraka = data.vaovao;
@@ -1486,10 +1196,8 @@ function mihainoFanavaozana() {
 function manombokaRender() {
     function render() {
         if (!lalaoEo.mandeha) return;
-
         saryRehetra();
         havaozyHUD();
-
         requestAnimationFrame(render);
     }
     render();
@@ -1507,12 +1215,13 @@ function saryRehetra() {
 
     const ahy = lalaoEo.state.mpilalao.find(p => p.uid === mpilalao.uid);
     if (ahy) {
-        lalaoEo.fakan-tsary.x = ahy.x - canvas.width / 2;
-        lalaoEo.fakan-tsary.y = ahy.y - canvas.height / 2;
+        // NANAVAO: fakanTsary (tsy fakan-tsary)
+        lalaoEo.fakanTsary.x = ahy.x - canvas.width / 2;
+        lalaoEo.fakanTsary.y = ahy.y - canvas.height / 2;
     }
 
     ctx.save();
-    ctx.translate(-lalaoEo.fakan-tsary.x, -lalaoEo.fakan-tsary.y);
+    ctx.translate(-lalaoEo.fakanTsary.x, -lalaoEo.fakanTsary.y);
 
     sarySarintany(ctx);
     saryFaritraMena(ctx);
@@ -1526,6 +1235,9 @@ function saryRehetra() {
 
     saryTandrifana(ctx);
     saryFamantarana(ctx);
+
+    havaozyParticles(ctx);
+    havaozyEffets(ctx);
 }
 
 function sarySarintany(ctx) {
@@ -1582,11 +1294,8 @@ function saryFaritraManaraka(ctx) {
 }
 
 function saryMpilalaoRehetra(ctx) {
-    if (!lalaoEo.state ||!lalaoEo.state.mpilalao) return;
-
-    lalaoEo.state.mpilalao.forEach(p => {
-        saryMpilalaoIray(ctx, p);
-    });
+    if (!lalaoEo.state || !lalaoEo.state.mpilalao) return;
+    lalaoEo.state.mpilalao.forEach(p => { saryMpilalaoIray(ctx, p); });
 }
 
 function saryMpilalaoIray(ctx, p) {
@@ -1594,13 +1303,13 @@ function saryMpilalaoIray(ctx, p) {
     const x = taloha.x + (p.x - taloha.x) * 0.3;
     const y = taloha.y + (p.y - taloha.y) * 0.3;
 
-    lalaoEo.mpilalaoTaloha.set(p.uid, {x, y});
+    lalaoEo.mpilalaoTaloha.set(p.uid, { x, y });
 
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(p.zoro || 0);
 
-    const loko = p.uid === mpilalao.uid? '#ff006e' : p.ekipa === 'mena'? '#ff4444' : '#9d4edd';
+    const loko = p.uid === mpilalao.uid ? '#ff006e' : p.ekipa === 'mena' ? '#ff4444' : '#9d4edd';
 
     ctx.fillStyle = loko;
     ctx.shadowColor = loko;
@@ -1623,7 +1332,7 @@ function saryMpilalaoIray(ctx, p) {
     const fahasalamanaIsanjato = p.fahasalamana / 100;
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.fillRect(-25, 28, 50, 6);
-    ctx.fillStyle = fahasalamanaIsanjato > 0.5? '#06ffa5' : fahasalamanaIsanjato > 0.2? '#ffaa00' : '#ff4444';
+    ctx.fillStyle = fahasalamanaIsanjato > 0.5 ? '#06ffa5' : fahasalamanaIsanjato > 0.2 ? '#ffaa00' : '#ff4444';
     ctx.fillRect(-25, 28, 50 * fahasalamanaIsanjato, 6);
 
     if (p.mitifitra) {
@@ -1639,7 +1348,7 @@ function saryMpilalaoIray(ctx, p) {
 }
 
 function saryBalaRehetra(ctx) {
-    if (!lalaoEo.state ||!lalaoEo.state.bala) return;
+    if (!lalaoEo.state || !lalaoEo.state.bala) return;
 
     ctx.fillStyle = '#ffaa00';
     ctx.shadowColor = '#ffaa00';
@@ -1655,7 +1364,7 @@ function saryBalaRehetra(ctx) {
 }
 
 function saryGrenady(ctx) {
-    if (!lalaoEo.state ||!lalaoEo.state.grenady) return;
+    if (!lalaoEo.state || !lalaoEo.state.grenady) return;
 
     lalaoEo.state.grenady.forEach(g => {
         ctx.fillStyle = '#ff4444';
@@ -1663,7 +1372,7 @@ function saryGrenady(ctx) {
         ctx.arc(g.x, g.y, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.strokeStyle = 'rgba(255,68,0.5)';
+        ctx.strokeStyle = 'rgba(255, 68, 68, 0.5)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(g.x, g.y, g.radius || 0, 0, Math.PI * 2);
@@ -1672,7 +1381,7 @@ function saryGrenady(ctx) {
 }
 
 function saryLoot(ctx) {
-    if (!lalaoEo.state ||!lalaoEo.state.loot) return;
+    if (!lalaoEo.state || !lalaoEo.state.loot) return;
 
     lalaoEo.state.loot.forEach(l => {
         ctx.fillStyle = '#ffd700';
@@ -1731,13 +1440,13 @@ function amboaryFanaraha() {
         lalaoEo.totozy.x = e.clientX - rect.left;
         lalaoEo.totozy.y = e.clientY - rect.top;
 
-        const ahy = lalaoEo.state.mpilalao.find(p => p.uid === mpilalao.uid);
+        const ahy = lalaoEo.state ? lalaoEo.state.mpilalao.find(p => p.uid === mpilalao.uid) : null;
         if (ahy) {
             const zoro = Math.atan2(
                 lalaoEo.totozy.y - lalaoEo.canvas.height / 2,
                 lalaoEo.totozy.x - lalaoEo.canvas.width / 2
             );
-            lalao.socket.emit('manodina', {zoro});
+            lalao.socket.emit('manodina', { zoro });
         }
     });
 
@@ -1770,11 +1479,11 @@ function alefaHetsika() {
         ankavanana: f['KeyD'] || f['ArrowRight'],
         sprint: f['ShiftLeft']
     };
-
     lalao.socket.emit('hetsika', hetsika);
 }
 
 function alefaTifitra() {
+    if (!lalaoEo.state) return;
     const ahy = lalaoEo.state.mpilalao.find(p => p.uid === mpilalao.uid);
     if (!ahy || ahy.bala <= 0) return;
 
@@ -1783,8 +1492,8 @@ function alefaTifitra() {
         lalaoEo.totozy.x - lalaoEo.canvas.width / 2
     );
 
-    lalao.socket.emit('tifitra', {zoro});
-    alefaSon('tifitra');
+    lalao.socket.emit('tifitra', { zoro });
+    alefaFeo('tifitra');
 }
 
 function alefaReload() {
@@ -1792,25 +1501,18 @@ function alefaReload() {
     asehoToast('Mamerina bala', 'info');
 }
 
-function alefaFitsaboana() {
-    lalao.socket.emit('fitsaboana');
-}
+function alefaFitsaboana() { lalao.socket.emit('fitsaboana'); }
 
 function alefaGrenady() {
     const zoro = Math.atan2(
         lalaoEo.totozy.y - lalaoEo.canvas.height / 2,
         lalaoEo.totozy.x - lalaoEo.canvas.width / 2
     );
-    lalao.socket.emit('grenady', {zoro});
+    lalao.socket.emit('grenady', { zoro });
 }
 
-function alefaMitsambikina() {
-    lalao.socket.emit('mitsambikina');
-}
-
-function alefaMiondrika() {
-    lalao.socket.emit('miondrika');
-}
+function alefaMitsambikina() { lalao.socket.emit('mitsambikina'); }
+function alefaMiondrika() { lalao.socket.emit('miondrika'); }
 
 function havaozyHUD() {
     if (!lalaoEo.state) return;
@@ -1823,18 +1525,10 @@ function havaozyHUD() {
     const bala = document.getElementById('ammoCount');
     const balaMax = document.getElementById('ammoMax');
 
-    if (fahasalamana) {
-        fahasalamana.style.width = ahy.fahasalamana + '%';
-    }
-    if (fahasalamanaIsa) {
-        fahasalamanaIsa.textContent = Math.floor(ahy.fahasalamana);
-    }
-    if (bala) {
-        bala.textContent = ahy.bala;
-    }
-    if (balaMax) {
-        balaMax.textContent = ahy.balaMax || 30;
-    }
+    if (fahasalamana) fahasalamana.style.width = ahy.fahasalamana + '%';
+    if (fahasalamanaIsa) fahasalamanaIsa.textContent = Math.floor(ahy.fahasalamana);
+    if (bala) bala.textContent = ahy.bala;
+    if (balaMax) balaMax.textContent = ahy.balaMax || 30;
 }
 
 function havaozyFahasalamana(isa) {
@@ -1854,7 +1548,7 @@ function havaozyFitaovana(data) {
 
 function havaozySarintanyKely() {
     const canvas = document.getElementById('minimapCanvas');
-    if (!canvas ||!lalaoEo.state) return;
+    if (!canvas || !lalaoEo.state) return;
 
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, 200, 200);
@@ -1879,7 +1573,7 @@ function havaozySarintanyKely() {
         const x = 100 + p.x * scale;
         const y = 100 + p.y * scale;
 
-        ctx.fillStyle = p.uid === mpilalao.uid? '#ff006e' : '#9d4edd';
+        ctx.fillStyle = p.uid === mpilalao.uid ? '#ff006e' : '#9d4edd';
         ctx.beginPath();
         ctx.arc(x, y, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -1888,7 +1582,7 @@ function havaozySarintanyKely() {
 
 function raisoFahasimbana(data) {
     asehoHitmarker();
-    alefaSon('hit');
+    alefaFeo('hit');
 
     if (data.avyAmin) {
         const el = document.createElement('div');
@@ -1896,30 +1590,22 @@ function raisoFahasimbana(data) {
         el.textContent = '-' + data.isa;
         el.style.left = '50%';
         el.style.top = '40%';
-        document.getElementById('damageNumbers').appendChild(el);
-
+        const container = document.getElementById('damageNumbers');
+        if (container) container.appendChild(el);
         setTimeout(() => el.remove(), 1200);
     }
 }
 
 function raisoFahafatesana(data) {
     lalaoEo.mandeha = false;
-    asehoVokatra({
-        fandresena: false,
-        vono: data.vono,
-        laharana: data.laharana
-    });
-    alefaSon('maty');
+    asehoVokatra({ fandresena: false, vono: data.vono, laharana: data.laharana });
+    alefaFeo('maty');
 }
 
 function raisoFandresena(data) {
     lalaoEo.mandeha = false;
-    asehoVokatra({
-        fandresena: true,
-        vono: data.vono,
-        laharana: 1
-    });
-    alefaSon('fandresena');
+    asehoVokatra({ fandresena: true, vono: data.vono, laharana: 1 });
+    alefaFeo('fandresena');
 }
 
 function asehoHitmarker() {
@@ -1940,11 +1626,9 @@ function asehoFampitandremanaFaritra() {
     if (!el) return;
 
     el.classList.remove('hidden');
-    alefaSon('faritra');
+    alefaFeo('faritra');
 
-    setTimeout(() => {
-        el.classList.add('hidden');
-    }, 3000);
+    setTimeout(() => { el.classList.add('hidden'); }, 3000);
 }
 
 function atsahatraLalao() {
@@ -1953,67 +1637,62 @@ function atsahatraLalao() {
     lalaoEo.mpilalaoTaloha.clear();
 }
 
+function asehoVokatra(vokatra) {
+    if (vokatra.fandresena) {
+        asehoEfijery('victoryScreen');
+        const el = document.getElementById('victoryKills');
+        if (el) el.textContent = vokatra.vono;
+    } else {
+        asehoEfijery('deathScreen');
+        const el = document.getElementById('deathKills');
+        if (el) el.textContent = vokatra.vono;
+    }
+
+    mpilalao.vono += vokatra.vono;
+    mpilalao.lalao += 1;
+    if (vokatra.fandresena) mpilalao.fandresena += 1;
+    else mpilalao.fahafatesana += 1;
+
+    mitahiryData();
+}
+
+function miverinaLobby() {
+    lalao.socket.emit('miverinaLobby');
+    asehoLobby();
+}
+
 document.addEventListener('keydown', (e) => {
     if (!lalaoEo.mandeha) return;
 
-    switch(e.code) {
-        case 'KeyR':
-            alefaReload();
-            break;
-        case 'KeyH':
-            alefaFitsaboana();
-            break;
-        case 'KeyG':
-            alefaGrenady();
-            break;
+    switch (e.code) {
+        case 'KeyR': alefaReload(); break;
+        case 'KeyH': alefaFitsaboana(); break;
+        case 'KeyG': alefaGrenady(); break;
         case 'Space':
             e.preventDefault();
             alefaMitsambikina();
             break;
-        case 'KeyC':
-            alefaMiondrika();
-            break;
+        case 'KeyC': alefaMiondrika(); break;
         case 'Digit1':
         case 'Digit2':
         case 'Digit3':
-            lalao.socket.emit('ovayFitaovana', {laharana: parseInt(e.code[5])});
+            lalao.socket.emit('ovayFitaovana', { laharana: parseInt(e.code[5]) });
             break;
     }
 });
 
 setInterval(() => {
-    if (lalaoEo.mandeha) {
-        havaozySarintanyKely();
-    }
+    if (lalaoEo.mandeha) havaozySarintanyKely();
 }, 200);
 
+// ============================================================
+// SHOP
+// ============================================================
 
 let shopData = {
     zavatra: [],
     sokajy: 'rehetra',
     fotoana: 0
-};
-
-let inventoryData = {
-    zavatra: [],
-    voafidy: null
-};
-
-let battlePassData = {
-    level: 1,
-    xp: 0,
-    premium: false,
-    valisoa: []
-};
-
-let mailData = {
-    hafatra: [],
-    tsyVakiana: 0
-};
-
-let leaderboardData = {
-    lisitra: [],
-    toerana: 0
 };
 
 function makaShopData() {
@@ -2027,34 +1706,35 @@ function makaShopData() {
     });
 }
 
+// NANAVAO: asehoShop iray ihany (voaray ireo roa teo aloha ho iray)
 function asehoShop() {
     const fito = document.getElementById('shopGrid');
     if (!fito) return;
 
     fito.innerHTML = '';
 
-    const voasivana = shopData.sokajy === 'rehetra' 
-        ? shopData.zavatra 
+    const voasivana = shopData.sokajy === 'rehetra'
+        ? shopData.zavatra
         : shopData.zavatra.filter(z => z.sokajy === shopData.sokajy);
 
     voasivana.forEach(z => {
         const el = document.createElement('div');
-        el.className = 'shop-item' + (z.featured? ' featured' : '');
+        el.className = 'shop-item' + (z.featured ? ' featured' : '');
 
         const manana = mpilalao.hoditra.includes(z.id);
         const vidiny = z.vidinyFihena || z.vidiny;
 
         el.innerHTML = `
-            ${z.featured? '<div class="item-badge">FEATURED</div>' : ''}
-            ${z.vaovao? '<div class="item-badge">VAOVAO</div>' : ''}
+            ${z.featured ? '<div class="item-badge">FEATURED</div>' : ''}
+            ${z.vaovao ? '<div class="item-badge">VAOVAO</div>' : ''}
             <div class="item-image">${z.sary}</div>
             <h4>${z.anarana}</h4>
             <div class="item-rarity ${z.rarity}">${z.rarity.toUpperCase()}</div>
             <div class="item-desc">${z.famaritana}</div>
-            ${z.vidinyFihena? `<div class="item-price-old">${z.vidiny} 💰</div>` : ''}
-            <div class="item-price">${vidiny} ${z.vola === 'diamondra'? '💎' : '💰'}</div>
-            <button class="buy-btn" ${manana? 'disabled' : ''} onclick="vidioZavatra('${z.id}')">
-                ${manana? 'EFA MANANA' : 'VIDIO'}
+            ${z.vidinyFihena ? `<div class="item-price-old">${z.vidiny} 💰</div>` : ''}
+            <div class="item-price">${vidiny} ${z.vola === 'diamondra' ? '💎' : '💰'}</div>
+            <button class="buy-btn" ${manana ? 'disabled' : ''} onclick="vidioZavatra('${z.id}')">
+                ${manana ? 'EFA MANANA' : 'VIDIO'}
             </button>
         `;
 
@@ -2064,12 +1744,15 @@ function asehoShop() {
     havaozyFotoanaShop();
 }
 
+function manokatraShop() {
+    asehoPanel('shopMenu');
+    makaShopData();
+}
+
 function manovaSokajyShop(sokajy) {
     shopData.sokajy = sokajy;
 
-    document.querySelectorAll('.filter-btn').forEach(b => {
-        b.classList.remove('active');
-    });
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
 
     const voafidy = document.querySelector(`[data-filter="${sokajy}"]`);
     if (voafidy) voafidy.classList.add('active');
@@ -2082,11 +1765,11 @@ function vidioZavatra(id) {
     if (!zavatra) return;
 
     const vidiny = zavatra.vidinyFihena || zavatra.vidiny;
-    const vola = zavatra.vola === 'diamondra'? mpilalao.diamondra : mpilalao.volamena;
+    const vola = zavatra.vola === 'diamondra' ? mpilalao.diamondra : mpilalao.volamena;
 
     if (vola < vidiny) {
         asehoToast('Tsy ampy vola', 'error');
-        alefaSon('error');
+        alefaFeo('error');
         return;
     }
 
@@ -2095,15 +1778,12 @@ function vidioZavatra(id) {
         return;
     }
 
-    lalao.socket.emit('mividyZavatra', {id: id});
+    lalao.socket.emit('mividyZavatra', { id: id });
 
     lalao.socket.once('fividiananaValiny', (valiny) => {
         if (valiny.vita) {
-            if (zavatra.vola === 'diamondra') {
-                mpilalao.diamondra -= vidiny;
-            } else {
-                mpilalao.volamena -= vidiny;
-            }
+            if (zavatra.vola === 'diamondra') mpilalao.diamondra -= vidiny;
+            else mpilalao.volamena -= vidiny;
 
             mpilalao.hoditra.push(id);
             mitahiryData();
@@ -2111,7 +1791,7 @@ function vidioZavatra(id) {
             asehoShop();
 
             asehoToast('Vita fividianana!', 'success');
-            alefaSon('vidy');
+            alefaFeo('vidy');
             asehoNotification('Fividianana', `Nahazo ${zavatra.anarana}`, 'success');
         } else {
             asehoToast(valiny.antony || 'Tsy nety', 'error');
@@ -2121,7 +1801,7 @@ function vidioZavatra(id) {
 
 function manombokaFotoanaShop() {
     const el = document.getElementById('shopTimer');
-    if (!el ||!shopData.fotoana) return;
+    if (!el || !shopData.fotoana) return;
 
     function havaozy() {
         const sisa = shopData.fotoana - Date.now();
@@ -2150,6 +1830,15 @@ function havaozyFotoanaShop() {
     }
 }
 
+// ============================================================
+// INVENTORY
+// ============================================================
+
+let inventoryData = {
+    zavatra: [],
+    voafidy: null
+};
+
 function makaInventoryData() {
     lalao.socket.emit('makaInventory');
 
@@ -2159,6 +1848,12 @@ function makaInventoryData() {
     });
 }
 
+function manokatraInventory() {
+    asehoPanel('inventoryMenu');
+    makaInventoryData();
+}
+
+// NANAVAO: asehoInventory iray ihany (voaray ireo roa teo aloha ho iray)
 function asehoInventory() {
     const fito = document.getElementById('inventoryGrid');
     if (!fito) return;
@@ -2172,13 +1867,13 @@ function asehoInventory() {
 
     voasivana.forEach(z => {
         const el = document.createElement('div');
-        el.className = 'inventory-item' + (z.ampiasaina? ' equipped' : '');
+        el.className = 'inventory-item' + (z.ampiasaina ? ' equipped' : '');
 
         el.innerHTML = `
             <div class="item-icon">${z.sary}</div>
             <div class="item-name">${z.anarana}</div>
             <div class="item-rarity ${z.rarity}">${z.rarity}</div>
-            ${z.ampiasaina? '<div class="equipped-badge">✓</div>' : ''}
+            ${z.ampiasaina ? '<div class="equipped-badge">✓</div>' : ''}
         `;
 
         el.onclick = () => mifidyZavatraInventory(z);
@@ -2190,11 +1885,8 @@ function asehoInventory() {
 function mifidyZavatraInventory(zavatra) {
     inventoryData.voafidy = zavatra;
 
-    document.querySelectorAll('.inventory-item').forEach(el => {
-        el.classList.remove('selected');
-    });
-
-    event.target.closest('.inventory-item').classList.add('selected');
+    document.querySelectorAll('.inventory-item').forEach(el => el.classList.remove('selected'));
+    event.target.closest('.inventory-item')?.classList.add('selected');
 
     const info = document.getElementById('itemInfo');
     if (info) {
@@ -2202,21 +1894,19 @@ function mifidyZavatraInventory(zavatra) {
             <h3>${zavatra.anarana}</h3>
             <p>${zavatra.famaritana}</p>
             <button onclick="mampiasaZavatra('${zavatra.id}')" class="use-btn">
-                ${zavatra.ampiasaina? 'ESORINA' : 'AMPIASAINA'}
+                ${zavatra.ampiasaina ? 'ESORINA' : 'AMPIASAINA'}
             </button>
         `;
     }
 }
 
 function mampiasaZavatra(id) {
-    lalao.socket.emit('mampiasaZavatra', {id: id});
+    lalao.socket.emit('mampiasaZavatra', { id: id });
 
     lalao.socket.once('fampiasanaValiny', (valiny) => {
         if (valiny.vita) {
             inventoryData.zavatra.forEach(z => {
-                if (z.karazana === valiny.karazana) {
-                    z.ampiasaina = (z.id === id);
-                }
+                if (z.karazana === valiny.karazana) z.ampiasaina = (z.id === id);
             });
 
             if (valiny.karazana === 'hoditra') {
@@ -2231,15 +1921,31 @@ function mampiasaZavatra(id) {
 }
 
 function manovaTabilaoInventory(tabilao) {
-    document.querySelectorAll('.inv-tab').forEach(t => {
-        t.classList.remove('active');
-    });
+    document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
 
     const voafidy = document.querySelector(`[data-tab="${tabilao}"]`);
     if (voafidy) voafidy.classList.add('active');
 
     asehoInventory();
 }
+
+function mifidyHoditra(hoditra) {
+    mpilalao.hoditraAnkehitriny = hoditra;
+    mitahiryData();
+    asehoToast('Hoditra voafidy', 'success');
+    afenoPanel('inventoryMenu');
+}
+
+// ============================================================
+// BATTLE PASS
+// ============================================================
+
+let battlePassData = {
+    level: 1,
+    xp: 0,
+    premium: false,
+    valisoa: []
+};
 
 function makaBattlePassData() {
     lalao.socket.emit('makaBattlePass');
@@ -2248,6 +1954,11 @@ function makaBattlePassData() {
         battlePassData = data;
         asehoBattlePass();
     });
+}
+
+function manokatraBattlePass() {
+    asehoPanel('battlePassMenu');
+    makaBattlePassData();
 }
 
 function asehoBattlePass() {
@@ -2260,9 +1971,7 @@ function asehoBattlePass() {
     if (xpFill) xpFill.style.width = (battlePassData.xp / 10) + '%';
 
     const premiumSection = document.getElementById('bpPremiumSection');
-    if (premiumSection) {
-        premiumSection.style.display = battlePassData.premium? 'none' : 'block';
-    }
+    if (premiumSection) premiumSection.style.display = battlePassData.premium ? 'none' : 'block';
 
     asehoValisoaBattlePass();
 }
@@ -2279,14 +1988,14 @@ function asehoValisoaBattlePass() {
         const nalaina = valisoa?.nalaina || false;
 
         const el = document.createElement('div');
-        el.className = 'bp-reward-item' + (azo? ' unlocked' : '') + (valisoa?.premium? ' premium' : '');
+        el.className = 'bp-reward-item' + (azo ? ' unlocked' : '') + (valisoa?.premium ? ' premium' : '');
 
         el.innerHTML = `
             <div class="reward-level">${i}</div>
             <div class="reward-icon">${valisoa?.sary || '🎁'}</div>
             <div class="reward-name">${valisoa?.anarana || 'Mystery'}</div>
-            ${azo &&!nalaina? `<button class="reward-claim-btn" onclick="makaValisoaBP(${i})">Alaina</button>` : ''}
-            ${nalaina? '<div class="claimed">✓</div>' : ''}
+            ${azo && !nalaina ? `<button class="reward-claim-btn" onclick="makaValisoaBP(${i})">Alaina</button>` : ''}
+            ${nalaina ? '<div class="claimed">✓</div>' : ''}
         `;
 
         fito.appendChild(el);
@@ -2294,27 +2003,23 @@ function asehoValisoaBattlePass() {
 }
 
 function makaValisoaBP(level) {
-    lalao.socket.emit('makaValisoaBP', {level: level});
+    lalao.socket.emit('makaValisoaBP', { level: level });
 
     lalao.socket.once('valisoaValiny', (valiny) => {
         if (valiny.vita) {
             const valisoa = battlePassData.valisoa.find(v => v.level === level);
             if (valisoa) valisoa.nalaina = true;
 
-            if (valiny.karazana === 'volamena') {
-                mpilalao.volamena += valiny.isa;
-            } else if (valiny.karazana === 'diamondra') {
-                mpilalao.diamondra += valiny.isa;
-            } else if (valiny.karazana === 'hoditra') {
-                mpilalao.hoditra.push(valiny.id);
-            }
+            if (valiny.karazana === 'volamena') mpilalao.volamena += valiny.isa;
+            else if (valiny.karazana === 'diamondra') mpilalao.diamondra += valiny.isa;
+            else if (valiny.karazana === 'hoditra') mpilalao.hoditra.push(valiny.id);
 
             mitahiryData();
             havaozyUI();
             asehoBattlePass();
 
             asehoToast('Valisoa azo!', 'success');
-            alefaSon('valisoa');
+            alefaFeo('valisoa');
         }
     });
 }
@@ -2341,6 +2046,10 @@ function mividyBattlePassPremium() {
     });
 }
 
+// ============================================================
+// PROFILE
+// ============================================================
+
 function makaProfileData() {
     lalao.socket.emit('makaProfile');
 
@@ -2352,13 +2061,18 @@ function makaProfileData() {
 function asehoProfile(data) {
     const stats = data.statistika;
 
-    document.getElementById('profileWins').textContent = stats.fandresena || 0;
-    document.getElementById('profileKills').textContent = stats.vono || 0;
-    document.getElementById('profileMatches').textContent = stats.lalao || 0;
-    document.getElementById('profileKD').textContent = stats.lalao > 0? (stats.vono / stats.lalao).toFixed(2) : '0.00';
+    const setValue = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    };
 
-    const winrate = stats.lalao > 0? Math.round((stats.fandresena / stats.lalao) * 100) : 0;
-    document.getElementById('profileWinrate').textContent = winrate + '%';
+    setValue('profileWins', stats.fandresena || 0);
+    setValue('profileKills', stats.vono || 0);
+    setValue('profileMatches', stats.lalao || 0);
+    setValue('profileKD', stats.lalao > 0 ? (stats.vono / stats.lalao).toFixed(2) : '0.00');
+
+    const winrate = stats.lalao > 0 ? Math.round((stats.fandresena / stats.lalao) * 100) : 0;
+    setValue('profileWinrate', winrate + '%');
 
     asehoZavaBita(data.zavaBita);
 }
@@ -2371,7 +2085,7 @@ function asehoZavaBita(lisitra) {
 
     lisitra.forEach(z => {
         const el = document.createElement('div');
-        el.className = 'achievement-item' + (z.vita? ' unlocked' : ' locked');
+        el.className = 'achievement-item' + (z.vita ? ' unlocked' : ' locked');
 
         el.innerHTML = `
             <div class="achievement-icon">${z.sary}</div>
@@ -2386,17 +2100,53 @@ function asehoZavaBita(lisitra) {
     });
 }
 
+function manokatraProfile() {
+    asehoPanel('profileMenu');
+    const anar = document.getElementById('profileUsername');
+    if (anar) anar.value = mpilalao.anarana;
+    makaProfileData();
+}
+
+function manovaAnarana() {
+    const vaovao = document.getElementById('profileUsername').value.trim();
+    if (vaovao.length < 3) {
+        asehoToast('Anarana fohy', 'error');
+        return;
+    }
+
+    mpilalao.anarana = vaovao;
+    mitahiryData();
+    lalao.mpampiasa.updateProfile({ displayName: vaovao });
+    havaozyUI();
+    asehoToast('Anarana novaina', 'success');
+}
+
+// ============================================================
+// MAIL
+// ============================================================
+
+let mailData = {
+    hafatra: [],
+    tsyVakiana: 0
+};
+
 function makaMailData() {
     lalao.socket.emit('makaMail');
 
     lalao.socket.once('mailValiny', (data) => {
         mailData.hafatra = data.hafatra;
-        mailData.tsyVakiana = data.hafatra.filter(m =>!m.vakiana).length;
+        mailData.tsyVakiana = data.hafatra.filter(m => !m.vakiana).length;
         asehoMail();
         havaozyMailBadge();
     });
 }
 
+function manokatraMail() {
+    asehoPanel('mailPanel');
+    makaMailData();
+}
+
+// NANAVAO: asehoMail iray ihany
 function asehoMail() {
     const fito = document.getElementById('mailList');
     if (!fito) return;
@@ -2406,15 +2156,17 @@ function asehoMail() {
     const sokajy = document.querySelector('.mail-tab.active')?.dataset.tab || 'rehetra';
     let voasivana = mailData.hafatra;
 
-    if (sokajy === 'tsyVakiana') {
-        voasivana = voasivana.filter(m =>!m.vakiana);
-    } else if (sokajy === 'valisoa') {
-        voasivana = voasivana.filter(m => m.valisoa);
+    if (sokajy === 'tsyVakiana') voasivana = voasivana.filter(m => !m.vakiana);
+    else if (sokajy === 'valisoa') voasivana = voasivana.filter(m => m.valisoa);
+
+    if (voasivana.length === 0) {
+        fito.innerHTML = '<div class="mail-empty">Tsy misy hafatra</div>';
+        return;
     }
 
     voasivana.forEach(m => {
         const el = document.createElement('div');
-        el.className = 'mail-item' + (!m.vakiana? ' unread' : '');
+        el.className = 'mail-item' + (!m.vakiana ? ' unread' : '');
 
         const daty = new Date(m.fotoana).toLocaleDateString('fr-FR');
 
@@ -2425,24 +2177,20 @@ function asehoMail() {
             </div>
             <div class="mail-subject">${m.lohateny}</div>
             <div class="mail-preview">${m.votoatiny.substring(0, 80)}...</div>
-            ${m.valisoa? `<div class="mail-reward">🎁 ${m.valisoa.anarana}</div>` : ''}
+            ${m.valisoa ? `<div class="mail-reward">🎁 ${m.valisoa.anarana}</div>` : ''}
         `;
 
         el.onclick = () => mamakyMail(m.id);
 
         fito.appendChild(el);
     });
-
-    if (voasivana.length === 0) {
-        fito.innerHTML = '<div class="mail-empty">Tsy misy hafatra</div>';
-    }
 }
 
 function mamakyMail(id) {
     const mail = mailData.hafatra.find(m => m.id === id);
     if (!mail) return;
 
-    lalao.socket.emit('mamakyMail', {id: id});
+    lalao.socket.emit('mamakyMail', { id: id });
 
     if (!mail.vakiana) {
         mail.vakiana = true;
@@ -2457,16 +2205,21 @@ function asehoMailDetail(mail) {
     const modal = document.getElementById('mailDetailModal');
     if (!modal) return;
 
-    document.getElementById('mailDetailSender').textContent = mail.nandefa;
-    document.getElementById('mailDetailSubject').textContent = mail.lohateny;
-    document.getElementById('mailDetailBody').textContent = mail.votoatiny;
-    document.getElementById('mailDetailTime').textContent = new Date(mail.fotoana).toLocaleString('fr-FR');
+    const setValue = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    };
+
+    setValue('mailDetailSender', mail.nandefa);
+    setValue('mailDetailSubject', mail.lohateny);
+    setValue('mailDetailBody', mail.votoatiny);
+    setValue('mailDetailTime', new Date(mail.fotoana).toLocaleString('fr-FR'));
 
     const valisoaBtn = document.getElementById('mailClaimBtn');
-    if (mail.valisoa &&!mail.valisoa.nalaina) {
+    if (mail.valisoa && !mail.valisoa.nalaina) {
         valisoaBtn.style.display = 'block';
         valisoaBtn.onclick = () => makaValisoaMail(mail.id);
-    } else {
+    } else if (valisoaBtn) {
         valisoaBtn.style.display = 'none';
     }
 
@@ -2474,7 +2227,7 @@ function asehoMailDetail(mail) {
 }
 
 function makaValisoaMail(id) {
-    lalao.socket.emit('makaValisoaMail', {id: id});
+    lalao.socket.emit('makaValisoaMail', { id: id });
 
     lalao.socket.once('valisoaMailValiny', (valiny) => {
         if (valiny.vita) {
@@ -2482,16 +2235,13 @@ function makaValisoaMail(id) {
             if (mail && mail.valisoa) {
                 mail.valisoa.nalaina = true;
 
-                if (valiny.karazana === 'volamena') {
-                    mpilalao.volamena += valiny.isa;
-                } else if (valiny.karazana === 'diamondra') {
-                    mpilalao.diamondra += valiny.isa;
-                }
+                if (valiny.karazana === 'volamena') mpilalao.volamena += valiny.isa;
+                else if (valiny.karazana === 'diamondra') mpilalao.diamondra += valiny.isa;
 
                 mitahiryData();
                 havaozyUI();
                 asehoMail();
-                document.getElementById('mailDetailModal').classList.add('hidden');
+                document.getElementById('mailDetailModal')?.classList.add('hidden');
 
                 asehoToast('Valisoa azo', 'success');
             }
@@ -2507,11 +2257,11 @@ function mamafaMailVakiana() {
         return;
     }
 
-    lalao.socket.emit('mamafaMail', {ids: vakiana});
+    lalao.socket.emit('mamafaMail', { ids: vakiana });
 
     lalao.socket.once('famafanaValiny', (valiny) => {
         if (valiny.vita) {
-            mailData.hafatra = mailData.hafatra.filter(m =>!m.vakiana);
+            mailData.hafatra = mailData.hafatra.filter(m => !m.vakiana);
             asehoMail();
             asehoToast('Voafafa', 'success');
         }
@@ -2531,9 +2281,7 @@ function havaozyMailBadge() {
 }
 
 function manovaTabilaoMail(tabilao) {
-    document.querySelectorAll('.mail-tab').forEach(t => {
-        t.classList.remove('active');
-    });
+    document.querySelectorAll('.mail-tab').forEach(t => t.classList.remove('active'));
 
     const voafidy = document.querySelector(`[data-tab="${tabilao}"]`);
     if (voafidy) voafidy.classList.add('active');
@@ -2541,8 +2289,17 @@ function manovaTabilaoMail(tabilao) {
     asehoMail();
 }
 
+// ============================================================
+// LEADERBOARD
+// ============================================================
+
+let leaderboardData = {
+    lisitra: [],
+    toerana: 0
+};
+
 function makaLeaderboardData(sokajy = 'vono') {
-    lalao.socket.emit('makaLeaderboard', {sokajy: sokajy});
+    lalao.socket.emit('makaLeaderboard', { sokajy: sokajy });
 
     lalao.socket.once('leaderboardValiny', (data) => {
         leaderboardData.lisitra = data.lisitra;
@@ -2551,6 +2308,12 @@ function makaLeaderboardData(sokajy = 'vono') {
     });
 }
 
+function manokatraLeaderboard() {
+    asehoPanel('fullLeaderboard');
+    makaLeaderboardData();
+}
+
+// NANAVAO: asehoLeaderboard iray ihany (tsy maka parameter)
 function asehoLeaderboard() {
     const tbody = document.querySelector('#leaderboardFullTable tbody');
     if (!tbody) return;
@@ -2561,30 +2324,26 @@ function asehoLeaderboard() {
         const tr = document.createElement('tr');
         const isAhy = p.uid === mpilalao.uid;
 
-        tr.className = isAhy? 'my-row' : '';
+        tr.className = isAhy ? 'my-row' : '';
         tr.innerHTML = `
             <td>${i + 1}</td>
-            <td>${p.anarana} ${isAhy? '(Ianao)' : ''}</td>
+            <td>${p.anarana} ${isAhy ? '(Ianao)' : ''}</td>
             <td>Lv.${p.level}</td>
             <td>${p.vono}</td>
             <td>${p.fandresena}</td>
             <td>${p.lalao}</td>
-            <td>${p.lalao > 0? ((p.vono / p.lalao).toFixed(2)) : '0.00'}</td>
+            <td>${p.lalao > 0 ? (p.vono / p.lalao).toFixed(2) : '0.00'}</td>
         `;
 
         tbody.appendChild(tr);
     });
 
     const toeranaEl = document.getElementById('myRankValue');
-    if (toeranaEl) {
-        toeranaEl.textContent = '#' + leaderboardData.toerana;
-    }
+    if (toeranaEl) toeranaEl.textContent = '#' + leaderboardData.toerana;
 }
 
 function manovaSokajyLeaderboard(sokajy) {
-    document.querySelectorAll('.leaderboard-filter').forEach(b => {
-        b.classList.remove('active');
-    });
+    document.querySelectorAll('.leaderboard-filter').forEach(b => b.classList.remove('active'));
 
     const voafidy = document.querySelector(`[data-sort="${sokajy}"]`);
     if (voafidy) voafidy.classList.add('active');
@@ -2599,7 +2358,7 @@ function mitadyMpilalaoLeaderboard() {
         return;
     }
 
-    lalao.socket.emit('mitadyMpilalao', {anarana: anarana});
+    lalao.socket.emit('mitadyMpilalao', { anarana: anarana });
 
     lalao.socket.once('fikarohanaValiny', (data) => {
         if (data.hita) {
@@ -2611,30 +2370,15 @@ function mitadyMpilalaoLeaderboard() {
     });
 }
 
+// ============================================================
+// ADMIN
+// ============================================================
 
+// NANAVAO: adminData, dailyData, friendsData, clanData — iray ihany (esoiry ny faharoa)
 let adminData = {
     mpilalaoAnjara: [],
     statistika: {},
     fanarahaMaso: true
-};
-
-let dailyData = {
-    andro: 0,
-    nalaina: false,
-    valisoa: []
-};
-
-let friendsData = {
-    namana: [],
-    fangatahana: [],
-    sosoKevi: []
-};
-
-let clanData = {
-    anarana: null,
-    mpikambana: [],
-    level: 1,
-    xp: 0
 };
 
 function makaAdminData() {
@@ -2650,10 +2394,15 @@ function makaAdminData() {
 }
 
 function asehoAdminDashboard() {
-    document.getElementById('adminTotalPlayers').textContent = adminData.statistika.totalMpilalao || 0;
-    document.getElementById('adminOnlinePlayers').textContent = adminData.statistika.mifandray || 0;
-    document.getElementById('adminTotalMatches').textContent = adminData.statistika.totalLalao || 0;
-    document.getElementById('adminActiveLobbies').textContent = adminData.statistika.lobbyMavitrika || 0;
+    const setValue = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    };
+
+    setValue('adminTotalPlayers', adminData.statistika.totalMpilalao || 0);
+    setValue('adminOnlinePlayers', adminData.statistika.mifandray || 0);
+    setValue('adminTotalMatches', adminData.statistika.totalLalao || 0);
+    setValue('adminActiveLobbies', adminData.statistika.lobbyMavitrika || 0);
 
     const fito = document.getElementById('adminPlayersList');
     if (!fito) return;
@@ -2666,7 +2415,7 @@ function asehoAdminDashboard() {
         el.innerHTML = `
             <span>${p.anarana}</span>
             <span>Lv.${p.level}</span>
-            <span>${p.mifandray? '🟢' : '⚫'}</span>
+            <span>${p.mifandray ? '🟢' : '⚫'}</span>
             <button onclick="adminJereoMpilalao('${p.uid}')">Jereo</button>
         `;
         fito.appendChild(el);
@@ -2674,26 +2423,17 @@ function asehoAdminDashboard() {
 }
 
 function adminJereoMpilalao(uid) {
-    lalao.socket.emit('adminJereoMpilalao', {uid: uid});
+    lalao.socket.emit('adminJereoMpilalao', { uid: uid });
 
     lalao.socket.once('mpilalaoInfo', (data) => {
-        const info = `
-Anarana: ${data.anarana}
-Level: ${data.level}
-Vono: ${data.vono}
-Fandresena: ${data.fandresena}
-Volamena: ${data.volamena}
-Diamondra: ${data.diamondra}
-Niditra farany: ${new Date(data.niditraFarany).toLocaleString()}
-        `;
-        alert(info);
+        alert(`Anarana: ${data.anarana}\nLevel: ${data.level}\nVono: ${data.vono}\nFandresena: ${data.fandresena}\nVolamena: ${data.volamena}\nDiamondra: ${data.diamondra}\nNiditra farany: ${new Date(data.niditraFarany).toLocaleString()}`);
     });
 }
 
 function adminAvoakaMpilalao(uid) {
     if (!confirm('Avoaka ity mpilalao ity?')) return;
 
-    lalao.socket.emit('adminAvoaka', {uid: uid});
+    lalao.socket.emit('adminAvoaka', { uid: uid });
 
     lalao.socket.once('avoakaValiny', (valiny) => {
         if (valiny.vita) {
@@ -2703,16 +2443,14 @@ function adminAvoakaMpilalao(uid) {
     });
 }
 
-function adminOmeVolamena(uid, isa) {
+function adminOmeVolamena(uid) {
     const vola = parseInt(prompt('Ohatrinona?'));
     if (!vola || vola <= 0) return;
 
-    lalao.socket.emit('adminOmeVolamena', {uid: uid, isa: vola});
+    lalao.socket.emit('adminOmeVolamena', { uid: uid, isa: vola });
 
     lalao.socket.once('omeValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Vita', 'success');
-        }
+        if (valiny.vita) asehoToast('Vita', 'success');
     });
 }
 
@@ -2722,7 +2460,7 @@ function adminBanMpilalao(uid) {
 
     if (!confirm('Ban ity mpilalao ity?')) return;
 
-    lalao.socket.emit('adminBan', {uid: uid, antony: antony});
+    lalao.socket.emit('adminBan', { uid: uid, antony: antony });
 
     lalao.socket.once('banValiny', (valiny) => {
         if (valiny.vita) {
@@ -2736,7 +2474,7 @@ function adminAlefaHafatra() {
     const hafatra = document.getElementById('adminBroadcastMessage').value.trim();
     if (!hafatra) return;
 
-    lalao.socket.emit('adminBroadcast', {hafatra: hafatra});
+    lalao.socket.emit('adminBroadcast', { hafatra: hafatra });
 
     lalao.socket.once('broadcastValiny', (valiny) => {
         if (valiny.vita) {
@@ -2749,9 +2487,22 @@ function adminAlefaHafatra() {
 function adminAtsahatraServer() {
     if (!confirm('Atsahatra ny server?')) return;
     if (!confirm('Tena azo antoka?')) return;
-
     lalao.socket.emit('adminAtsahatra');
 }
+
+function mialaAdmin() {
+    if (confirm('Hiala admin?')) window.location.href = '/';
+}
+
+// ============================================================
+// DAILY REWARD
+// ============================================================
+
+let dailyData = {
+    andro: 0,
+    nalaina: false,
+    valisoa: []
+};
 
 function makaDailyReward() {
     lalao.socket.emit('makaDaily');
@@ -2775,7 +2526,7 @@ function asehoDailyReward() {
 
     if (bokotra) {
         bokotra.disabled = dailyData.nalaina;
-        bokotra.textContent = dailyData.nalaina? 'Efa nalaina' : 'Alaina';
+        bokotra.textContent = dailyData.nalaina ? 'Efa nalaina' : 'Alaina';
         bokotra.onclick = makaDailyAnkehitriny;
     }
 
@@ -2791,29 +2542,36 @@ function makaDailyAnkehitriny() {
         if (valiny.vita) {
             dailyData.nalaina = true;
 
-            if (valiny.karazana === 'volamena') {
-                mpilalao.volamena += valiny.isa;
-            } else if (valiny.karazana === 'diamondra') {
-                mpilalao.diamondra += valiny.isa;
-            }
+            if (valiny.karazana === 'volamena') mpilalao.volamena += valiny.isa;
+            else if (valiny.karazana === 'diamondra') mpilalao.diamondra += valiny.isa;
 
             mitahiryData();
             havaozyUI();
             asehoDailyReward();
 
             asehoToast(`Nahazo ${valiny.isa} ${valiny.karazana}`, 'success');
-            alefaSon('valisoa');
+            alefaFeo('valisoa');
 
             setTimeout(() => {
-                document.getElementById('dailyRewardModal').classList.add('hidden');
+                document.getElementById('dailyRewardModal')?.classList.add('hidden');
             }, 2000);
         }
     });
 }
 
 function afenoDailyReward() {
-    document.getElementById('dailyRewardModal').classList.add('hidden');
+    document.getElementById('dailyRewardModal')?.classList.add('hidden');
 }
+
+// ============================================================
+// FRIENDS
+// ============================================================
+
+let friendsData = {
+    namana: [],
+    fangatahana: [],
+    sosoKevi: []
+};
 
 function makaFriendsData() {
     lalao.socket.emit('makaNamana');
@@ -2844,7 +2602,7 @@ function asehoFriends() {
                     <div class="friend-info">
                         <span class="friend-name">${n.anarana}</span>
                         <span class="friend-level">Lv.${n.level}</span>
-                        <span class="friend-status">${n.mifandray? '🟢 Mifandray' : '⚫ Tsy mifandray'}</span>
+                        <span class="friend-status">${n.mifandray ? '🟢 Mifandray' : '⚫ Tsy mifandray'}</span>
                     </div>
                     <div class="friend-actions">
                         <button onclick="manasaHilalao('${n.uid}')">Manasa</button>
@@ -2858,7 +2616,6 @@ function asehoFriends() {
 
     if (fitoFangatahana) {
         fitoFangatahana.innerHTML = '';
-
         friendsData.fangatahana.forEach(f => {
             const el = document.createElement('div');
             el.className = 'friend-request';
@@ -2875,7 +2632,6 @@ function asehoFriends() {
 
     if (fitoSoso) {
         fitoSoso.innerHTML = '';
-
         friendsData.sosoKevi.slice(0, 5).forEach(s => {
             const el = document.createElement('div');
             el.className = 'friend-suggestion';
@@ -2889,8 +2645,7 @@ function asehoFriends() {
 }
 
 function angatahoNamana(uid) {
-    lalao.socket.emit('angatahoNamana', {uid: uid});
-
+    lalao.socket.emit('angatahoNamana', { uid: uid });
     lalao.socket.once('fangatahanaValiny', (valiny) => {
         if (valiny.vita) {
             asehoToast('Lasa ny fangatahana', 'success');
@@ -2902,8 +2657,7 @@ function angatahoNamana(uid) {
 }
 
 function ekenaNamana(uid) {
-    lalao.socket.emit('ekenaNamana', {uid: uid});
-
+    lalao.socket.emit('ekenaNamana', { uid: uid });
     lalao.socket.once('ekenaValiny', (valiny) => {
         if (valiny.vita) {
             asehoToast('Namana vaovao', 'success');
@@ -2913,20 +2667,15 @@ function ekenaNamana(uid) {
 }
 
 function lavinaNamana(uid) {
-    lalao.socket.emit('lavinaNamana', {uid: uid});
-
+    lalao.socket.emit('lavinaNamana', { uid: uid });
     lalao.socket.once('lavinaValiny', (valiny) => {
-        if (valiny.vita) {
-            makaFriendsData();
-        }
+        if (valiny.vita) makaFriendsData();
     });
 }
 
 function esoryNamana(uid) {
     if (!confirm('Esorina ity namana ity?')) return;
-
-    lalao.socket.emit('esoryNamana', {uid: uid});
-
+    lalao.socket.emit('esoryNamana', { uid: uid });
     lalao.socket.once('esoryValiny', (valiny) => {
         if (valiny.vita) {
             asehoToast('Voafafa', 'info');
@@ -2940,13 +2689,9 @@ function manasaHilalao(uid) {
         asehoToast('Mamorona lobby aloha', 'warning');
         return;
     }
-
-    lalao.socket.emit('manasaNamana', {uid: uid, lobbyId: lobby.id});
-
+    lalao.socket.emit('manasaNamana', { uid: uid, lobbyId: lobby.id });
     lalao.socket.once('fanasanaValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Lasa ny fanasana', 'success');
-        }
+        if (valiny.vita) asehoToast('Lasa ny fanasana', 'success');
     });
 }
 
@@ -2957,7 +2702,7 @@ function mitadyNamana() {
         return;
     }
 
-    lalao.socket.emit('mitadyNamana', {anarana: anarana});
+    lalao.socket.emit('mitadyNamana', { anarana: anarana });
 
     lalao.socket.once('fikarohanaNamanaValiny', (data) => {
         const fito = document.getElementById('friendSearchResults');
@@ -2982,9 +2727,19 @@ function mitadyNamana() {
     });
 }
 
+// ============================================================
+// CLAN
+// ============================================================
+
+let clanData = {
+    anarana: null,
+    mpikambana: [],
+    level: 1,
+    xp: 0
+};
+
 function makaClanData() {
     lalao.socket.emit('makaClan');
-
     lalao.socket.once('clanValiny', (data) => {
         clanData = data;
         asehoClan();
@@ -3014,9 +2769,9 @@ function asehoClan() {
             const el = document.createElement('div');
             el.className = 'clan-member';
             el.innerHTML = `
-                <span>${m.anarana} ${m.tompony? '👑' : ''}</span>
+                <span>${m.anarana} ${m.tompony ? '👑' : ''}</span>
                 <span>Lv.${m.level}</span>
-                <span>${m.mifandray? '🟢' : '⚫'}</span>
+                <span>${m.mifandray ? '🟢' : '⚫'}</span>
             `;
             mpikambanaEl.appendChild(el);
         });
@@ -3035,7 +2790,7 @@ function mamoronaClan() {
         return;
     }
 
-    lalao.socket.emit('mamoronaClan', {anarana: anarana});
+    lalao.socket.emit('mamoronaClan', { anarana: anarana });
 
     lalao.socket.once('clanForonina', (valiny) => {
         if (valiny.vita) {
@@ -3051,8 +2806,7 @@ function mamoronaClan() {
 }
 
 function miditraClan(id) {
-    lalao.socket.emit('miditraClan', {id: id});
-
+    lalao.socket.emit('miditraClan', { id: id });
     lalao.socket.once('miditraClanValiny', (valiny) => {
         if (valiny.vita) {
             makaClanData();
@@ -3063,17 +2817,21 @@ function miditraClan(id) {
 
 function mialaClan() {
     if (!confirm('Hiala amin ny clan?')) return;
-
     lalao.socket.emit('mialaClan');
-
     lalao.socket.once('mialaClanValiny', (valiny) => {
         if (valiny.vita) {
-            clanData = {anarana: null, mpikambana: [], level: 1, xp: 0};
+            clanData = { anarana: null, mpikambana: [], level: 1, xp: 0 };
             asehoClan();
             asehoToast('Niala clan', 'info');
         }
     });
 }
+
+// ============================================================
+// SETTINGS
+// ============================================================
+
+function manokatraSettings() { asehoPanel('settingsPanel'); }
 
 function mitahirySettingsRehetra() {
     const settings = {
@@ -3092,8 +2850,7 @@ function mitahirySettingsRehetra() {
 
     mpilalao.settings = settings;
     mitahiryData();
-
-    lalao.socket.emit('mitahirySettings', {settings: settings});
+    lalao.socket.emit('mitahirySettings', { settings: settings });
 
     asehoToast('Settings voatahiry', 'success');
     afenoPanel('settingsPanel');
@@ -3169,562 +2926,9 @@ function manovaSensitivity() {
     document.getElementById('aimSensitivityValue').textContent = aim.toFixed(1);
 }
 
-let adminData = {
-    mpilalaoAnjara: [],
-    statistika: {},
-    fanarahaMaso: true
-};
-
-let dailyData = {
-    andro: 0,
-    nalaina: false,
-    valisoa: []
-};
-
-let friendsData = {
-    namana: [],
-    fangatahana: [],
-    sosoKevi: []
-};
-
-let clanData = {
-    anarana: null,
-    mpikambana: [],
-    level: 1,
-    xp: 0
-};
-
-function makaAdminData() {
-    if (!mpilalao.admin) return;
-
-    lalao.socket.emit('makaAdminData');
-
-    lalao.socket.once('adminValiny', (data) => {
-        adminData.statistika = data.statistika;
-        adminData.mpilalaoAnjara = data.mpilalao;
-        asehoAdminDashboard();
-    });
-}
-
-function asehoAdminDashboard() {
-    document.getElementById('adminTotalPlayers').textContent = adminData.statistika.totalMpilalao || 0;
-    document.getElementById('adminOnlinePlayers').textContent = adminData.statistika.mifandray || 0;
-    document.getElementById('adminTotalMatches').textContent = adminData.statistika.totalLalao || 0;
-    document.getElementById('adminActiveLobbies').textContent = adminData.statistika.lobbyMavitrika || 0;
-
-    const fito = document.getElementById('adminPlayersList');
-    if (!fito) return;
-
-    fito.innerHTML = '';
-
-    adminData.mpilalaoAnjara.forEach(p => {
-        const el = document.createElement('div');
-        el.className = 'admin-player-item';
-        el.innerHTML = `
-            <span>${p.anarana}</span>
-            <span>Lv.${p.level}</span>
-            <span>${p.mifandray? '🟢' : '⚫'}</span>
-            <button onclick="adminJereoMpilalao('${p.uid}')">Jereo</button>
-        `;
-        fito.appendChild(el);
-    });
-}
-
-function adminJereoMpilalao(uid) {
-    lalao.socket.emit('adminJereoMpilalao', {uid: uid});
-
-    lalao.socket.once('mpilalaoInfo', (data) => {
-        const info = `
-Anarana: ${data.anarana}
-Level: ${data.level}
-Vono: ${data.vono}
-Fandresena: ${data.fandresena}
-Volamena: ${data.volamena}
-Diamondra: ${data.diamondra}
-Niditra farany: ${new Date(data.niditraFarany).toLocaleString()}
-        `;
-        alert(info);
-    });
-}
-
-function adminAvoakaMpilalao(uid) {
-    if (!confirm('Avoaka ity mpilalao ity?')) return;
-
-    lalao.socket.emit('adminAvoaka', {uid: uid});
-
-    lalao.socket.once('avoakaValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Voavoaka', 'success');
-            makaAdminData();
-        }
-    });
-}
-
-function adminOmeVolamena(uid, isa) {
-    const vola = parseInt(prompt('Ohatrinona?'));
-    if (!vola || vola <= 0) return;
-
-    lalao.socket.emit('adminOmeVolamena', {uid: uid, isa: vola});
-
-    lalao.socket.once('omeValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Vita', 'success');
-        }
-    });
-}
-
-function adminBanMpilalao(uid) {
-    const antony = prompt('Antony ban?');
-    if (!antony) return;
-
-    if (!confirm('Ban ity mpilalao ity?')) return;
-
-    lalao.socket.emit('adminBan', {uid: uid, antony: antony});
-
-    lalao.socket.once('banValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Voaban', 'success');
-            makaAdminData();
-        }
-    });
-}
-
-function adminAlefaHafatra() {
-    const hafatra = document.getElementById('adminBroadcastMessage').value.trim();
-    if (!hafatra) return;
-
-    lalao.socket.emit('adminBroadcast', {hafatra: hafatra});
-
-    lalao.socket.once('broadcastValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Lasa ny hafatra', 'success');
-            document.getElementById('adminBroadcastMessage').value = '';
-        }
-    });
-}
-
-function adminAtsahatraServer() {
-    if (!confirm('Atsahatra ny server?')) return;
-    if (!confirm('Tena azo antoka?')) return;
-
-    lalao.socket.emit('adminAtsahatra');
-}
-
-function makaDailyReward() {
-    lalao.socket.emit('makaDaily');
-
-    lalao.socket.once('dailyValiny', (data) => {
-        dailyData = data;
-        asehoDailyReward();
-    });
-}
-
-function asehoDailyReward() {
-    const modal = document.getElementById('dailyRewardModal');
-    if (!modal) return;
-
-    const andro = document.getElementById('dailyDay');
-    const valisoa = document.getElementById('dailyRewardItem');
-    const bokotra = document.getElementById('dailyClaimBtn');
-
-    if (andro) andro.textContent = `Andro ${dailyData.andro + 1}`;
-    if (valisoa) valisoa.textContent = dailyData.valisoa[dailyData.andro]?.sary || '🎁';
-
-    if (bokotra) {
-        bokotra.disabled = dailyData.nalaina;
-        bokotra.textContent = dailyData.nalaina? 'Efa nalaina' : 'Alaina';
-        bokotra.onclick = makaDailyAnkehitriny;
-    }
-
-    modal.classList.remove('hidden');
-}
-
-function makaDailyAnkehitriny() {
-    if (dailyData.nalaina) return;
-
-    lalao.socket.emit('makaDailyAnkehitriny');
-
-    lalao.socket.once('dailyAlaValiny', (valiny) => {
-        if (valiny.vita) {
-            dailyData.nalaina = true;
-
-            if (valiny.karazana === 'volamena') {
-                mpilalao.volamena += valiny.isa;
-            } else if (valiny.karazana === 'diamondra') {
-                mpilalao.diamondra += valiny.isa;
-            }
-
-            mitahiryData();
-            havaozyUI();
-            asehoDailyReward();
-
-            asehoToast(`Nahazo ${valiny.isa} ${valiny.karazana}`, 'success');
-            alefaSon('valisoa');
-
-            setTimeout(() => {
-                document.getElementById('dailyRewardModal').classList.add('hidden');
-            }, 2000);
-        }
-    });
-}
-
-function afenoDailyReward() {
-    document.getElementById('dailyRewardModal').classList.add('hidden');
-}
-
-function makaFriendsData() {
-    lalao.socket.emit('makaNamana');
-
-    lalao.socket.once('namanaValiny', (data) => {
-        friendsData.namana = data.namana;
-        friendsData.fangatahana = data.fangatahana;
-        friendsData.sosoKevi = data.sosoKevi;
-        asehoFriends();
-    });
-}
-
-function asehoFriends() {
-    const fitoNamana = document.getElementById('friendsList');
-    const fitoFangatahana = document.getElementById('friendRequests');
-    const fitoSoso = document.getElementById('friendSuggestions');
-
-    if (fitoNamana) {
-        fitoNamana.innerHTML = '';
-
-        if (friendsData.namana.length === 0) {
-            fitoNamana.innerHTML = '<div class="empty">Tsy misy namana</div>';
-        } else {
-            friendsData.namana.forEach(n => {
-                const el = document.createElement('div');
-                el.className = 'friend-item';
-                el.innerHTML = `
-                    <div class="friend-info">
-                        <span class="friend-name">${n.anarana}</span>
-                        <span class="friend-level">Lv.${n.level}</span>
-                        <span class="friend-status">${n.mifandray? '🟢 Mifandray' : '⚫ Tsy mifandray'}</span>
-                    </div>
-                    <div class="friend-actions">
-                        <button onclick="manasaHilalao('${n.uid}')">Manasa</button>
-                        <button onclick="esoryNamana('${n.uid}')">Esory</button>
-                    </div>
-                `;
-                fitoNamana.appendChild(el);
-            });
-        }
-    }
-
-    if (fitoFangatahana) {
-        fitoFangatahana.innerHTML = '';
-
-        friendsData.fangatahana.forEach(f => {
-            const el = document.createElement('div');
-            el.className = 'friend-request';
-            el.innerHTML = `
-                <span>${f.anarana} (Lv.${f.level})</span>
-                <div>
-                    <button onclick="ekenaNamana('${f.uid}')">Ekena</button>
-                    <button onclick="lavinaNamana('${f.uid}')">Lavina</button>
-                </div>
-            `;
-            fitoFangatahana.appendChild(el);
-        });
-    }
-
-    if (fitoSoso) {
-        fitoSoso.innerHTML = '';
-
-        friendsData.sosoKevi.slice(0, 5).forEach(s => {
-            const el = document.createElement('div');
-            el.className = 'friend-suggestion';
-            el.innerHTML = `
-                <span>${s.anarana} (Lv.${s.level})</span>
-                <button onclick="angatahoNamana('${s.uid}')">Ampiana</button>
-            `;
-            fitoSoso.appendChild(el);
-        });
-    }
-}
-
-function angatahoNamana(uid) {
-    lalao.socket.emit('angatahoNamana', {uid: uid});
-
-    lalao.socket.once('fangatahanaValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Lasa ny fangatahana', 'success');
-            makaFriendsData();
-        } else {
-            asehoToast(valiny.antony || 'Tsy nety', 'error');
-        }
-    });
-}
-
-function ekenaNamana(uid) {
-    lalao.socket.emit('ekenaNamana', {uid: uid});
-
-    lalao.socket.once('ekenaValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Namana vaovao', 'success');
-            makaFriendsData();
-        }
-    });
-}
-
-function lavinaNamana(uid) {
-    lalao.socket.emit('lavinaNamana', {uid: uid});
-
-    lalao.socket.once('lavinaValiny', (valiny) => {
-        if (valiny.vita) {
-            makaFriendsData();
-        }
-    });
-}
-
-function esoryNamana(uid) {
-    if (!confirm('Esorina ity namana ity?')) return;
-
-    lalao.socket.emit('esoryNamana', {uid: uid});
-
-    lalao.socket.once('esoryValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Voafafa', 'info');
-            makaFriendsData();
-        }
-    });
-}
-
-function manasaHilalao(uid) {
-    if (!lobby.id) {
-        asehoToast('Mamorona lobby aloha', 'warning');
-        return;
-    }
-
-    lalao.socket.emit('manasaNamana', {uid: uid, lobbyId: lobby.id});
-
-    lalao.socket.once('fanasanaValiny', (valiny) => {
-        if (valiny.vita) {
-            asehoToast('Lasa ny fanasana', 'success');
-        }
-    });
-}
-
-function mitadyNamana() {
-    const anarana = document.getElementById('friendSearchInput').value.trim();
-    if (!anarana || anarana.length < 3) {
-        asehoToast('Soraty anarana', 'warning');
-        return;
-    }
-
-    lalao.socket.emit('mitadyNamana', {anarana: anarana});
-
-    lalao.socket.once('fikarohanaNamanaValiny', (data) => {
-        const fito = document.getElementById('friendSearchResults');
-        if (!fito) return;
-
-        fito.innerHTML = '';
-
-        if (data.vokatra.length === 0) {
-            fito.innerHTML = '<div class="empty">Tsy hita</div>';
-            return;
-        }
-
-        data.vokatra.forEach(p => {
-            const el = document.createElement('div');
-            el.className = 'search-result';
-            el.innerHTML = `
-                <span>${p.anarana} (Lv.${p.level})</span>
-                <button onclick="angatahoNamana('${p.uid}')">Ampiana</button>
-            `;
-            fito.appendChild(el);
-        });
-    });
-}
-
-function makaClanData() {
-    lalao.socket.emit('makaClan');
-
-    lalao.socket.once('clanValiny', (data) => {
-        clanData = data;
-        asehoClan();
-    });
-}
-
-function asehoClan() {
-    const anaranaEl = document.getElementById('clanName');
-    const levelEl = document.getElementById('clanLevel');
-    const mpikambanaEl = document.getElementById('clanMembers');
-
-    if (!clanData.anarana) {
-        document.getElementById('clanNoClan').style.display = 'block';
-        document.getElementById('clanHasClan').style.display = 'none';
-        return;
-    }
-
-    document.getElementById('clanNoClan').style.display = 'none';
-    document.getElementById('clanHasClan').style.display = 'block';
-
-    if (anaranaEl) anaranaEl.textContent = clanData.anarana;
-    if (levelEl) levelEl.textContent = 'Level ' + clanData.level;
-
-    if (mpikambanaEl) {
-        mpikambanaEl.innerHTML = '';
-        clanData.mpikambana.forEach(m => {
-            const el = document.createElement('div');
-            el.className = 'clan-member';
-            el.innerHTML = `
-                <span>${m.anarana} ${m.tompony? '👑' : ''}</span>
-                <span>Lv.${m.level}</span>
-                <span>${m.mifandray? '🟢' : '⚫'}</span>
-            `;
-            mpikambanaEl.appendChild(el);
-        });
-    }
-}
-
-function mamoronaClan() {
-    const anarana = prompt('Anaran ny clan:');
-    if (!anarana || anarana.length < 3 || anarana.length > 20) {
-        asehoToast('Anarana tsy mety', 'error');
-        return;
-    }
-
-    if (mpilalao.volamena < 5000) {
-        asehoToast('Mila 5000 volamena', 'error');
-        return;
-    }
-
-    lalao.socket.emit('mamoronaClan', {anarana: anarana});
-
-    lalao.socket.once('clanForonina', (valiny) => {
-        if (valiny.vita) {
-            mpilalao.volamena -= 5000;
-            mitahiryData();
-            havaozyUI();
-            makaClanData();
-            asehoToast('Clan voaforona', 'success');
-        } else {
-            asehoToast(valiny.antony, 'error');
-        }
-    });
-}
-
-function miditraClan(id) {
-    lalao.socket.emit('miditraClan', {id: id});
-
-    lalao.socket.once('miditraClanValiny', (valiny) => {
-        if (valiny.vita) {
-            makaClanData();
-            asehoToast('Tafiditra clan', 'success');
-        }
-    });
-}
-
-function mialaClan() {
-    if (!confirm('Hiala amin ny clan?')) return;
-
-    lalao.socket.emit('mialaClan');
-
-    lalao.socket.once('mialaClanValiny', (valiny) => {
-        if (valiny.vita) {
-            clanData = {anarana: null, mpikambana: [], level: 1, xp: 0};
-            asehoClan();
-            asehoToast('Niala clan', 'info');
-        }
-    });
-}
-
-function mitahirySettingsRehetra() {
-    const settings = {
-        sensitivity: parseFloat(document.getElementById('sensitivitySlider').value),
-        aimSensitivity: parseFloat(document.getElementById('aimSensitivitySlider').value),
-        masterVolume: parseInt(document.getElementById('masterVolumeSlider').value),
-        musicVolume: parseInt(document.getElementById('musicVolumeSlider').value),
-        sfxVolume: parseInt(document.getElementById('sfxVolumeSlider').value),
-        graphics: document.getElementById('graphicsSelect').value,
-        fpsLimit: parseInt(document.getElementById('fpsSelect').value),
-        showFPS: document.getElementById('showFPSCheck').checked,
-        showPing: document.getElementById('showPingCheck').checked,
-        autoSprint: document.getElementById('autoSprintCheck').checked,
-        aimAssist: document.getElementById('aimAssistCheck').checked
-    };
-
-    mpilalao.settings = settings;
-    mitahiryData();
-
-    lalao.socket.emit('mitahirySettings', {settings: settings});
-
-    asehoToast('Settings voatahiry', 'success');
-    afenoPanel('settingsPanel');
-}
-
-function mamerinaSettings() {
-    if (!confirm('Averina default?')) return;
-
-    mpilalao.settings = {
-        sensitivity: 1.0,
-        aimSensitivity: 1.0,
-        masterVolume: 100,
-        musicVolume: 50,
-        sfxVolume: 100,
-        graphics: 'medium',
-        fpsLimit: 60,
-        showFPS: false,
-        showPing: true,
-        autoSprint: false,
-        aimAssist: true
-    };
-
-    mitahiryData();
-    mampiditraSettingsAminUI();
-    asehoToast('Naverina', 'info');
-}
-
-function mampiditraSettingsAminUI() {
-    const s = mpilalao.settings || {};
-
-    const setValue = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) {
-            if (el.type === 'checkbox') el.checked = value;
-            else el.value = value;
-        }
-    };
-
-    setValue('sensitivitySlider', s.sensitivity || 1.0);
-    setValue('aimSensitivitySlider', s.aimSensitivity || 1.0);
-    setValue('masterVolumeSlider', s.masterVolume || 100);
-    setValue('musicVolumeSlider', s.musicVolume || 50);
-    setValue('sfxVolumeSlider', s.sfxVolume || 100);
-    setValue('graphicsSelect', s.graphics || 'medium');
-    setValue('fpsSelect', s.fpsLimit || 60);
-    setValue('showFPSCheck', s.showFPS || false);
-    setValue('showPingCheck', s.showPing !== false);
-    setValue('autoSprintCheck', s.autoSprint || false);
-    setValue('aimAssistCheck', s.aimAssist !== false);
-}
-
-function manovaFeo() {
-    const master = parseInt(document.getElementById('masterVolumeSlider').value);
-    const music = parseInt(document.getElementById('musicVolumeSlider').value);
-    const sfx = parseInt(document.getElementById('sfxVolumeSlider').value);
-
-    document.getElementById('masterVolumeValue').textContent = master + '%';
-    document.getElementById('musicVolumeValue').textContent = music + '%';
-    document.getElementById('sfxVolumeValue').textContent = sfx + '%';
-
-    if (mpilalao.settings) {
-        mpilalao.settings.masterVolume = master;
-        mpilalao.settings.musicVolume = music;
-        mpilalao.settings.sfxVolume = sfx;
-    }
-}
-
-function manovaSensitivity() {
-    const sens = parseFloat(document.getElementById('sensitivitySlider').value);
-    const aim = parseFloat(document.getElementById('aimSensitivitySlider').value);
-
-    document.getElementById('sensitivityValue').textContent = sens.toFixed(1);
-    document.getElementById('aimSensitivityValue').textContent = aim.toFixed(1);
-}
+// ============================================================
+// AUDIO SYSTEM
+// ============================================================
 
 let feoData = {
     feo: {},
@@ -3733,20 +2937,6 @@ let feoData = {
     volumeMaster: 1.0,
     volumeMozika: 0.5,
     volumeSFX: 1.0
-};
-
-let animationData = {
-    mavitrika: true,
-    particles: [],
-    effets: []
-};
-
-let performanceData = {
-    fps: 60,
-    fpsTaloha: [],
-    ping: 0,
-    memory: 0,
-    mavitrika: false
 };
 
 function amboaryFeo() {
@@ -3772,6 +2962,7 @@ function amboaryFeo() {
     havaozyFeo();
 }
 
+// NANAVAO: alefaFeo (tsy alefaSon) — iray ihany nampiasaina rehetra
 function alefaFeo(anarana, volume = 1.0) {
     if (!feoData.mavitrika) return;
 
@@ -3786,9 +2977,7 @@ function alefaFeo(anarana, volume = 1.0) {
 function alefaMozika(anarana) {
     if (!feoData.mavitrika) return;
 
-    if (feoData.mozika) {
-        feoData.mozika.pause();
-    }
+    if (feoData.mozika) feoData.mozika.pause();
 
     feoData.mozika = new Audio(`/sounds/${anarana}.mp3`);
     feoData.mozika.loop = true;
@@ -3810,9 +2999,7 @@ function havaozyFeo() {
     feoData.volumeMozika = (s.musicVolume || 50) / 100;
     feoData.volumeSFX = (s.sfxVolume || 100) / 100;
 
-    if (feoData.mozika) {
-        feoData.mozika.volume = feoData.volumeMozika * feoData.volumeMaster;
-    }
+    if (feoData.mozika) feoData.mozika.volume = feoData.volumeMozika * feoData.volumeMaster;
 }
 
 function manovaFeoMaster(isa) {
@@ -3821,37 +3008,40 @@ function manovaFeoMaster(isa) {
 }
 
 function manginaFeo() {
-    feoData.mavitrika =!feoData.mavitrika;
+    feoData.mavitrika = !feoData.mavitrika;
 
-    if (!feoData.mavitrika) {
-        atsahatraMozika();
-    } else {
-        alefaMozika('music_lobby');
-    }
+    if (!feoData.mavitrika) atsahatraMozika();
+    else alefaMozika('music_lobby');
 
-    asehoToast(feoData.mavitrika? 'Feo mandeha' : 'Feo mangina', 'info');
+    asehoToast(feoData.mavitrika ? 'Feo mandeha' : 'Feo mangina', 'info');
 }
+
+// ============================================================
+// PARTICLES & EFFECTS
+// ============================================================
+
+let animationData = {
+    mavitrika: true,
+    particles: [],
+    effets: []
+};
 
 function mamoronaParticle(x, y, karazana, loko) {
     if (!animationData.mavitrika) return;
 
     const particle = {
-        x: x,
-        y: y,
+        x, y,
         vx: (Math.random() - 0.5) * 4,
         vy: (Math.random() - 0.5) * 4,
         aina: 60,
         ainaMax: 60,
         loko: loko || '#ff006e',
         habe: Math.random() * 4 + 2,
-        karazana: karazana
+        karazana
     };
 
     animationData.particles.push(particle);
-
-    if (animationData.particles.length > 200) {
-        animationData.particles.shift();
-    }
+    if (animationData.particles.length > 200) animationData.particles.shift();
 }
 
 function havaozyParticles(ctx) {
@@ -3876,21 +3066,12 @@ function havaozyParticles(ctx) {
 }
 
 function mamoronaEffet(x, y, karazana) {
-    const effet = {
-        x: x,
-        y: y,
-        fotoana: 0,
-        fotoanaMax: 30,
-        karazana: karazana
-    };
-
-    animationData.effets.push(effet);
+    animationData.effets.push({ x, y, fotoana: 0, fotoanaMax: 30, karazana });
 }
 
 function havaozyEffets(ctx) {
     animationData.effets = animationData.effets.filter(e => {
         e.fotoana++;
-
         const fandrosoana = e.fotoana / e.fotoanaMax;
 
         if (e.karazana === 'fipoahana') {
@@ -3909,9 +3090,20 @@ function havaozyEffets(ctx) {
     });
 }
 
+// ============================================================
+// PERFORMANCE
+// ============================================================
+
+let performanceData = {
+    fps: 60,
+    fpsTaloha: [],
+    ping: 0,
+    memory: 0,
+    mavitrika: false
+};
+
 function amboaryPerformance() {
     performanceData.mavitrika = mpilalao.settings?.showFPS || false;
-
     if (!performanceData.mavitrika) return;
 
     let fotoanaTaloha = performance.now();
@@ -3924,32 +3116,20 @@ function amboaryPerformance() {
         if (ankehitriny - fotoanaTaloha >= 1000) {
             performanceData.fps = frame;
             performanceData.fpsTaloha.push(frame);
-
-            if (performanceData.fpsTaloha.length > 10) {
-                performanceData.fpsTaloha.shift();
-            }
-
+            if (performanceData.fpsTaloha.length > 10) performanceData.fpsTaloha.shift();
             frame = 0;
             fotoanaTaloha = ankehitriny;
-
             havaozyFampisehoanaPerformance();
         }
 
-        if (performanceData.mavitrika) {
-            requestAnimationFrame(manisaFPS);
-        }
+        if (performanceData.mavitrika) requestAnimationFrame(manisaFPS);
     }
 
     manisaFPS();
 
     setInterval(() => {
-        if (lalao.socket) {
-            performanceData.ping = lalao.socket.ping || 0;
-        }
-
-        if (performance.memory) {
-            performanceData.memory = Math.round(performance.memory.usedJSHeapSize / 1048576);
-        }
+        if (lalao.socket) performanceData.ping = lalao.socket.ping || 0;
+        if (performance.memory) performanceData.memory = Math.round(performance.memory.usedJSHeapSize / 1048576);
     }, 1000);
 }
 
@@ -3960,37 +3140,33 @@ function havaozyFampisehoanaPerformance() {
 
     if (fpsEl) {
         fpsEl.textContent = performanceData.fps + ' FPS';
-        fpsEl.style.color = performanceData.fps >= 55? '#06ffa5' : performanceData.fps >= 30? '#ffaa00' : '#ff4444';
+        fpsEl.style.color = performanceData.fps >= 55 ? '#06ffa5' : performanceData.fps >= 30 ? '#ffaa00' : '#ff4444';
     }
 
     if (pingEl) {
         pingEl.textContent = performanceData.ping + ' ms';
-        pingEl.style.color = performanceData.ping < 50? '#06ffa5' : performanceData.ping < 100? '#ffaa00' : '#ff4444';
+        pingEl.style.color = performanceData.ping < 50 ? '#06ffa5' : performanceData.ping < 100 ? '#ffaa00' : '#ff4444';
     }
 
-    if (memoryEl && performanceData.memory > 0) {
-        memoryEl.textContent = performanceData.memory + ' MB';
-    }
+    if (memoryEl && performanceData.memory > 0) memoryEl.textContent = performanceData.memory + ' MB';
 }
 
 function amboaryFampisehoana() {
     const el = document.getElementById('performanceDisplay');
-    if (el) {
-        el.style.display = performanceData.mavitrika? 'block' : 'none';
-    }
+    if (el) el.style.display = performanceData.mavitrika ? 'block' : 'none';
 }
 
 function manadioMemory() {
     animationData.particles = [];
     animationData.effets = [];
     lalaoEo.mpilalaoTaloha.clear();
-
-    if (window.gc) {
-        window.gc();
-    }
-
+    if (window.gc) window.gc();
     asehoToast('Memory nodiovina', 'info');
 }
+
+// ============================================================
+// MOBILE CONTROLS
+// ============================================================
 
 function amboaryToucheMobile() {
     const joystick = document.getElementById('mobileJoystick');
@@ -4007,9 +3183,8 @@ function amboaryToucheMobile() {
     joystick.addEventListener('touchstart', (e) => {
         e.preventDefault();
         joystickActive = true;
-        const touch = e.touches[0];
-        joystickStartX = touch.clientX;
-        joystickStartY = touch.clientY;
+        joystickStartX = e.touches[0].clientX;
+        joystickStartY = e.touches[0].clientY;
     });
 
     joystick.addEventListener('touchmove', (e) => {
@@ -4019,67 +3194,38 @@ function amboaryToucheMobile() {
         const touch = e.touches[0];
         const deltaX = touch.clientX - joystickStartX;
         const deltaY = touch.clientY - joystickStartY;
-
         const distance = Math.min(50, Math.sqrt(deltaX * deltaX + deltaY * deltaY));
-        const angle = Math.atan2(deltaY, deltaX);
 
-        const hetsika = {
+        lalao.socket.emit('hetsika', {
             ambony: deltaY < -10,
             ambany: deltaY > 10,
             ankavia: deltaX < -10,
             ankavanana: deltaX > 10,
             sprint: distance > 40
-        };
-
-        lalao.socket.emit('hetsika', hetsika);
+        });
     });
 
     joystick.addEventListener('touchend', (e) => {
         e.preventDefault();
         joystickActive = false;
         lalao.socket.emit('hetsika', {
-            ambony: false,
-            ambany: false,
-            ankavia: false,
-            ankavanana: false,
-            sprint: false
+            ambony: false, ambany: false, ankavia: false, ankavanana: false, sprint: false
         });
     });
 
     if (fireBtn) {
-        fireBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            alefaTifitra();
-        });
-
-        fireBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            lalao.socket.emit('ajanonaTifitra');
-        });
+        fireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); alefaTifitra(); });
+        fireBtn.addEventListener('touchend', (e) => { e.preventDefault(); lalao.socket.emit('ajanonaTifitra'); });
     }
 
-    if (reloadBtn) {
-        reloadBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            alefaReload();
-        });
-    }
-
-    if (healBtn) {
-        healBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            alefaFitsaboana();
-        });
-    }
+    if (reloadBtn) reloadBtn.addEventListener('touchstart', (e) => { e.preventDefault(); alefaReload(); });
+    if (healBtn) healBtn.addEventListener('touchstart', (e) => { e.preventDefault(); alefaFitsaboana(); });
 }
 
 function amboaryVibration() {
     if (!navigator.vibrate) return;
-
     lalao.socket.on('vibration', (data) => {
-        if (mpilalao.settings?.vibration!== false) {
-            navigator.vibrate(data.laharana || [50]);
-        }
+        if (mpilalao.settings?.vibration !== false) navigator.vibrate(data.laharana || [50]);
     });
 }
 
@@ -4090,10 +3236,8 @@ function amboaryFullscreen() {
     btn.addEventListener('click', () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(() => {});
-            btn.textContent = '⛶';
         } else {
             document.exitFullscreen().catch(() => {});
-            btn.textContent = '⛶';
         }
     });
 }
@@ -4108,28 +3252,21 @@ function amboaryFampitandremana() {
     });
 
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden && lalaoEo.mandeha) {
-            lalao.socket.emit('afk');
-        } else if (!document.hidden && lalaoEo.mandeha) {
-            lalao.socket.emit('miverina');
-        }
+        if (document.hidden && lalaoEo.mandeha) lalao.socket.emit('afk');
+        else if (!document.hidden && lalaoEo.mandeha) lalao.socket.emit('miverina');
     });
 }
 
 function amboaryAutoSave() {
     setInterval(() => {
-        if (mpilalao.uid && lalao.mpampiasa) {
-            mitahiryData();
-        }
+        if (mpilalao.uid && lalao.mpampiasa) mitahiryData();
     }, 30000);
 }
 
 function amboaryFifandraisana() {
     window.addEventListener('online', () => {
         asehoToast('Mifandray indray', 'success');
-        if (lalao.socket &&!lalao.socket.connected) {
-            lalao.socket.connect();
-        }
+        if (lalao.socket && !lalao.socket.connected) lalao.socket.connect();
     });
 
     window.addEventListener('offline', () => {
@@ -4137,16 +3274,20 @@ function amboaryFifandraisana() {
     });
 }
 
+// ============================================================
+// FAMPIDIRANA REHETRA
+// ============================================================
+
 function amboaryFampidirana() {
     const fampidirana = [
-        {asa: amboaryFeo, anarana: 'Feo'},
-        {asa: amboaryPerformance, anarana: 'Performance'},
-        {asa: amboaryToucheMobile, anarana: 'Mobile'},
-        {asa: amboaryVibration, anarana: 'Vibration'},
-        {asa: amboaryFullscreen, anarana: 'Fullscreen'},
-        {asa: amboaryFampitandremana, anarana: 'Fampitandremana'},
-        {asa: amboaryAutoSave, anarana: 'AutoSave'},
-        {asa: amboaryFifandraisana, anarana: 'Fifandraisana'}
+        { asa: amboaryFeo, anarana: 'Feo' },
+        { asa: amboaryPerformance, anarana: 'Performance' },
+        { asa: amboaryToucheMobile, anarana: 'Mobile' },
+        { asa: amboaryVibration, anarana: 'Vibration' },
+        { asa: amboaryFullscreen, anarana: 'Fullscreen' },
+        { asa: amboaryFampitandremana, anarana: 'Fampitandremana' },
+        { asa: amboaryAutoSave, anarana: 'AutoSave' },
+        { asa: amboaryFifandraisana, anarana: 'Fifandraisana' }
     ];
 
     fampidirana.forEach((f, i) => {
@@ -4161,15 +3302,17 @@ function amboaryFampidirana() {
     });
 }
 
+// ============================================================
+// MISC
+// ============================================================
+
 function famarananaLalao() {
     atsahatraLalao();
     atsahatraMozika();
     atsahatraCountdown();
     atsahatraFotoanaMatchmaking();
 
-    if (lalao.socket) {
-        lalao.socket.disconnect();
-    }
+    if (lalao.socket) lalao.socket.disconnect();
 
     animationData.particles = [];
     animationData.effets = [];
@@ -4179,33 +3322,19 @@ function famarananaLalao() {
 
 function mamerinaIndray() {
     famarananaLalao();
-    setTimeout(() => {
-        window.location.reload();
-    }, 1000);
+    setTimeout(() => { window.location.reload(); }, 1000);
 }
 
 function asehoFampahalalana() {
-    const info = `
-MG FIGHTER v4.0.0
-Version: ${CONFIG.version}
-Mpilalao: ${mpilalao.anarana}
-Level: ${mpilalao.level}
-Server: ${CONFIG.server}
-    `;
-    alert(info);
+    alert(`MG FIGHTER v${CONFIG.version}\nMpilalao: ${mpilalao.anarana}\nLevel: ${mpilalao.level}\nServer: ${CONFIG.server}`);
 }
 
 function mizaraLalao() {
-    const hafatra = 'Milalao MG Fighter! Battle Royale Malagasy 🔥';
-
+    const url = 'https://mgfighter.mg';
     if (navigator.share) {
-        navigator.share({
-            title: 'MG Fighter',
-            text: hafatra,
-            url: 'https://mgfighter.mg'
-        });
+        navigator.share({ title: 'MG Fighter', text: 'Milalao MG Fighter! Battle Royale Malagasy 🔥', url });
     } else {
-        mandikaClipboard('https://mgfighter.mg');
+        mandikaClipboard(url);
         asehoToast('Rohy nadika', 'success');
     }
 }
@@ -4221,10 +3350,18 @@ function manomeNaoty() {
     }
 }
 
+function manokatraCredits() { asehoEfijery('creditsScreen'); }
+function miverinaMenu() { asehoMenu(); }
+
+// ============================================================
+// INIT
+// ============================================================
+
+amboaryLobbyListeners();
+amboaryChat();
+
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        amboaryFampidirana();
-    }, 1000);
+    setTimeout(() => { amboaryFampidirana(); }, 1000);
 });
 
 window.addEventListener('error', (e) => {
@@ -4240,7 +3377,4 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Promise tsy voakarakara:', e.reason);
 });
 
-console.log('MG FIGHTER v4.0.0 - Vonona tanteraka');
-console.log('Mpilalao:', mpilalao.anarana);
-console.log('Server:', CONFIG.server);
-
+console.log(`MG FIGHTER v${CONFIG.version} - Vonona tanteraka`);
