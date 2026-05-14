@@ -3375,3 +3375,21 @@ window.addEventListener('unhandledrejection', (e) => {
 });
 
 console.log(`MG FIGHTER v${CONFIG.version} - Vonona tanteraka`);
+
+// ALIASES mba hifanaraka amin'ny HTML anglisy
+function openProfile() { manokatraProfile(); }
+function openFriends() { asehoPanel('friendsPanel'); makaFriendsData(); }
+function openClan() { asehoPanel('clanPanel'); makaClanData(); }
+function openSettings() { asehoPanel('settingsPanel'); mampiditraSettingsAminUI(); }
+function openShop() { asehoPanel('shopMenu'); makaShopData(); }
+function openMail() { asehoPanel('mailPanel'); makaMailData(); }
+function openEvents() { asehoPanel('eventsPanel'); }
+function openInventory() { asehoPanel('inventoryMenu'); makaInventoryData(); }
+function openBattlePass() { asehoPanel('battlePassMenu'); makaBattlePassData(); }
+function openLeaderboard() { asehoPanel('fullLeaderboard'); makaLeaderboardData(); }
+function openMissions() { asehoPanel('missionsPanel'); }
+function loginWithGoogle() { hiditraGoogle(); }
+function loginWithFacebook() { hiditraFacebook(); }
+function loginAnonymously() { hiditraAnonyme(); }
+function loginWithEmail() { hiditraEmail(); }
+function registerWithEmail() { hisoratraEmail(); }
