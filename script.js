@@ -2586,18 +2586,26 @@ socket.on('joinedLobby', (data) => {
 
 socket.on('lobbyUpdate', (data) => {
     document.getElementById('lobbyCount').textContent = data.totalPlayers;
+    const listEl = document.getElementById('lobbyPlayersList');
+    listEl.innerHTML = '';
+    data.players?.forEach(p => {
+        const tag = document.createElement('div');
+        tag.style.cssText = 'background:rgba(0,255,0,0.2);border:1px solid #00ff00;padding:8px 15px;border-radius:20px;font-size:14px;';
+        tag.textContent = p.isBot? '🤖 ' + p.username : '👤 ' + p.username;
+        listEl.appendChild(tag);
+    });
 });
 
 socket.on('lobbyCountdown', (data) => {
     const el = document.getElementById('lobbyCountdown');
-    el.textContent = `Hanomboka afaka ${data.time}s`;
+    el.textContent = `HANOMBOKA AFAKA ${data.time}s`;
     el.style.color = data.time <= 5? '#ff0000' : '#ffff00';
 });
 
 socket.on('matchLaunched', (data) => {
     document.getElementById('lobbyScreen').style.display = 'none';
     document.getElementById('gameMode').textContent = data.mode;
-    Notify.toast(`${data.mode} ${data.zoneTime/60}min! ${data.realPlayers} vraie + ${30-data.realPlayers} bots`, 'success');
+    Notify.toast(`${data.mode} ${data.zoneTime/60}MIN!`, 'success');
 });
 
 socket.on('zoneUpdate', (data) => {
@@ -2607,21 +2615,14 @@ socket.on('zoneUpdate', (data) => {
     document.getElementById('zoneTime').style.color = data.timeLeft === 0? '#ff0000' : '#ffff00';
 });
 
-socket.on('matchInProgress', (data) => {
-    alert(data.message);
-});
-
-socket.on('matchEnd', (data) => {
-    Notify.toast(`Mpandresy: ${data.winner} ${data.isBot? '(BOT)' : ''}`, 'warning');
-});
-
+socket.on('matchInProgress', (data) => { alert(data.message); });
+socket.on('matchEnd', (data) => { Notify.toast(`🏆 MPANDRESY: ${data.winner}`, 'warning'); });
 socket.on('returnToLobby', () => {
     document.getElementById('lobbyScreen').style.display = 'flex';
     document.getElementById('lobbyCountdown').textContent = 'Miandry players... (2 minimum)';
     document.getElementById('lobbyCountdown').style.color = '#ffff00';
 });
 
-// Update player count
 socket.on('gameState', (state) => {
     gameState = state;
     const aliveCount = Object.values(state.players).filter(p => p.hp > 0 &&!p.inLobby).length;
