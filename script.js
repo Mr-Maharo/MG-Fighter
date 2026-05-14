@@ -35,6 +35,37 @@ document.addEventListener('DOMContentLoaded', () => {
     manombokaLalao();
 });
 
+async function jereoRedirectResult() {
+    try {
+        const valiny = await lalao.auth.getRedirectResult();
+        
+        if (valiny.user) {
+            console.log('Redirect nahomby:', valiny.user.displayName);
+            lalao.mpampiasa = valiny.user;
+            
+            await mamoronaProfile(valiny.user);
+            await makaDataMpampiasa(valiny.user.uid);
+            
+            asehoToast('Tonga soa ' + valiny.user.displayName, 'success');
+            afenoLoading();
+            asehoMenu();
+            return true;
+        }
+        return false;
+    } catch (e) {
+        console.error('Redirect error:', e);
+        if (e.code === 'auth/popup-blocked') {
+            asehoToast('Voasakana ny popup. Andramo indray', 'error');
+        } else if (e.code === 'auth/cancelled-popup-request') {
+            // Tsy maninona, nanafoana ny user
+        } else {
+            asehoToast('Hadisoana: ' + e.message, 'error');
+        }
+        return false;
+    }
+}
+
+
 async function manombokaLalao() {
     try {
         asehoLoading();
@@ -46,20 +77,35 @@ async function manombokaLalao() {
         havaozyLoading(30, 'Mifandray amin ny Firebase...');
         await amboaryFirebase();
 
-        havaozyLoading(60, 'Manamarina kaonty...');
-        await jereoAuth();
+        havaozyLoading(50, 'Manamarina login...');
+        
+        // JEREO ALOHA RAHA MISY REDIRECT RESULT
+        const redirectNahomby = await jereoRedirectResult();
+        
+        if (redirectNahomby) {
+            // Efa tafiditra avy amin'ny redirect
+            havaozyLoading(100, 'Vonona!');
+            await miandry(300);
+            afenoLoading();
+            return;
+        }
+
+        havaozyLoading(70, 'Manamarina kaonty...');
+        const user = await jereoAuth();
 
         havaozyLoading(90, 'Mameno...');
         await miandry(400);
 
         havaozyLoading(100, 'Vonona!');
-        await miandry(300);
+        await miandry(500);
 
         afenoLoading();
 
-        if (lalao.mpampiasa) {
+        if (user && lalao.mpampiasa) {
+            console.log('Auto-login:', user.displayName);
             asehoMenu();
         } else {
+            console.log('Tsy misy user, aseho login');
             asehoAuth();
         }
 
@@ -69,7 +115,6 @@ async function manombokaLalao() {
         asehoError('Tsy nety nampiditra');
     }
 }
-
 function miandry(ms) {
     return new Promise(r => setTimeout(r, ms));
 }
@@ -133,49 +178,47 @@ async function amboarySocket() {
 
 async function jereoAuth() {
     return new Promise((resolve) => {
-        lalao.auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                lalao.mpampiasa = user;
-                await makaDataMpampiasa(user.uid);
-            }
-            resolve(user);
-        });
-    });
-}
+        // Jereo aloha raha efa misy user
+        const user = lalao.auth.currentUser;
+        if (user) {
+            lalao.mpampiasa = user;
+            makaDataMpampiasa(user.uid).then(() => resolve(user));
+            return;
+        }
 
 async function hiditraGoogle() {
     try {
         asehoToast('Mifandray amin Google...', 'info');
         const provider = new firebase.auth.GoogleAuthProvider();
-        const valiny = await lalao.auth.signInWithPopup(provider);
-        const user = valiny.user;
+        provider.setCustomParameters({
+            prompt: 'select_account'
+        });
+        
 
-        lalao.mpampiasa = user;
-        await mamoronaProfile(user);
-        await makaDataMpampiasa(user.uid);
-
-        asehoToast('Tonga soa ' + user.displayName, 'success');
-        asehoMenu();
+        await lalao.auth.signInWithRedirect(provider);
+        
     } catch (e) {
-        asehoToast('Tsy nety niditra', 'error');
+        console.error('Google login error:', e);
+        asehoToast('Tsy nety niditra: ' + e.message, 'error');
     }
 }
+
 
 async function hiditraFacebook() {
     try {
         asehoToast('Mifandray amin Facebook...', 'info');
         const provider = new firebase.auth.FacebookAuthProvider();
-        const valiny = await lalao.auth.signInWithPopup(provider);
-        const user = valiny.user;
-
-        lalao.mpampiasa = user;
-        await mamoronaProfile(user);
-        await makaDataMpampiasa(user.uid);
-
-        asehoToast('Tonga soa ' + user.displayName, 'success');
-        asehoMenu();
+        provider.addScope('email');
+        provider.setCustomParameters({
+            'display': 'popup'
+        });
+        
+        // Mampiasa redirect fa tsy popup
+        await lalao.auth.signInWithRedirect(provider);
+        
     } catch (e) {
-        asehoToast('Tsy nety niditra', 'error');
+        console.error('Facebook login error:', e);
+        asehoToast('Tsy nety niditra: ' + e.message, 'error');
     }
 }
 
