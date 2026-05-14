@@ -2578,7 +2578,55 @@
         // Instantiate AI Manager
         window.aiManager = new AIManager();
     });
+// ==================== LOBBY EVENTS ====================
+socket.on('joinedLobby', (data) => {
+    document.getElementById('lobbyScreen').style.display = 'flex';
+    document.getElementById('lobbyCount').textContent = data.players;
+});
 
+socket.on('lobbyUpdate', (data) => {
+    document.getElementById('lobbyCount').textContent = data.totalPlayers;
+});
+
+socket.on('lobbyCountdown', (data) => {
+    const el = document.getElementById('lobbyCountdown');
+    el.textContent = `Hanomboka afaka ${data.time}s`;
+    el.style.color = data.time <= 5? '#ff0000' : '#ffff00';
+});
+
+socket.on('matchLaunched', (data) => {
+    document.getElementById('lobbyScreen').style.display = 'none';
+    document.getElementById('gameMode').textContent = data.mode;
+    Notify.toast(`${data.mode} ${data.zoneTime/60}min! ${data.realPlayers} vraie + ${30-data.realPlayers} bots`, 'success');
+});
+
+socket.on('zoneUpdate', (data) => {
+    const min = Math.floor(data.timeLeft / 60);
+    const sec = data.timeLeft % 60;
+    document.getElementById('zoneTime').textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+    document.getElementById('zoneTime').style.color = data.timeLeft === 0? '#ff0000' : '#ffff00';
+});
+
+socket.on('matchInProgress', (data) => {
+    alert(data.message);
+});
+
+socket.on('matchEnd', (data) => {
+    Notify.toast(`Mpandresy: ${data.winner} ${data.isBot? '(BOT)' : ''}`, 'warning');
+});
+
+socket.on('returnToLobby', () => {
+    document.getElementById('lobbyScreen').style.display = 'flex';
+    document.getElementById('lobbyCountdown').textContent = 'Miandry players... (2 minimum)';
+    document.getElementById('lobbyCountdown').style.color = '#ffff00';
+});
+
+// Update player count
+socket.on('gameState', (state) => {
+    gameState = state;
+    const aliveCount = Object.values(state.players).filter(p => p.hp > 0 &&!p.inLobby).length;
+    document.getElementById('playerCount').textContent = aliveCount;
+});
     // ============================================
     // 33. CLEANUP ON EXIT - BUG #100 FIXED
     // ============================================
