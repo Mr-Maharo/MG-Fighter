@@ -3223,10 +3223,7 @@ function amboaryToucheMobile() {
 }
 
 function amboaryVibration() {
-    if (!navigator.vibrate) return;
-    lalao.socket.on('vibration', (data) => {
-        if (mpilalao.settings?.vibration !== false) navigator.vibrate(data.laharana || [50]);
-    });
+    // Efuck
 }
 
 function amboaryFullscreen() {
@@ -3283,7 +3280,7 @@ function amboaryFampidirana() {
         { asa: amboaryFeo, anarana: 'Feo' },
         { asa: amboaryPerformance, anarana: 'Performance' },
         { asa: amboaryToucheMobile, anarana: 'Mobile' },
-        { asa: amboaryVibration, anarana: 'Vibration' },
+        
         { asa: amboaryFullscreen, anarana: 'Fullscreen' },
         { asa: amboaryFampitandremana, anarana: 'Fampitandremana' },
         { asa: amboaryAutoSave, anarana: 'AutoSave' },
